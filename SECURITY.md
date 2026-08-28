@@ -21,13 +21,13 @@ version receives them for 90 days after its successor's release.
 
 **Do not open a public issue for a security problem.**
 
-Use one of these, in order of preference:
+Report it through **GitHub Private Vulnerability Reporting**: the repository's *Security*
+tab → *Report a vulnerability*. The report stays private until a fix is published, the
+whole exchange lives in one place, and you are credited automatically in the advisory.
 
-1. **GitHub Private Vulnerability Reporting** — the *Security* tab → *Report a
-   vulnerability*. This keeps the report private until a fix is published and gives you
-   credit automatically.
-2. **Email** — `<SECURITY_CONTACT>` _(to be filled in before the repository goes public)_.
-   PGP key to follow.
+There is deliberately no email address here. A published inbox collects far more spam
+than it does vulnerability reports, and private reporting on GitHub does the same job
+with a clearer trail.
 
 ### What to include
 
