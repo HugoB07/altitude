@@ -9,10 +9,10 @@ accounts. We treat security reports accordingly.
 Altitude is in **design phase**. There is no code, no release, and no deployed instance.
 This policy is published now so that it is already in place when the first line ships.
 
-| Version | Supported |
-|---------|-----------|
-| `main` (pre-release) | Best effort — no stability guarantee |
-| _no released version yet_ | — |
+| Version                   | Supported                            |
+| ------------------------- | ------------------------------------ |
+| `main` (pre-release)      | Best effort — no stability guarantee |
+| _no released version yet_ | —                                    |
 
 Once 1.0 ships, the latest minor version receives security fixes, and the previous minor
 version receives them for 90 days after its successor's release.
@@ -21,8 +21,8 @@ version receives them for 90 days after its successor's release.
 
 **Do not open a public issue for a security problem.**
 
-Report it through **GitHub Private Vulnerability Reporting**: the repository's *Security*
-tab → *Report a vulnerability*. The report stays private until a fix is published, the
+Report it through **GitHub Private Vulnerability Reporting**: the repository's _Security_
+tab → _Report a vulnerability_. The report stays private until a fix is published, the
 whole exchange lives in one place, and you are credited automatically in the advisory.
 
 There is deliberately no email address here. A published inbox collects far more spam
@@ -42,12 +42,12 @@ anonymise it first — see the anonymisation checklist in `CONTRIBUTING.md`.
 
 ### What to expect
 
-| Stage | Target |
-|-------|--------|
-| Acknowledgement of your report | 7 days |
-| Initial assessment and severity | 14 days |
-| Fix or documented mitigation for critical issues | 30 days |
-| Public disclosure | after a fix ships, or 90 days, whichever comes first |
+| Stage                                            | Target                                               |
+| ------------------------------------------------ | ---------------------------------------------------- |
+| Acknowledgement of your report                   | 7 days                                               |
+| Initial assessment and severity                  | 14 days                                              |
+| Fix or documented mitigation for critical issues | 30 days                                              |
+| Public disclosure                                | after a fix ships, or 90 days, whichever comes first |
 
 This is a volunteer project with no funded security team, and these are targets rather
 than contractual commitments. If a deadline is going to slip, we will say so rather than
@@ -81,7 +81,7 @@ stay anonymous.
 - **Deployment mistakes.** An instance published to the internet with no TLS, with
   registration left open, or with a weak password is a misconfiguration, not a
   vulnerability. We do want to hear about cases where our defaults or documentation
-  *lead* people into that mistake — that is a real bug, and we will treat it as one.
+  _lead_ people into that mistake — that is a real bug, and we will treat it as one.
 - Anything requiring an already-compromised host, database, or administrator account.
 - Missing hardening headers with no demonstrated impact.
 - Self-XSS, or attacks requiring the victim to paste code into their own console.
@@ -108,7 +108,7 @@ welcome; unauthorised testing against a third party's instance never is.
 These are not aspirations — a regression in any of them is a bug, and several are
 enforced by tests. The reasoning is in the development plan (`docs/plan/`, §7 and §13).
 
-- **Two isolation barriers.** Every query is scoped in the application layer *and* by
+- **Two isolation barriers.** Every query is scoped in the application layer _and_ by
   PostgreSQL Row Level Security. One of them failing must not be enough to leak data.
 - **No bank credentials, ever.** Altitude never asks for, transmits, or stores a bank
   password. Connectors redirect the user to their own bank.

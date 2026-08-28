@@ -51,19 +51,19 @@ node build-html.mjs && node build-pdf.mjs
 
 ## Roadmap
 
-| Phase | Scope | Status |
-|-------|-------|--------|
-| 0 | Foundations — monorepo, Docker, auth, schema | not started |
-| 1 | Ledger — accounts, transactions, net worth | not started |
-| 2 | Import — CSV/XLSX/OFX, presets, deduplication | not started |
-| 3 | Market data — quotes, FX, positions, TWR/MWR, globe | not started |
-| 4 | Household — owners, roles, child portfolios | not started |
-| 5 | Real assets — property, loans, crypto | not started |
-| 6 | v1.0 polish — export, backup, i18n, docs | not started |
+| Phase | Scope                                               | Status      |
+| ----- | --------------------------------------------------- | ----------- |
+| 0     | Foundations — monorepo, Docker, auth, schema        | not started |
+| 1     | Ledger — accounts, transactions, net worth          | not started |
+| 2     | Import — CSV/XLSX/OFX, presets, deduplication       | not started |
+| 3     | Market data — quotes, FX, positions, TWR/MWR, globe | not started |
+| 4     | Household — owners, roles, child portfolios         | not started |
+| 5     | Real assets — property, loans, crypto               | not started |
+| 6     | v1.0 polish — export, backup, i18n, docs            | not started |
 
 ## Contributing
 
-There is no code yet, so code contributions cannot be reviewed. What *is* useful today:
+There is no code yet, so code contributions cannot be reviewed. What _is_ useful today:
 critique of the plan, anonymised bank export samples, and ETF exposure data. Once phase 0
 lands, the easiest entry point will be adding an import preset for your bank — a JSON
 file and a test fixture, no TypeScript required.

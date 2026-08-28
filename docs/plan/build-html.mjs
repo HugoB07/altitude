@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const SRC_DIR = './parts'; // Dossier contenant les fichiers
-const OUTPUT = 'altitude-plan.html';       // Fichier de destination
+const OUTPUT = 'altitude-plan.html'; // Fichier de destination
 
 async function concatenateFiles() {
   try {
