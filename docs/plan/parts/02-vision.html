@@ -1,103 +1,103 @@
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">02</div>
-    <h2>Vision, état de l'art, positionnement</h2>
-    <div class="sec-kicker">Produit</div>
+    <h2>Vision, prior art, positioning</h2>
+    <div class="sec-kicker">Product</div>
   </div>
 
-  <h3>2.1 Le problème que résout Altitude</h3>
-  <p>Finary a prouvé qu'il existe une demande forte pour une vue unifiée du patrimoine — bancaire, boursier,
-  crypto, immobilier — plutôt qu'un énième outil de budget. Ses limites structurelles ouvrent l'espace :</p>
+  <h3>2.1 The problem Altitude solves</h3>
+  <p>Finary proved there is strong demand for a unified view of net worth — banking, securities, crypto,
+  property — rather than yet another budgeting tool. Its structural limits are the opening:</p>
 
   <table class="tight">
-    <thead><tr><th style="width:26%">Limite constatée</th><th style="width:37%">Conséquence pour l'utilisateur</th><th style="width:37%">Réponse d'Altitude</th></tr></thead>
+    <thead><tr><th style="width:26%">Observed limit</th><th style="width:37%">Consequence for the user</th><th style="width:37%">Altitude's answer</th></tr></thead>
     <tbody>
-      <tr><td><b>Données chez un tiers</b></td><td>L'intégralité du patrimoine, des IBAN et des positions transite et réside chez un prestataire.</td><td>Auto-hébergement complet, base incluse. Aucun appel sortant hors fournisseurs explicitement configurés.</td></tr>
-      <tr><td><b>Modèle payant par paliers</b></td><td>Les fonctionnalités d'analyse (allocation fine, performance) sont derrière un abonnement.</td><td>Tout est inclus, sans limite d'actifs ni de comptes.</td></tr>
-      <tr><td><b>Couverture d'actifs figée</b></td><td>Impossible de modéliser une SCI, un pacte Dutreil, des parts de groupement forestier, une montre.</td><td>Types de comptes extensibles + attributs JSONB validés par schéma, plugins d'actifs.</td></tr>
-      <tr><td><b>Mono-utilisateur</b></td><td>Un couple gère mal l'indivision ; les comptes des enfants sont hors modèle.</td><td>Foyer, propriétaires multiples, quotes-parts, portefeuilles enfants (§10).</td></tr>
-      <tr><td><b>Export limité</b></td><td>Effet de verrouillage : sortir ses données est pénible.</td><td>Export intégral (JSON canonique + CSV par table) et import du même format. Objectif : réversibilité totale.</td></tr>
-      <tr><td><b>Boîte noire de calcul</b></td><td>On ne sait pas si la performance affichée est un TWR, un TRI ou une variation brute.</td><td>Méthode de calcul nommée, documentée, testée contre des références publiques (§6.3).</td></tr>
+      <tr><td><b>Data held by a third party</b></td><td>Your entire net worth, your IBANs and your positions transit through and reside with a vendor.</td><td>Full self-hosting, database included. No outbound call beyond explicitly configured providers.</td></tr>
+      <tr><td><b>Tiered pricing</b></td><td>Analysis features (fine-grained allocation, performance) sit behind a subscription.</td><td>Everything included, no cap on assets or accounts.</td></tr>
+      <tr><td><b>Fixed asset coverage</b></td><td>No way to model a property holding company, forestry shares, or a watch.</td><td>Extensible account types plus schema-validated JSONB attributes, and asset plugins.</td></tr>
+      <tr><td><b>Single-user</b></td><td>Couples handle joint ownership poorly; children's accounts fall outside the model entirely.</td><td>Households, multiple owners, ownership shares, child portfolios (§10).</td></tr>
+      <tr><td><b>Limited export</b></td><td>Lock-in: getting your data out is painful.</td><td>Complete export (canonical JSON + per-table CSV) and import of the same format. Target: total reversibility.</td></tr>
+      <tr><td><b>Opaque calculations</b></td><td>You cannot tell whether the displayed return is a TWR, an IRR or a raw change.</td><td>The method is named, documented and tested against public references (§6.3).</td></tr>
     </tbody>
   </table>
 
-  <h3>2.2 État de l'art open source — ce qu'on emprunte, ce qu'on évite</h3>
-  <p>Aucun projet existant ne couvre à la fois le patrimoine <em>et</em> le multi-propriétaire <em>et</em>
-  l'immobilier. Chacun apporte une leçon.</p>
+  <h3>2.2 Open-source prior art — what to borrow, what to avoid</h3>
+  <p>No existing project covers net worth <em>and</em> multi-owner households <em>and</em> real estate.
+  Each teaches something.</p>
 
   <table class="tight">
-    <thead><tr><th style="width:16%">Projet</th><th style="width:16%">Stack / licence</th><th style="width:24%">Point fort à emprunter</th><th style="width:44%">Limite qui laisse la place</th></tr></thead>
+    <thead><tr><th style="width:16%">Project</th><th style="width:16%">Stack / licence</th><th style="width:24%">Strength worth borrowing</th><th style="width:44%">Gap that leaves room</th></tr></thead>
     <tbody>
-      <tr><td><b>Ghostfolio</b></td><td>Angular + NestJS + Prisma + Postgres + Redis, AGPL</td><td>Le concurrent le plus proche : suivi de portefeuille titres/crypto, dashboards soignés, self-host Docker.</td><td>Centré titres : pas de partie double, immobilier et crédits marginaux, pas de foyer multi-propriétaires, import limité.</td></tr>
-      <tr><td><b>Firefly III</b></td><td>PHP / Laravel, AGPL</td><td>Référence de la <em>partie double</em> grand public : règles, budgets, récurrences, multi-devises solide, API mûre.</td><td>Orienté budget et trésorerie : pas de positions titres, pas de valorisation de marché, pas d'allocation.</td></tr>
-      <tr><td><b>Actual Budget</b></td><td>JS local-first, sync CRDT, MIT</td><td>Modèle local-first et synchronisation chiffrée : excellente inspiration pour la confidentialité et l'offline.</td><td>Enveloppes budgétaires uniquement, pas de patrimoine.</td></tr>
-      <tr><td><b>Sure</b> <span class="tag t-part">fork communautaire</span></td><td>Ruby on Rails, AGPL</td><td>Fork communautaire de <code>maybe-finance/maybe</code>, archivé en juillet 2025 ; couvre budget + patrimoine, self-host Docker.</td><td>Écosystème Rails (moins accessible à la communauté JS visée), agrégation historiquement dépendante d'un fournisseur payant.</td></tr>
-      <tr><td><b>Kresus</b></td><td>Node + <code>woob</code>, AGPL</td><td>Le précédent français : agrégation bancaire auto-hébergée via scraping.</td><td>Démontre justement la fragilité du scraping : casse à chaque refonte de site bancaire, friction 2FA. Voir §7.5.</td></tr>
-      <tr><td><b>Portfolio Performance</b></td><td>Java desktop, GPL</td><td><em>La</em> référence de calcul : TWR, TRI, Modified Dietz, gestion des lots. À utiliser comme oracle de test.</td><td>Application de bureau mono-poste, courbe d'apprentissage forte, pas de web.</td></tr>
-      <tr><td><b>Beancount / hledger</b></td><td>Texte brut, double entrée</td><td>Rigueur du modèle : invariants, immuabilité, réversibilité. Inspire directement le schéma §5.</td><td>Réservé aux utilisateurs techniques, aucune interface grand public.</td></tr>
+      <tr><td><b>Ghostfolio</b></td><td>Angular + NestJS + Prisma + Postgres + Redis, AGPL</td><td>Closest competitor: securities and crypto tracking, polished dashboards, Docker self-hosting.</td><td>Securities-centric: no double-entry, real estate and liabilities are marginal, no multi-owner household, limited import.</td></tr>
+      <tr><td><b>Firefly III</b></td><td>PHP / Laravel, AGPL</td><td>The reference for consumer-grade <em>double-entry</em>: rules, budgets, recurrences, solid multi-currency, mature API.</td><td>Budget and cash-flow oriented: no security positions, no market valuation, no allocation analysis.</td></tr>
+      <tr><td><b>Actual Budget</b></td><td>Local-first JS, CRDT sync, MIT</td><td>Local-first design and encrypted sync: excellent inspiration for privacy and offline behaviour.</td><td>Envelope budgeting only, no net worth tracking.</td></tr>
+      <tr><td><b>Sure</b> <span class="tag t-part">community fork</span></td><td>Ruby on Rails, AGPL</td><td>Community fork of <code>maybe-finance/maybe</code>, archived in July 2025; covers budgeting and net worth, Docker self-hosting.</td><td>Rails ecosystem (less accessible to the JS community targeted here); aggregation historically depended on a paid vendor.</td></tr>
+      <tr><td><b>Kresus</b></td><td>Node + <code>woob</code>, AGPL</td><td>The French precedent: self-hosted bank aggregation through scraping.</td><td>Precisely demonstrates scraping's fragility: breaks on every bank redesign, 2FA friction. See §7.5.</td></tr>
+      <tr><td><b>Portfolio Performance</b></td><td>Java desktop, GPL</td><td><em>The</em> calculation reference: TWR, IRR, Modified Dietz, lot handling. Use it as a test oracle.</td><td>Single-machine desktop application, steep learning curve, no web interface.</td></tr>
+      <tr><td><b>Beancount / hledger</b></td><td>Plain text, double-entry</td><td>Model rigour: invariants, immutability, reversibility. Directly inspires the schema in §5.</td><td>Technical users only, no consumer interface.</td></tr>
     </tbody>
   </table>
 
   <div class="box box-dec">
-    <div class="box-t">Décision — positionnement</div>
-    <p>Altitude = <strong>la rigueur comptable de Firefly III</strong> + <strong>la valorisation de marché de
-    Ghostfolio</strong> + <strong>l'exactitude de calcul de Portfolio Performance</strong>, dans une
-    interface web moderne, avec deux ajouts qu'aucun ne propose : le <strong>foyer multi-propriétaires avec
-    portefeuilles enfants</strong> et les <strong>enveloppes françaises</strong> (PEA, assurance-vie, PER)
-    modélisées correctement.</p>
+    <div class="box-t">Decision — positioning</div>
+    <p>Altitude = <strong>Firefly III's accounting rigour</strong> + <strong>Ghostfolio's market
+    valuation</strong> + <strong>Portfolio Performance's calculation accuracy</strong>, in a modern web
+    interface, with two additions none of them offer: <strong>multi-owner households with child
+    portfolios</strong>, and <strong>French wrappers</strong> (PEA, assurance-vie, PER) modelled correctly.</p>
   </div>
 
-  <h3>2.3 Personas et travaux à accomplir</h3>
+  <h3>2.3 Personas and jobs to be done</h3>
   <div class="grid2">
     <div class="card">
-      <h5>Camille — l'investisseur méthodique (cible primaire)</h5>
-      <p>32 ans, tech, 180 k€ répartis sur PEA, CTO, AV, livrets, 3 exchanges crypto. Tient un Excel depuis
-      5 ans qu'elle ne supporte plus.</p>
+      <h5>Camille — the methodical investor (primary target)</h5>
+      <p>32, works in tech, €180k spread across PEA, brokerage, assurance-vie, savings accounts and three
+      crypto exchanges. Has kept a spreadsheet for five years and cannot stand it any more.</p>
       <ul>
-        <li>« Migrer mon Excel sans ressaisir 4 ans d'historique. »</li>
-        <li>« Connaître ma vraie performance nette de frais. »</li>
-        <li>« Voir mon exposition US vs Europe vs émergents en transparisant mes ETF. »</li>
+        <li>"Migrate my spreadsheet without re-typing four years of history."</li>
+        <li>"Know my real performance, net of fees."</li>
+        <li>"See my US vs Europe vs emerging exposure with my ETFs looked through."</li>
       </ul>
     </div>
     <div class="card">
-      <h5>Marc &amp; Léa — le foyer</h5>
-      <p>Couple, deux enfants, RP avec crédit, un locatif en SCI, comptes séparés + joint, livrets A des enfants.</p>
+      <h5>Marc &amp; Léa — the household</h5>
+      <p>Couple, two children, primary residence with a mortgage, a rental held through an SCI, separate and
+      joint accounts, savings accounts for the children.</p>
       <ul>
-        <li>« Voir le patrimoine du foyer et celui de chacun. »</li>
-        <li>« Suivre les livrets des enfants séparément, sans qu'ils voient nos comptes. »</li>
-        <li>« Savoir ce que l'immobilier pèse vraiment, net de crédit. »</li>
+        <li>"See the household's net worth and each person's share."</li>
+        <li>"Track the children's savings separately, without them seeing our accounts."</li>
+        <li>"Know what property really weighs, net of the mortgage."</li>
       </ul>
     </div>
     <div class="card">
-      <h5>Idriss — l'auto-hébergeur</h5>
-      <p>Homelab, Proxmox, Traefik. Refuse par principe qu'un tiers voie ses finances.</p>
+      <h5>Idriss — the self-hoster</h5>
+      <p>Homelab, Proxmox, Traefik. Refuses on principle to let a third party see his finances.</p>
       <ul>
-        <li>« Un compose qui marche du premier coup, sur arm64. »</li>
-        <li>« Des sauvegardes que je peux vérifier et restaurer. »</li>
-        <li>« Zéro télémétrie, zéro appel sortant non consenti. »</li>
+        <li>"A compose file that works first time, on arm64."</li>
+        <li>"Backups I can verify and restore."</li>
+        <li>"Zero telemetry, zero non-consented outbound call."</li>
       </ul>
     </div>
     <div class="card">
-      <h5>Sofia — la contributrice</h5>
-      <p>Dev front, utilise l'outil, veut ajouter le preset d'import de sa banque espagnole.</p>
+      <h5>Sofia — the contributor</h5>
+      <p>Front-end developer, uses the tool, wants to add the import preset for her Spanish bank.</p>
       <ul>
-        <li>« Ajouter un preset = un fichier JSON + un test, pas une refonte. »</li>
-        <li>« Lancer le projet en local en moins de 10 minutes. »</li>
-        <li>« Comprendre le modèle de données sans lire tout le code. »</li>
+        <li>"Adding a preset should be a JSON file and a test, not a redesign."</li>
+        <li>"Get the project running locally in under ten minutes."</li>
+        <li>"Understand the data model without reading all the code."</li>
       </ul>
     </div>
   </div>
 
-  <h3>2.4 Principes directeurs</h3>
+  <h3>2.4 Guiding principles</h3>
   <table class="tight">
-    <thead><tr><th style="width:24%">Principe</th><th>Ce que ça implique concrètement dans le code</th></tr></thead>
+    <thead><tr><th style="width:24%">Principle</th><th>What it means concretely in the code</th></tr></thead>
     <tbody>
-      <tr><td><b>Tes données t'appartiennent</b></td><td>Export intégral réimportable depuis le jour 1. Aucun champ calculé qui ne soit pas reconstructible. La suppression de compte purge réellement.</td></tr>
-      <tr><td><b>Hors-ligne par défaut</b></td><td>L'application est pleinement fonctionnelle sans accès Internet, hors rafraîchissement des cotations. Aucune police, aucun script, aucune icône chargés depuis un CDN tiers.</td></tr>
-      <tr><td><b>Exactitude avant élégance</b></td><td>Un chiffre faux est pire que pas de chiffre. Chaque agrégat porte sa méthode et sa date d'arrêté. Les valeurs estimées sont visuellement distinctes des valeurs constatées.</td></tr>
-      <tr><td><b>Le grand livre est immuable</b></td><td>On ne modifie pas une écriture passée : on la contrepasse. Le journal d'audit est en ajout seul. C'est ce qui rend un import annulable.</td></tr>
-      <tr><td><b>Extension sans fork</b></td><td>Types d'actifs, presets d'import, fournisseurs de prix et connecteurs sont des <em>interfaces</em> déclarées, pas des <code>switch</code> dans le cœur.</td></tr>
-      <tr><td><b>La saisie manuelle est un citoyen de première classe</b></td><td>Elle n'est pas le mode dégradé de la synchro : c'est le mode de référence. Elle doit être plus rapide qu'une ligne Excel.</td></tr>
+      <tr><td><b>Your data is yours</b></td><td>Complete, re-importable export from day one. No computed field that cannot be reconstructed. Deleting an account genuinely purges.</td></tr>
+      <tr><td><b>Offline by default</b></td><td>The application is fully functional without internet access, except for quote refreshes. No font, script or icon loaded from a third-party CDN.</td></tr>
+      <tr><td><b>Accuracy before elegance</b></td><td>A wrong number is worse than no number. Every aggregate carries its method and its as-of date. Estimated values are visually distinct from observed ones.</td></tr>
+      <tr><td><b>The ledger is immutable</b></td><td>Past entries are never edited: they are reversed. The audit log is append-only. This is what makes an import undoable.</td></tr>
+      <tr><td><b>Extend without forking</b></td><td>Asset types, import presets, price providers and connectors are declared <em>interfaces</em>, not <code>switch</code> statements in the core.</td></tr>
+      <tr><td><b>Manual entry is first-class</b></td><td>It is not the degraded mode of synchronisation: it is the reference mode. It must be faster than a spreadsheet row.</td></tr>
     </tbody>
   </table>
 </section>

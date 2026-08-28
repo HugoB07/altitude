@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Altitude — Plan de développement</title>
+<title>Altitude — Development Plan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">
@@ -132,13 +132,13 @@ figure svg{ display:block; margin:0 auto; max-width:100%; }
       </div>
     </div>
 
-    <h1>Plan de développement<br><span>v0 → v1.0</span></h1>
+    <h1>Development Plan<br><span>v0 → v1.0</span></h1>
     <div class="cover-rule"></div>
     <p class="cover-lede">
-      Spécification technique et feuille de route pour <strong>Altitude</strong> : une alternative
-      open-source et auto-hébergeable à Finary. Suivi de patrimoine multi-actifs, multi-devises et
-      multi-propriétaires — comptes bancaires, PEA, CTO, assurance-vie, crypto, immobilier, crédits —
-      avec import de fichiers, saisie manuelle, portefeuilles enfants et connecteurs bancaires optionnels.
+      Technical specification and roadmap for <strong>Altitude</strong>: an open-source, self-hosted
+      alternative to Finary. Multi-asset, multi-currency and multi-owner wealth tracking — bank accounts,
+      brokerage, tax-advantaged wrappers, crypto, real estate and liabilities — with file import, manual
+      entry, child portfolios and optional bank connectors.
     </p>
 
     <div class="cover-chips">
@@ -148,50 +148,55 @@ figure svg{ display:block; margin:0 auto; max-width:100%; }
       <span class="chip">shadcn/ui + Magic UI</span>
       <span class="chip">Docker Compose</span>
       <span class="chip">AGPL-3.0</span>
-      <span class="chip">Partie double</span>
-      <span class="chip">DSP2 optionnel</span>
+      <span class="chip">Double-entry</span>
+      <span class="chip">PSD2 optional</span>
     </div>
   </div>
 
   <div class="cover-meta">
-    <div><span>Document</span><b>Plan technique</b></div>
-    <div><span>Version</span><b>1.0 — brouillon</b></div>
-    <div><span>Date</span><b>28 août 2026</b></div>
-    <div><span>Statut</span><b>À valider</b></div>
+    <div><span>Document</span><b>Technical plan</b></div>
+    <div><span>Version</span><b>1.0 — draft</b></div>
+    <div><span>Date</span><b>28 August 2026</b></div>
+    <div><span>Status</span><b>For review</b></div>
   </div>
 </section>
 
 <section class="toc">
-  <h2>Sommaire</h2>
-  <p class="toc-sub">20 sections — de la décision d'architecture à la checklist de la première semaine.</p>
+  <h2>Contents</h2>
+  <p class="toc-sub">20 sections — from architectural decisions to the first week's checklist.</p>
   <div class="toc-grid">
-    <div class="toc-item"><b>1</b><span>Résumé exécutif — les 12 décisions</span><i>Décisions</i></div>
-    <div class="toc-item"><b>2</b><span>Vision, état de l'art, positionnement</span><i>Produit</i></div>
-    <div class="toc-item"><b>3</b><span>Décisions d'architecture (ADR)</span><i>Archi</i></div>
-    <div class="toc-item"><b>4</b><span>Stack technique détaillée</span><i>Archi</i></div>
-    <div class="toc-item"><b>5</b><span>Modèle de domaine &amp; schéma SQL</span><i>Données</i></div>
-    <div class="toc-item"><b>6</b><span>Moteur de calcul &amp; performance</span><i>Données</i></div>
-    <div class="toc-item"><b>7</b><span>Synchronisation bancaire : l'analyse</span><i>Décisif</i></div>
-    <div class="toc-item"><b>8</b><span>Import CSV / XLSX / OFX / CAMT</span><i>Ingestion</i></div>
-    <div class="toc-item"><b>9</b><span>Saisie manuelle &amp; UX transactions</span><i>Ingestion</i></div>
-    <div class="toc-item"><b>10</b><span>Foyer, propriétaires, portefeuilles enfants</span><i>Produit</i></div>
-    <div class="toc-item"><b>11</b><span>Modules patrimoniaux</span><i>Produit</i></div>
-    <div class="toc-item"><b>12</b><span>Interface, design system, le Globe</span><i>UI</i></div>
-    <div class="toc-item"><b>13</b><span>Sécurité, vie privée, RGPD</span><i>Sécurité</i></div>
-    <div class="toc-item"><b>14</b><span>Self-hosting &amp; déploiement</span><i>Ops</i></div>
-    <div class="toc-item"><b>15</b><span>Qualité, tests, CI/CD</span><i>Ops</i></div>
-    <div class="toc-item"><b>16</b><span>Gouvernance open source</span><i>Projet</i></div>
-    <div class="toc-item"><b>17</b><span>Roadmap par phases</span><i>Projet</i></div>
-    <div class="toc-item"><b>18</b><span>Semaine 1 : checklist concrète</span><i>Projet</i></div>
-    <div class="toc-item"><b>19</b><span>Risques &amp; mitigations</span><i>Projet</i></div>
-    <div class="toc-item"><b>20</b><span>Annexes &amp; sources de données</span><i>Annexe</i></div>
+    <div class="toc-item"><b>1</b><span>Executive summary — the 12 decisions</span><i>Decisions</i></div>
+    <div class="toc-item"><b>2</b><span>Vision, prior art, positioning</span><i>Product</i></div>
+    <div class="toc-item"><b>3</b><span>Architecture decisions (ADRs)</span><i>Arch</i></div>
+    <div class="toc-item"><b>4</b><span>Technical stack in detail</span><i>Arch</i></div>
+    <div class="toc-item"><b>5</b><span>Domain model &amp; SQL schema</span><i>Data</i></div>
+    <div class="toc-item"><b>6</b><span>Calculation engine &amp; performance</span><i>Data</i></div>
+    <div class="toc-item"><b>7</b><span>Bank synchronisation: the analysis</span><i>Decisive</i></div>
+    <div class="toc-item"><b>8</b><span>CSV / XLSX / OFX / CAMT import</span><i>Ingestion</i></div>
+    <div class="toc-item"><b>9</b><span>Manual entry &amp; transaction UX</span><i>Ingestion</i></div>
+    <div class="toc-item"><b>10</b><span>Households, owners, child portfolios</span><i>Product</i></div>
+    <div class="toc-item"><b>11</b><span>Asset modules</span><i>Product</i></div>
+    <div class="toc-item"><b>12</b><span>Interface, design system, the Globe</span><i>UI</i></div>
+    <div class="toc-item"><b>13</b><span>Security, privacy, GDPR</span><i>Security</i></div>
+    <div class="toc-item"><b>14</b><span>Self-hosting &amp; deployment</span><i>Ops</i></div>
+    <div class="toc-item"><b>15</b><span>Quality, testing, CI/CD</span><i>Ops</i></div>
+    <div class="toc-item"><b>16</b><span>Open-source governance</span><i>Project</i></div>
+    <div class="toc-item"><b>17</b><span>Roadmap by phase</span><i>Project</i></div>
+    <div class="toc-item"><b>18</b><span>Week 1: concrete checklist</span><i>Project</i></div>
+    <div class="toc-item"><b>19</b><span>Risks &amp; mitigations</span><i>Project</i></div>
+    <div class="toc-item"><b>20</b><span>Appendices &amp; data sources</span><i>Appendix</i></div>
   </div>
 
   <div class="box box-note" style="margin-top:18pt">
-    <div class="box-t">Comment lire ce document</div>
-    <p>Les sections <strong>3, 5, 7 et 17</strong> sont les plus engageantes : elles fixent la stack, le modèle de
-    données, l'arbitrage sur la synchronisation bancaire et l'ordre de construction. Les autres sections
-    peuvent être ajustées en cours de route sans coût de refonte. Chaque décision structurante est
-    encadrée par un bloc <strong>Décision</strong> avec sa justification et son alternative rejetée.</p>
+    <div class="box-t">How to read this document</div>
+    <p>Sections <strong>3, 5, 7 and 17</strong> are the committing ones: they fix the stack, the data model,
+    the bank-synchronisation trade-off and the build order. The rest can be adjusted along the way at no
+    rework cost. Every structural decision sits in a <strong>Decision</strong> box with its rationale and
+    the alternative that was rejected.</p>
+    <p style="margin-bottom:0"><strong>A note on vocabulary.</strong> French wrapper names are kept
+    untranslated throughout — <em>PEA</em> (tax-advantaged equity account), <em>assurance-vie</em>
+    (life-insurance investment wrapper), <em>PER</em> (retirement savings plan), <em>livret A</em>
+    (regulated savings account), <em>SCI</em> (property holding company). They have no faithful English
+    equivalent, and they are the products the domain model must represent correctly.</p>
   </div>
 </section>

@@ -45,8 +45,8 @@ The full design document (56 pages) lives in [`docs/plan/`](docs/plan): architec
 data model, calculation engine, bank-synchronisation analysis, security and roadmap.
 
 ```bash
-cat docs/plan/parts/*.html > docs/plan/altitude-plan.html
-cd docs/plan && node build-pdf.mjs
+cd docs/plan
+node build-html.mjs && node build-pdf.mjs
 ```
 
 ## Roadmap

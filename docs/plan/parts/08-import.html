@@ -1,78 +1,78 @@
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">08</div>
-    <h2>Import CSV / XLSX / OFX / CAMT</h2>
+    <h2>CSV / XLSX / OFX / CAMT import</h2>
     <div class="sec-kicker">Ingestion</div>
   </div>
 
-  <p class="lede">Puisque l'import remplace la synchronisation, il doit être <strong>excellent</strong>, pas
-  correct. C'est le premier contact d'un utilisateur qui arrive avec 5 ans d'Excel : s'il échoue, il ne
-  reviendra pas.</p>
+  <p class="lede">Since import replaces synchronisation, it has to be <strong>excellent</strong>, not merely
+  adequate. It is the first contact for a user arriving with five years of spreadsheets: if it fails, they
+  do not come back.</p>
 
-  <h3>8.1 Formats pris en charge</h3>
+  <h3>8.1 Supported formats</h3>
   <table class="tight">
-    <thead><tr><th style="width:15%">Format</th><th style="width:13%">Priorité</th><th style="width:20%">Bibliothèque</th><th>Notes</th></tr></thead>
+    <thead><tr><th style="width:15%">Format</th><th style="width:13%">Priority</th><th style="width:20%">Library</th><th>Notes</th></tr></thead>
     <tbody>
-      <tr><td><b>CSV / TSV</b></td><td><span class="tag t-p0">v1</span></td><td>papaparse (flux)</td><td>Le cas dominant. Détection automatique du séparateur, de l'encodage et du format de date.</td></tr>
-      <tr><td><b>XLSX / XLSM</b></td><td><span class="tag t-p0">v1</span></td><td>ExcelJS (flux)</td><td>Choix d'onglet, détection de la ligne d'en-tête, cellules fusionnées ignorées proprement. Les dates Excel sont des nombres de série : conversion explicite, piège classique.</td></tr>
-      <tr><td><b>OFX / QFX</b></td><td><span class="tag t-p1">v1</span></td><td>parseur maison</td><td>SGML pour OFX 1.x, XML pour 2.x. Format structuré : le mapping est déterministe, pas d'écran de correspondance nécessaire.</td></tr>
-      <tr><td><b>QIF</b></td><td><span class="tag t-p2">v1.1</span></td><td>parseur maison</td><td>Ancien mais très répandu dans les exports bancaires français. Pas de devise dans le format : elle est demandée à l'import.</td></tr>
-      <tr><td><b>CAMT.053</b></td><td><span class="tag t-p2">v1.1</span></td><td>fast-xml-parser</td><td>ISO 20022, relevé bancaire structuré. Le plus riche : codes d'opération normalisés, données de contrepartie. Standard pour les comptes pro.</td></tr>
-      <tr><td><b>MT940</b></td><td><span class="tag t-p3">v1.2</span></td><td>parseur maison</td><td>Legacy SWIFT, encore utilisé par quelques établissements.</td></tr>
-      <tr><td><b>JSON Altitude</b></td><td><span class="tag t-p0">v1</span></td><td>natif</td><td>Format d'export canonique. Garantit la réversibilité et sert aux migrations entre instances.</td></tr>
-      <tr><td><b>PDF de relevé</b></td><td><span class="tag t-p3">≥ v1.3</span></td><td>—</td><td>Reporté volontairement : extraction fragile, forte attente utilisateur, mauvais rapport valeur/risque tant que le reste n'est pas solide.</td></tr>
+      <tr><td><b>CSV / TSV</b></td><td><span class="tag t-p0">v1</span></td><td>papaparse (streaming)</td><td>The dominant case. Automatic detection of delimiter, encoding and date format.</td></tr>
+      <tr><td><b>XLSX / XLSM</b></td><td><span class="tag t-p0">v1</span></td><td>ExcelJS (streaming)</td><td>Sheet selection, header-row detection, merged cells handled cleanly. Excel dates are serial numbers: explicit conversion, a classic trap.</td></tr>
+      <tr><td><b>OFX / QFX</b></td><td><span class="tag t-p1">v1</span></td><td>in-house parser</td><td>SGML for OFX 1.x, XML for 2.x. Structured format: mapping is deterministic, no mapping screen needed.</td></tr>
+      <tr><td><b>QIF</b></td><td><span class="tag t-p2">v1.1</span></td><td>in-house parser</td><td>Old but still common in French bank exports. The format carries no currency: it is asked for at import time.</td></tr>
+      <tr><td><b>CAMT.053</b></td><td><span class="tag t-p2">v1.1</span></td><td>fast-xml-parser</td><td>ISO 20022 structured bank statement. The richest: standardised transaction codes and counterparty data. The standard for business accounts.</td></tr>
+      <tr><td><b>MT940</b></td><td><span class="tag t-p3">v1.2</span></td><td>in-house parser</td><td>Legacy SWIFT, still used by a few institutions.</td></tr>
+      <tr><td><b>Altitude JSON</b></td><td><span class="tag t-p0">v1</span></td><td>native</td><td>The canonical export format. Guarantees reversibility and powers instance-to-instance migration.</td></tr>
+      <tr><td><b>PDF statements</b></td><td><span class="tag t-p3">≥ v1.3</span></td><td>—</td><td>Deliberately deferred: fragile extraction, high user expectations, poor value-to-risk ratio until the rest is solid.</td></tr>
     </tbody>
   </table>
 
-  <h3>8.2 Le pipeline en neuf étapes</h3>
+  <h3>8.2 The nine-step pipeline</h3>
   <figure>
     <svg viewBox="0 0 760 250" width="760" height="250" font-family="Inter,sans-serif">
       <defs><marker id="p" markerWidth="7" markerHeight="7" refX="6" refY="2.5" orient="auto">
         <path d="M0,0 L6,2.5 L0,5 z" fill="#0284C7"/></marker></defs>
       <g font-size="7.4">
         <rect x="8" y="34" width="80" height="46" rx="5" fill="#E0F2FE" stroke="#7DD3FC"/>
-        <text x="48" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#075985">1 · Dépôt</text>
-        <text x="48" y="62" text-anchor="middle" fill="#334155">taille, type MIME</text>
-        <text x="48" y="72" text-anchor="middle" fill="#334155">archivage brut</text>
+        <text x="48" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#075985">1 · Upload</text>
+        <text x="48" y="62" text-anchor="middle" fill="#334155">size, MIME type</text>
+        <text x="48" y="72" text-anchor="middle" fill="#334155">raw archived</text>
 
         <rect x="98" y="34" width="80" height="46" rx="5" fill="#E0F2FE" stroke="#7DD3FC"/>
         <text x="138" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#075985">2 · Sniff</text>
-        <text x="138" y="62" text-anchor="middle" fill="#334155">encodage, séparateur</text>
-        <text x="138" y="72" text-anchor="middle" fill="#334155">dates, décimales</text>
+        <text x="138" y="62" text-anchor="middle" fill="#334155">encoding, delimiter</text>
+        <text x="138" y="72" text-anchor="middle" fill="#334155">dates, decimals</text>
 
         <rect x="188" y="34" width="80" height="46" rx="5" fill="#E0F2FE" stroke="#7DD3FC"/>
         <text x="228" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#075985">3 · Preset</text>
-        <text x="228" y="62" text-anchor="middle" fill="#334155">empreinte d'en-tête</text>
-        <text x="228" y="72" text-anchor="middle" fill="#334155">→ banque reconnue</text>
+        <text x="228" y="62" text-anchor="middle" fill="#334155">header fingerprint</text>
+        <text x="228" y="72" text-anchor="middle" fill="#334155">→ bank recognised</text>
 
         <rect x="278" y="34" width="80" height="46" rx="5" fill="#FEF3C7" stroke="#FCD34D"/>
         <text x="318" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#B45309">4 · Mapping</text>
-        <text x="318" y="62" text-anchor="middle" fill="#334155">écran utilisateur</text>
-        <text x="318" y="72" text-anchor="middle" fill="#334155">mémorisé</text>
+        <text x="318" y="62" text-anchor="middle" fill="#334155">user screen</text>
+        <text x="318" y="72" text-anchor="middle" fill="#334155">remembered</text>
 
         <rect x="368" y="34" width="80" height="46" rx="5" fill="#E0F2FE" stroke="#7DD3FC"/>
         <text x="408" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#075985">5 · Validation</text>
-        <text x="408" y="62" text-anchor="middle" fill="#334155">Zod ligne à ligne</text>
-        <text x="408" y="72" text-anchor="middle" fill="#334155">erreurs localisées</text>
+        <text x="408" y="62" text-anchor="middle" fill="#334155">Zod, row by row</text>
+        <text x="408" y="72" text-anchor="middle" fill="#334155">located errors</text>
 
         <rect x="458" y="34" width="80" height="46" rx="5" fill="#FEF3C7" stroke="#FCD34D"/>
-        <text x="498" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#B45309">6 · Doublons</text>
-        <text x="498" y="62" text-anchor="middle" fill="#334155">empreinte + fenêtre</text>
-        <text x="498" y="72" text-anchor="middle" fill="#334155">arbitrage utilisateur</text>
+        <text x="498" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#B45309">6 · Duplicates</text>
+        <text x="498" y="62" text-anchor="middle" fill="#334155">hash + time window</text>
+        <text x="498" y="72" text-anchor="middle" fill="#334155">user decides</text>
 
         <rect x="548" y="34" width="80" height="46" rx="5" fill="#E0F2FE" stroke="#7DD3FC"/>
-        <text x="588" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#075985">7 · Règles</text>
-        <text x="588" y="62" text-anchor="middle" fill="#334155">catégorisation</text>
-        <text x="588" y="72" text-anchor="middle" fill="#334155">contrepartie</text>
+        <text x="588" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#075985">7 · Rules</text>
+        <text x="588" y="62" text-anchor="middle" fill="#334155">categorisation</text>
+        <text x="588" y="72" text-anchor="middle" fill="#334155">counterparty</text>
 
         <rect x="638" y="34" width="80" height="46" rx="5" fill="#D1FAE5" stroke="#6EE7B7"/>
-        <text x="678" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#047857">8 · Écriture</text>
-        <text x="678" y="62" text-anchor="middle" fill="#334155">partie double</text>
-        <text x="678" y="72" text-anchor="middle" fill="#334155">une transaction SQL</text>
+        <text x="678" y="50" text-anchor="middle" font-size="8.5" font-weight="700" fill="#047857">8 · Posting</text>
+        <text x="678" y="62" text-anchor="middle" fill="#334155">double-entry</text>
+        <text x="678" y="72" text-anchor="middle" fill="#334155">one SQL transaction</text>
 
         <rect x="278" y="128" width="200" height="42" rx="5" fill="#EDE9FE" stroke="#C4B5FD"/>
-        <text x="378" y="146" text-anchor="middle" font-size="8.5" font-weight="700" fill="#6D28D9">9 · Rapport &amp; annulation</text>
-        <text x="378" y="160" text-anchor="middle" fill="#334155">N créées · N ignorées · N en erreur — annulable en un clic</text>
+        <text x="378" y="146" text-anchor="middle" font-size="8.5" font-weight="700" fill="#6D28D9">9 · Report &amp; rollback</text>
+        <text x="378" y="160" text-anchor="middle" fill="#334155">N created · N skipped · N failed — undoable in one click</text>
       </g>
       <line x1="88" y1="57" x2="96" y2="57" stroke="#0284C7" marker-end="url(#p)"/>
       <line x1="178" y1="57" x2="186" y2="57" stroke="#0284C7" marker-end="url(#p)"/>
@@ -84,37 +84,37 @@
       <path d="M678 80 L678 108 L478 108 L478 128" fill="none" stroke="#0284C7" marker-end="url(#p)"/>
 
       <rect x="8" y="196" width="356" height="42" rx="5" fill="#F8FAFC" stroke="#CBD5E1"/>
-      <text x="20" y="212" font-size="8" font-weight="700" fill="#0B1220">Étapes 1–3 · 5–9 : automatiques</text>
-      <text x="20" y="226" font-size="7.4" fill="#475569">exécutées dans un job worker, progression diffusée en SSE</text>
+      <text x="20" y="212" font-size="8" font-weight="700" fill="#0B1220">Steps 1–3 · 5–9: automatic</text>
+      <text x="20" y="226" font-size="7.4" fill="#475569">run inside a worker job, progress streamed over SSE</text>
       <rect x="374" y="196" width="378" height="42" rx="5" fill="#FFFBEB" stroke="#FCD34D"/>
-      <text x="386" y="212" font-size="8" font-weight="700" fill="#B45309">Étapes 4 et 6 : les deux seuls écrans utilisateur</text>
-      <text x="386" y="226" font-size="7.4" fill="#475569">objectif : zéro écran quand un preset connu est détecté et qu'aucun doublon n'apparaît</text>
+      <text x="386" y="212" font-size="8" font-weight="700" fill="#B45309">Steps 4 and 6: the only two user-facing screens</text>
+      <text x="386" y="226" font-size="7.4" fill="#475569">goal: zero screens when a known preset matches and no duplicate appears</text>
     </svg>
-    <figcaption>Figure 3 — Pipeline d'import. Les connecteurs bancaires de la v2 rejoignent ce même flux à l'étape 5.</figcaption>
+    <figcaption>Figure 3 — Import pipeline. The v2 bank connectors join this same flow at step 5.</figcaption>
   </figure>
 
-  <h3>8.3 Les pièges francophones — à traiter dès le premier jour</h3>
+  <h3>8.3 French-language pitfalls — handle these on day one</h3>
   <table class="tight">
-    <thead><tr><th style="width:22%">Piège</th><th style="width:30%">Symptôme si non traité</th><th>Traitement</th></tr></thead>
+    <thead><tr><th style="width:22%">Pitfall</th><th style="width:30%">Symptom if unhandled</th><th>Handling</th></tr></thead>
     <tbody>
-      <tr><td><b>Encodage CP1252 / ISO-8859-1</b></td><td>« VIREMENT SÉPA » devient « VIREMENT SÃPA ».</td><td>Détection par <code>chardet</code> + heuristique : si l'octet 0xE9 apparaît hors séquence UTF-8 valide, c'est du Latin-1. Prévisualisation avant validation.</td></tr>
-      <tr><td><b>Séparateur point-virgule</b></td><td>Une seule colonne, tout collé.</td><td>Comptage des occurrences de <code>;</code>, <code>,</code>, <code>\t</code>, <code>|</code> sur les 20 premières lignes ; on retient celui dont le nombre est le plus stable.</td></tr>
-      <tr><td><b>Virgule décimale</b></td><td><code>1 234,56</code> lu comme <code>1</code> ou <code>NaN</code>.</td><td>Normalisation : suppression des espaces (y compris insécables et fines), puis détection du dernier séparateur comme marqueur décimal. Test sur toute la colonne, pas ligne par ligne.</td></tr>
-      <tr><td><b>Dates JJ/MM/AAAA</b></td><td>03/04/2025 interprété comme 4 mars.</td><td>Détection sur l'ensemble de la colonne : s'il existe une valeur dont le premier groupe dépasse 12, l'ordre est tranché. Sinon, on demande — jamais deviner en silence.</td></tr>
-      <tr><td><b>Débit / crédit en deux colonnes</b></td><td>Tous les montants positifs, solde absurde.</td><td>Le mapping accepte le mode « deux colonnes » et applique le signe. Contrôle de cohérence sur le solde final si la colonne existe.</td></tr>
-      <tr><td><b>Lignes d'en-tête parasites</b></td><td>Les 6 premières lignes d'un export bancaire sont un pavé d'identification.</td><td>Recherche de la première ligne dont le nombre de colonnes est stable sur 5 lignes consécutives.</td></tr>
-      <tr><td><b>Libellés tronqués et bruités</b></td><td>Déduplication et catégorisation inefficaces.</td><td>Normalisation : majuscules, suppression des accents (<code>unaccent</code>), écrasement des séquences numériques longues, retrait des dates internes au libellé.</td></tr>
-      <tr><td><b>Montants entre parenthèses</b></td><td><code>(45,00)</code> lu comme positif.</td><td>Convention comptable anglo-saxonne : parenthèses = négatif. Cas fréquent dans les exports de courtiers.</td></tr>
+      <tr><td><b>CP1252 / ISO-8859-1 encoding</b></td><td>"VIREMENT SÉPA" becomes "VIREMENT SÃPA".</td><td>Detection via <code>chardet</code> plus a heuristic: if byte 0xE9 appears outside a valid UTF-8 sequence, it is Latin-1. Preview before confirming.</td></tr>
+      <tr><td><b>Semicolon delimiter</b></td><td>A single column, everything glued together.</td><td>Count occurrences of <code>;</code>, <code>,</code>, <code>\t</code> and <code>|</code> across the first 20 lines; keep the one whose count is most stable.</td></tr>
+      <tr><td><b>Decimal comma</b></td><td><code>1 234,56</code> read as <code>1</code> or <code>NaN</code>.</td><td>Normalise: strip spaces (including non-breaking and thin), then treat the last separator as the decimal marker. Decide per column, not per row.</td></tr>
+      <tr><td><b>DD/MM/YYYY dates</b></td><td>03/04/2025 read as 4 March.</td><td>Decide across the whole column: if any value has a first group above 12, the order is settled. Otherwise ask — never guess silently.</td></tr>
+      <tr><td><b>Separate debit/credit columns</b></td><td>All amounts positive, balance nonsensical.</td><td>The mapping supports "two column" mode and applies the sign. Consistency check against the closing balance column when present.</td></tr>
+      <tr><td><b>Junk header rows</b></td><td>The first six lines of a bank export are an identification block.</td><td>Find the first row whose column count stays stable across five consecutive rows.</td></tr>
+      <tr><td><b>Truncated, noisy descriptions</b></td><td>Deduplication and categorisation both degrade.</td><td>Normalise: uppercase, strip accents (<code>unaccent</code>), collapse long digit runs, remove dates embedded in the description.</td></tr>
+      <tr><td><b>Amounts in parentheses</b></td><td><code>(45.00)</code> read as positive.</td><td>Anglo-Saxon accounting convention: parentheses mean negative. Common in broker exports.</td></tr>
     </tbody>
   </table>
 
-  <h3>8.4 Presets : un fichier, un test</h3>
-  <p>Un preset est une donnée, pas du code. Ajouter une banque ne demande aucune compilation ni aucune
-  connaissance du cœur — c'est ce qui rend la couverture extensible par la communauté.</p>
-  <pre><span class="c">// packages/importers/presets/fr/boursobank-compte.json</span>
+  <h3>8.4 Presets: one file, one test</h3>
+  <p>A preset is data, not code. Adding a bank requires no compilation and no knowledge of the core — that
+  is what makes coverage community-extensible.</p>
+  <pre><span class="c">// packages/importers/presets/fr/boursobank-current.json</span>
 {
-  <span class="n">"id"</span>: <span class="s">"fr.boursobank.compte"</span>,
-  <span class="n">"label"</span>: <span class="s">"BoursoBank — compte courant (CSV)"</span>,
+  <span class="n">"id"</span>: <span class="s">"fr.boursobank.current"</span>,
+  <span class="n">"label"</span>: <span class="s">"BoursoBank — current account (CSV)"</span>,
   <span class="n">"match"</span>: {
     <span class="n">"headerContains"</span>: [<span class="s">"dateOp"</span>, <span class="s">"dateVal"</span>, <span class="s">"label"</span>, <span class="s">"amount"</span>],
     <span class="n">"delimiter"</span>: <span class="s">";"</span>, <span class="n">"encoding"</span>: <span class="s">"utf-8"</span>
@@ -134,65 +134,60 @@
         { <span class="n">"match"</span>: <span class="s">"INTERETS"</span>,      <span class="n">"kind"</span>: <span class="s">"interest"</span> }
     ]}
   ],
-  <span class="n">"fixtures"</span>: [<span class="s">"boursobank-compte.sample.csv"</span>]   <span class="c">// jeu de test obligatoire</span>
+  <span class="n">"fixtures"</span>: [<span class="s">"boursobank-current.sample.csv"</span>]   <span class="c">// test fixture required</span>
 }</pre>
-  <p><b>Cible v1 :</b> BoursoBank, Crédit Agricole, BNP Paribas, Société Générale, LCL, Caisse d'Épargne,
+  <p><b>v1 target:</b> BoursoBank, Crédit Agricole, BNP Paribas, Société Générale, LCL, Caisse d'Épargne,
   Fortuneo, Hello bank!, Revolut, N26, Trade Republic, Degiro, Bourse Direct, Saxo, Binance, Kraken,
-  Coinbase — plus le format générique paramétrable. Chaque preset arrive avec un fichier d'exemple
-  <strong>anonymisé</strong> et un test qui vérifie le résultat attendu.</p>
+  Coinbase — plus a configurable generic format. Every preset ships with an <strong>anonymised</strong>
+  sample file and a test asserting the expected result.</p>
 
-  <h3>8.5 Déduplication</h3>
-  <p>Deux niveaux, parce qu'un seul ne suffit jamais :</p>
+  <h3>8.5 Deduplication</h3>
+  <p>Two levels, because one is never enough:</p>
   <ol>
-    <li><b>Exact</b> — <code>sha256(account_id ‖ booked_on ‖ amount ‖ currency ‖ normalize(label))</code>.
-    Rejet silencieux : c'est le cas du fichier réimporté deux fois, qui doit être totalement indolore.</li>
-    <li><b>Approché</b> — même compte, même montant, date à ±3 jours, similarité trigramme du libellé
-    &gt; 0,7. Ces cas ne sont <em>jamais</em> rejetés automatiquement : ils sont présentés côte à côte pour
-    arbitrage (« garder les deux » / « fusionner » / « ignorer »), avec une case « appliquer à tous les cas
-    similaires ».</li>
+    <li><b>Exact</b> — <code>sha256(account_id ‖ booked_on ‖ amount ‖ currency ‖ normalise(label))</code>.
+    Silently skipped: this is the case of a file imported twice, which must be completely painless.</li>
+    <li><b>Fuzzy</b> — same account, same amount, date within ±3 days, trigram similarity of the description
+    above 0.7. These are <em>never</em> auto-rejected: they are shown side by side for a decision ("keep
+    both" / "merge" / "skip"), with an "apply to all similar cases" checkbox.</li>
   </ol>
   <div class="box box-warn">
-    <div class="box-t">Le cas qu'on rate systématiquement</div>
-    <p>Deux prélèvements identiques le même jour, même montant, même libellé — <em>et parfaitement
-    légitimes</em> (deux abonnements identiques, deux retraits de 50 €). Un rejet automatique fait
-    disparaître de l'argent réel et détruit la confiance. D'où la règle : <strong>seule l'empreinte exacte
-    (qui inclut l'identifiant externe quand il existe) déduplique automatiquement</strong> ; tout le reste
-    remonte à l'utilisateur.</p>
+    <div class="box-t">The case everyone gets wrong</div>
+    <p>Two identical direct debits on the same day, same amount, same description — <em>and both entirely
+    legitimate</em> (two identical subscriptions, two €50 withdrawals). Auto-rejecting makes real money
+    disappear and destroys trust. Hence the rule: <strong>only the exact hash (which includes the external
+    id where one exists) deduplicates automatically</strong>; everything else goes back to the user.</p>
   </div>
 
-  <h3>8.6 Règles de catégorisation</h3>
-  <p>Moteur déterministe, ordonné, entièrement inspectable — pas de modèle statistique en v1.</p>
+  <h3>8.6 Categorisation rules</h3>
+  <p>A deterministic, ordered, fully inspectable engine — no statistical model in v1.</p>
   <pre>{ <span class="n">"priority"</span>: 10,
   <span class="n">"when"</span>: { <span class="n">"descriptionMatches"</span>: <span class="s">"(?i)carrefour|leclerc|intermarch"</span>,
             <span class="n">"amountBetween"</span>: [<span class="s">"-500"</span>, <span class="s">"0"</span>] },
-  <span class="n">"then"</span>: { <span class="n">"category"</span>: <span class="s">"alimentation"</span>, <span class="n">"tags"</span>: [<span class="s">"courses"</span>] },
+  <span class="n">"then"</span>: { <span class="n">"category"</span>: <span class="s">"groceries"</span>, <span class="n">"tags"</span>: [<span class="s">"food"</span>] },
   <span class="n">"stopOnMatch"</span>: <span class="k">true</span> }</pre>
   <ul>
-    <li>Règles utilisateur d'abord, puis un jeu de règles communautaire par pays, versionné dans le dépôt.</li>
-    <li>Apprentissage explicite : recatégoriser une transaction propose « créer une règle pour tous les
-    libellés semblables » — l'utilisateur reste maître, il n'y a pas de magie invisible.</li>
-    <li>Réappliquer les règles est une action manuelle, avec prévisualisation du nombre de lignes affectées.</li>
-    <li>Une éventuelle assistance par modèle de langage sera <strong>opt-in, locale, et jamais activée par
-    défaut</strong> — envoyer ses libellés bancaires à une API tierce contredirait la promesse du produit.</li>
+    <li>User rules first, then a community rule set per country, versioned in the repository.</li>
+    <li>Explicit learning: recategorising a transaction offers "create a rule for all similar descriptions" — the user stays in control, nothing happens invisibly.</li>
+    <li>Re-applying rules is a manual action, with a preview of how many rows would change.</li>
+    <li>Any future language-model assistance will be <strong>opt-in, local, and never on by default</strong> — sending bank descriptions to a third-party API would contradict the product's promise.</li>
   </ul>
 
-  <h3>8.7 Sécurité de l'import</h3>
+  <h3>8.7 Import security</h3>
   <table class="tight">
-    <thead><tr><th style="width:28%">Vecteur</th><th>Contre-mesure</th></tr></thead>
+    <thead><tr><th style="width:28%">Vector</th><th>Countermeasure</th></tr></thead>
     <tbody>
-      <tr><td><b>Injection de formule CSV</b></td><td>À l'<em>export</em>, toute cellule commençant par <code>= + - @ TAB CR</code> est préfixée d'une apostrophe. Sinon, un libellé malveillant importé puis réexporté exécute une commande dans le tableur de l'utilisateur.</td></tr>
-      <tr><td><b>Bombe zip (XLSX)</b></td><td>Plafonds durs : 50 Mo compressés, 500 Mo décompressés, 200 000 lignes, 1 000 colonnes. Lecture en flux, jamais en mémoire complète.</td></tr>
-      <tr><td><b>XXE / entités externes</b></td><td>Parseurs XML (OFX 2.x, CAMT) configurés sans résolution d'entité ni DTD externe. Test de non-régression dédié.</td></tr>
-      <tr><td><b>Épuisement mémoire</b></td><td>Traitement en flux de bout en bout, insertion par lots de 1 000, limite mémoire du conteneur worker fixée dans le compose.</td></tr>
-      <tr><td><b>Contenu actif dans un XLSM</b></td><td>Les macros ne sont jamais exécutées — ExcelJS lit les données, pas le VBA. Avertissement affiché à l'utilisateur.</td></tr>
-      <tr><td><b>Rétention des fichiers bruts</b></td><td>Conservés 30 jours par défaut (utile pour rejouer un import raté), purge automatique, suppression manuelle possible à tout moment.</td></tr>
+      <tr><td><b>CSV formula injection</b></td><td>On <em>export</em>, any cell starting with <code>= + - @ TAB CR</code> is prefixed with an apostrophe. Otherwise a malicious description, imported then re-exported, executes a command in the user's spreadsheet.</td></tr>
+      <tr><td><b>Zip bomb (XLSX)</b></td><td>Hard caps: 50 MB compressed, 500 MB uncompressed, 200,000 rows, 1,000 columns. Streamed reading, never fully in memory.</td></tr>
+      <tr><td><b>XXE / external entities</b></td><td>XML parsers (OFX 2.x, CAMT) configured with entity resolution and external DTDs disabled. Dedicated regression test.</td></tr>
+      <tr><td><b>Memory exhaustion</b></td><td>End-to-end streaming, batched inserts of 1,000, worker container memory limit set in the compose file.</td></tr>
+      <tr><td><b>Active content in XLSM</b></td><td>Macros are never executed — ExcelJS reads data, not VBA. The user is warned.</td></tr>
+      <tr><td><b>Raw file retention</b></td><td>Kept 30 days by default (useful to replay a failed import), auto-purged, manually deletable at any time.</td></tr>
     </tbody>
   </table>
 
   <h3>8.8 Rollback</h3>
-  <p>Chaque import crée un <code>import_batch</code>. Toutes les transactions issues du lot le référencent.
-  L'annulation contrepasse ou supprime l'ensemble en une transaction SQL, puis déclenche le recalcul des
-  soldes à partir de la date la plus ancienne concernée. <strong>Une annulation d'import ne doit jamais
-  laisser un état intermédiaire</strong> — c'est un test d'intégration obligatoire, exécuté sur chaque
-  preset.</p>
+  <p>Every import creates an <code>import_batch</code>. All transactions from the batch reference it.
+  Undoing reverses or deletes the whole set in a single SQL transaction, then triggers a balance recompute
+  from the earliest affected date. <strong>Undoing an import must never leave an intermediate state</strong>
+  — that is a mandatory integration test, run against every preset.</p>
 </section>
