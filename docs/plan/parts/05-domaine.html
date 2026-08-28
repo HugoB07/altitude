@@ -1,31 +1,30 @@
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">05</div>
-    <h2>Modèle de domaine &amp; schéma SQL</h2>
-    <div class="sec-kicker">Données</div>
+    <h2>Domain model &amp; SQL schema</h2>
+    <div class="sec-kicker">Data</div>
   </div>
 
-  <p class="lede">C'est la section la plus coûteuse à corriger plus tard. Un schéma juste rend les
-  fonctionnalités faciles ; un schéma approximatif fait payer chaque écran par un contournement.</p>
+  <p class="lede">This is the most expensive section to get wrong. A correct schema makes features easy; an
+  approximate one charges you a workaround on every screen.</p>
 
-  <h3>5.1 Les cinq invariants</h3>
+  <h3>5.1 The five invariants</h3>
   <ol>
-    <li><b>Somme nulle.</b> Pour toute transaction, la somme des lignes est nulle <em>par devise</em>. Une opération de change produit deux paires équilibrées reliées par un compte technique de change.</li>
-    <li><b>Journal immuable.</b> Une écriture validée n'est jamais modifiée en place : on la contrepasse et on en émet une nouvelle. La correction reste tracée.</li>
-    <li><b>Soldes dérivés.</b> Aucun solde n'est stocké comme vérité. <code>daily_balances</code> est un cache reconstructible ; sa reconstruction complète doit redonner exactement les mêmes chiffres.</li>
-    <li><b>Devise explicite.</b> Aucun montant n'existe sans sa devise. Deux montants de devises différentes ne s'additionnent qu'à travers un taux daté et enregistré.</li>
-    <li><b>Cloisonnement.</b> Chaque ligne de données métier porte un <code>household_id</code> non nul, contrôlé par RLS.</li>
+    <li><b>Sums to zero.</b> For any transaction, the lines sum to zero <em>per currency</em>. A currency exchange produces two balanced pairs linked by a technical FX account.</li>
+    <li><b>Immutable ledger.</b> A posted entry is never edited in place: it is reversed and a new one issued. The correction stays visible.</li>
+    <li><b>Derived balances.</b> No balance is stored as truth. <code>daily_balances</code> is a rebuildable cache; a full rebuild must reproduce exactly the same figures.</li>
+    <li><b>Explicit currency.</b> No amount exists without its currency. Two amounts in different currencies only combine through a dated, recorded rate.</li>
+    <li><b>Tenant isolation.</b> Every business row carries a non-null <code>household_id</code>, enforced by RLS.</li>
   </ol>
 
-  <h3>5.2 Schéma entité-relation</h3>
+  <h3>5.2 Entity-relationship overview</h3>
   <figure>
     <svg viewBox="0 0 760 400" width="760" height="400" font-family="Inter,sans-serif">
       <defs><marker id="l" markerWidth="7" markerHeight="7" refX="6" refY="2.5" orient="auto">
         <path d="M0,0 L6,2.5 L0,5 z" fill="#94A3B8"/></marker></defs>
 
-      <!-- identity cluster -->
       <rect x="10" y="14" width="176" height="118" rx="6" fill="#EDE9FE" stroke="#C4B5FD"/>
-      <text x="98" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#6D28D9" letter-spacing="1">IDENTITÉ &amp; ACCÈS</text>
+      <text x="98" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#6D28D9" letter-spacing="1">IDENTITY &amp; ACCESS</text>
       <rect x="20" y="38" width="72" height="20" rx="3" fill="#fff" stroke="#C4B5FD"/><text x="56" y="52" text-anchor="middle" font-size="7.5" fill="#0B1220">households</text>
       <rect x="102" y="38" width="72" height="20" rx="3" fill="#fff" stroke="#C4B5FD"/><text x="138" y="52" text-anchor="middle" font-size="7.5" fill="#0B1220">users</text>
       <rect x="20" y="64" width="72" height="20" rx="3" fill="#fff" stroke="#C4B5FD"/><text x="56" y="78" text-anchor="middle" font-size="7.5" fill="#0B1220">memberships</text>
@@ -34,34 +33,31 @@
       <rect x="102" y="90" width="72" height="20" rx="3" fill="#fff" stroke="#C4B5FD"/><text x="138" y="104" text-anchor="middle" font-size="7.5" fill="#0B1220">ownerships</text>
       <rect x="20" y="116" width="154" height="10" rx="2" fill="#fff" stroke="#C4B5FD"/><text x="97" y="124" text-anchor="middle" font-size="6.5" fill="#475569">api_keys · share_links · audit_log</text>
 
-      <!-- structure -->
       <rect x="10" y="146" width="176" height="86" rx="6" fill="#E0F2FE" stroke="#7DD3FC"/>
       <text x="98" y="162" text-anchor="middle" font-size="8" font-weight="700" fill="#075985" letter-spacing="1">STRUCTURE</text>
       <rect x="20" y="170" width="154" height="22" rx="3" fill="#fff" stroke="#7DD3FC"/>
-      <text x="97" y="185" text-anchor="middle" font-size="7.5" fill="#0B1220">portfolios (ltree, arbre)</text>
+      <text x="97" y="185" text-anchor="middle" font-size="7.5" fill="#0B1220">portfolios (ltree, tree)</text>
       <rect x="20" y="198" width="154" height="24" rx="3" fill="#0B1220"/>
       <text x="97" y="209" text-anchor="middle" font-size="8" font-weight="700" fill="#7DD3FC">accounts</text>
       <text x="97" y="218" text-anchor="middle" font-size="6.5" fill="#94A3B8">kind · subtype · currency · attributes</text>
 
-      <!-- ledger -->
       <rect x="204" y="14" width="196" height="218" rx="6" fill="#F8FAFC" stroke="#CBD5E1"/>
-      <text x="302" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#0B1220" letter-spacing="1">GRAND LIVRE</text>
+      <text x="302" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#0B1220" letter-spacing="1">LEDGER</text>
       <rect x="214" y="38" width="176" height="24" rx="3" fill="#fff" stroke="#CBD5E1"/>
-      <text x="302" y="53" text-anchor="middle" font-size="7.5" fill="#0B1220">transactions (date, type, source)</text>
+      <text x="302" y="53" text-anchor="middle" font-size="7.5" fill="#0B1220">transactions (date, kind, source)</text>
       <rect x="214" y="68" width="176" height="30" rx="3" fill="#0B1220"/>
-      <text x="302" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="#86EFAC">entries — Σ = 0 / devise</text>
+      <text x="302" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="#86EFAC">entries — Σ = 0 per currency</text>
       <text x="302" y="92" text-anchor="middle" font-size="6.5" fill="#94A3B8">account · amount · currency · qty · instrument</text>
       <rect x="214" y="104" width="84" height="22" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="256" y="118" text-anchor="middle" font-size="7.5" fill="#0B1220">lots</text>
       <rect x="306" y="104" width="84" height="22" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="348" y="118" text-anchor="middle" font-size="7.5" fill="#0B1220">lot_closures</text>
-      <rect x="214" y="132" width="176" height="22" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="302" y="146" text-anchor="middle" font-size="7.5" fill="#0B1220">positions (vue matérialisée)</text>
+      <rect x="214" y="132" width="176" height="22" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="302" y="146" text-anchor="middle" font-size="7.5" fill="#0B1220">positions (materialised)</text>
       <rect x="214" y="160" width="176" height="22" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="302" y="174" text-anchor="middle" font-size="7.5" fill="#0B1220">daily_balances (cache)</text>
       <rect x="214" y="188" width="84" height="20" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="256" y="201" text-anchor="middle" font-size="7" fill="#0B1220">categories</text>
       <rect x="306" y="188" width="84" height="20" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="348" y="201" text-anchor="middle" font-size="7" fill="#0B1220">rules · tags</text>
-      <rect x="214" y="212" width="176" height="14" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="302" y="222" text-anchor="middle" font-size="6.5" fill="#475569">valuations (actifs illiquides)</text>
+      <rect x="214" y="212" width="176" height="14" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="302" y="222" text-anchor="middle" font-size="6.5" fill="#475569">valuations (illiquid assets)</text>
 
-      <!-- market -->
       <rect x="418" y="14" width="166" height="140" rx="6" fill="#FEF3C7" stroke="#FCD34D"/>
-      <text x="501" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#B45309" letter-spacing="1">RÉFÉRENTIEL MARCHÉ</text>
+      <text x="501" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#B45309" letter-spacing="1">MARKET REFERENCE</text>
       <rect x="428" y="38" width="146" height="24" rx="3" fill="#fff" stroke="#FDE68A"/>
       <text x="501" y="53" text-anchor="middle" font-size="7.5" fill="#0B1220">instruments (ISIN, ticker)</text>
       <rect x="428" y="68" width="146" height="22" rx="3" fill="#fff" stroke="#FDE68A"/><text x="501" y="82" text-anchor="middle" font-size="7.5" fill="#0B1220">instrument_prices</text>
@@ -69,17 +65,15 @@
       <text x="501" y="111" text-anchor="middle" font-size="7.5" fill="#0B1220">instrument_exposures</text>
       <rect x="428" y="126" width="146" height="20" rx="3" fill="#fff" stroke="#FDE68A"/><text x="501" y="139" text-anchor="middle" font-size="7.5" fill="#0B1220">fx_rates · corporate_actions</text>
 
-      <!-- ingestion -->
       <rect x="418" y="168" width="166" height="98" rx="6" fill="#D1FAE5" stroke="#6EE7B7"/>
       <text x="501" y="184" text-anchor="middle" font-size="8" font-weight="700" fill="#047857" letter-spacing="1">INGESTION</text>
       <rect x="428" y="192" width="146" height="20" rx="3" fill="#fff" stroke="#A7F3D0"/><text x="501" y="205" text-anchor="middle" font-size="7.5" fill="#0B1220">import_batches</text>
       <rect x="428" y="216" width="146" height="20" rx="3" fill="#fff" stroke="#A7F3D0"/><text x="501" y="229" text-anchor="middle" font-size="7.5" fill="#0B1220">import_rows · mappings</text>
       <rect x="428" y="240" width="146" height="20" rx="3" fill="#fff" stroke="#A7F3D0"/><text x="501" y="253" text-anchor="middle" font-size="7.5" fill="#0B1220">connections · sync_runs</text>
 
-      <!-- modules -->
       <rect x="602" y="14" width="150" height="252" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-dasharray="4 3"/>
       <text x="677" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#0B1220" letter-spacing="1">MODULES</text>
-      <rect x="612" y="38" width="130" height="20" rx="3" fill="#fff" stroke="#E2E8F0"/><text x="677" y="51" text-anchor="middle" font-size="7" fill="#0B1220">properties (immobilier)</text>
+      <rect x="612" y="38" width="130" height="20" rx="3" fill="#fff" stroke="#E2E8F0"/><text x="677" y="51" text-anchor="middle" font-size="7" fill="#0B1220">properties (real estate)</text>
       <rect x="612" y="62" width="130" height="20" rx="3" fill="#fff" stroke="#E2E8F0"/><text x="677" y="75" text-anchor="middle" font-size="7" fill="#0B1220">loans · amortization</text>
       <rect x="612" y="86" width="130" height="20" rx="3" fill="#fff" stroke="#E2E8F0"/><text x="677" y="99" text-anchor="middle" font-size="7" fill="#0B1220">leases · rents</text>
       <rect x="612" y="110" width="130" height="20" rx="3" fill="#fff" stroke="#E2E8F0"/><text x="677" y="123" text-anchor="middle" font-size="7" fill="#0B1220">crypto_wallets</text>
@@ -95,37 +89,37 @@
       <line x1="98" y1="132" x2="98" y2="142" stroke="#94A3B8" stroke-width="1.2" marker-end="url(#l)"/>
       <line x1="584" y1="60" x2="600" y2="60" stroke="#94A3B8" stroke-width="1.2" marker-end="url(#l)"/>
 
-      <text x="10" y="290" font-size="8" font-weight="700" fill="#0B1220">Lecture :</text>
-      <text x="55" y="290" font-size="7.5" fill="#475569">un compte appartient à un portefeuille et à un ou plusieurs propriétaires ; une transaction porte des lignes</text>
-      <text x="10" y="303" font-size="7.5" fill="#475569">qui touchent des comptes ; une ligne portant une quantité référence un instrument ; positions et soldes sont recalculables.</text>
+      <text x="10" y="290" font-size="8" font-weight="700" fill="#0B1220">How to read:</text>
+      <text x="72" y="290" font-size="7.5" fill="#475569">an account belongs to a portfolio and to one or more owners; a transaction carries lines</text>
+      <text x="10" y="303" font-size="7.5" fill="#475569">that touch accounts; a line carrying a quantity references an instrument; positions and balances are recomputable.</text>
     </svg>
-    <figcaption>Figure 2 — Modèle de données. Les tables en foncé sont le cœur invariant ; tout le reste peut évoluer sans migration douloureuse.</figcaption>
+    <figcaption>Figure 2 — Data model. The dark tables are the invariant core; everything else can evolve without a painful migration.</figcaption>
   </figure>
 
-  <h3>5.3 Tables du cœur — DDL commenté</h3>
-  <pre><span class="c">-- ─── Structure : arbre de portefeuilles ────────────────────────────────</span>
+  <h3>5.3 Core tables — annotated DDL</h3>
+  <pre><span class="c">-- ─── Structure: portfolio tree ─────────────────────────────────────────</span>
 <span class="k">CREATE TABLE</span> portfolios (
   id            uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   household_id  uuid <span class="k">NOT NULL REFERENCES</span> households(id) <span class="k">ON DELETE CASCADE</span>,
   parent_id     uuid <span class="k">REFERENCES</span> portfolios(id) <span class="k">ON DELETE RESTRICT</span>,
-  path          ltree <span class="k">NOT NULL</span>,          <span class="c">-- 'foyer.enfants.lea' → sous-arbres en une requête</span>
+  path          ltree <span class="k">NOT NULL</span>,          <span class="c">-- 'home.children.lea' → subtrees in one query</span>
   name          text  <span class="k">NOT NULL</span>,
   kind          text  <span class="k">NOT NULL DEFAULT</span> <span class="s">'standard'</span>,  <span class="c">-- standard | child | company | project</span>
   color         text,
-  target_alloc  jsonb,                       <span class="c">-- allocation cible pour l'écart de rééquilibrage</span>
+  target_alloc  jsonb,                       <span class="c">-- target allocation, for rebalancing drift</span>
   is_archived   boolean <span class="k">NOT NULL DEFAULT</span> false,
   created_at    timestamptz <span class="k">NOT NULL DEFAULT</span> now()
 );
 <span class="k">CREATE INDEX</span> ON portfolios <span class="k">USING</span> gist (path);
 <span class="k">CREATE UNIQUE INDEX</span> ON portfolios (household_id, path);
 
-<span class="c">-- ─── Comptes : un seul type pour tous les actifs et passifs ────────────</span>
+<span class="c">-- ─── Accounts: one table for every asset and liability ─────────────────</span>
 <span class="k">CREATE TABLE</span> accounts (
   id            uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   household_id  uuid <span class="k">NOT NULL REFERENCES</span> households(id) <span class="k">ON DELETE CASCADE</span>,
   portfolio_id  uuid <span class="k">NOT NULL REFERENCES</span> portfolios(id),
   name          text <span class="k">NOT NULL</span>,
-  <span class="c">-- kind pilote le comportement du moteur de valorisation :</span>
+  <span class="c">-- kind drives the valuation engine's behaviour:</span>
   <span class="c">-- cash | securities | savings | life_insurance | retirement | crypto</span>
   <span class="c">-- | real_estate | vehicle | collectible | private_equity | receivable</span>
   <span class="c">-- | loan | credit_card | other_liability</span>
@@ -133,10 +127,10 @@
   subtype       text,          <span class="c">-- 'pea' | 'pea_pme' | 'cto' | 'per_in' | 'av_multi' | 'livret_a' …</span>
   currency      char(3) <span class="k">NOT NULL</span>,
   institution   text,
-  <span class="c">-- IBAN/numéro : chiffrés applicativement, seuls les 4 derniers en clair</span>
+  <span class="c">-- IBAN / account number: encrypted at rest, only the last four in clear</span>
   external_ref_enc  bytea,
   external_ref_last4 text,
-  <span class="c">-- attributs propres au type, validés par un schéma Zod côté applicatif</span>
+  <span class="c">-- type-specific attributes, validated by a Zod schema in the application</span>
   attributes    jsonb <span class="k">NOT NULL DEFAULT</span> <span class="s">'{}'</span>,
   is_liability  boolean <span class="k">NOT NULL GENERATED ALWAYS AS</span> (
                   kind <span class="k">IN</span> (<span class="s">'loan'</span>,<span class="s">'credit_card'</span>,<span class="s">'other_liability'</span>)) <span class="k">STORED</span>,
@@ -145,21 +139,21 @@
   created_at    timestamptz <span class="k">NOT NULL DEFAULT</span> now()
 );
 
-<span class="c">-- ─── Grand livre ───────────────────────────────────────────────────────</span>
+<span class="c">-- ─── Ledger ────────────────────────────────────────────────────────────</span>
 <span class="k">CREATE TABLE</span> transactions (
   id            uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   household_id  uuid <span class="k">NOT NULL</span>,
-  booked_on     date <span class="k">NOT NULL</span>,        <span class="c">-- date comptable (sans fuseau : c'est volontaire)</span>
-  value_on      date,                    <span class="c">-- date de valeur si différente</span>
+  booked_on     date <span class="k">NOT NULL</span>,        <span class="c">-- accounting date, timezone-free on purpose</span>
+  value_on      date,                    <span class="c">-- value date when it differs</span>
   kind          text <span class="k">NOT NULL</span>,        <span class="c">-- buy|sell|dividend|interest|fee|tax|deposit|</span>
                                          <span class="c">-- withdrawal|transfer|fx|revaluation|split|adjustment</span>
   description   text,
   counterparty  text,
   source        text <span class="k">NOT NULL DEFAULT</span> <span class="s">'manual'</span>,   <span class="c">-- manual|import|connector|rule</span>
   import_batch_id uuid <span class="k">REFERENCES</span> import_batches(id),
-  external_id   text,                    <span class="c">-- identifiant du fournisseur, pour l'idempotence</span>
-  dedupe_hash   bytea,                   <span class="c">-- empreinte de déduplication (§8.5)</span>
-  reverses_id   uuid <span class="k">REFERENCES</span> transactions(id),  <span class="c">-- contrepassation</span>
+  external_id   text,                    <span class="c">-- provider identifier, for idempotency</span>
+  dedupe_hash   bytea,                   <span class="c">-- deduplication fingerprint (§8.5)</span>
+  reverses_id   uuid <span class="k">REFERENCES</span> transactions(id),  <span class="c">-- reversal link</span>
   created_by    uuid <span class="k">REFERENCES</span> users(id),
   created_at    timestamptz <span class="k">NOT NULL DEFAULT</span> now()
 );
@@ -172,14 +166,14 @@
   transaction_id uuid <span class="k">NOT NULL REFERENCES</span> transactions(id) <span class="k">ON DELETE CASCADE</span>,
   household_id   uuid <span class="k">NOT NULL</span>,
   account_id     uuid <span class="k">NOT NULL REFERENCES</span> accounts(id),
-  <span class="c">-- montant signé : + entrant sur le compte, − sortant</span>
+  <span class="c">-- signed amount: + into the account, − out of it</span>
   amount         numeric(28,10) <span class="k">NOT NULL</span>,
   currency       char(3) <span class="k">NOT NULL</span>,
-  <span class="c">-- volet titres : renseigné seulement si la ligne bouge une quantité</span>
+  <span class="c">-- securities side: set only when the line moves a quantity</span>
   instrument_id  uuid <span class="k">REFERENCES</span> instruments(id),
   quantity       numeric(38,18),
   unit_price     numeric(24,12),
-  <span class="c">-- conversion figée à la date de l'opération, pour ne jamais recalculer le passé</span>
+  <span class="c">-- conversion frozen at trade date, so the past is never recomputed</span>
   fx_rate_to_base numeric(24,12),
   category_id    uuid <span class="k">REFERENCES</span> categories(id),
   memo           text
@@ -187,7 +181,7 @@
 <span class="k">CREATE INDEX</span> ON entries (account_id, transaction_id);
 <span class="k">CREATE INDEX</span> ON entries (instrument_id) <span class="k">WHERE</span> instrument_id <span class="k">IS NOT NULL</span>;
 
-<span class="c">-- L'invariant, imposé par la base et non par l'application :</span>
+<span class="c">-- The invariant, enforced by the database rather than the application:</span>
 <span class="k">CREATE FUNCTION</span> assert_balanced() <span class="k">RETURNS</span> trigger <span class="k">AS</span> $$
 <span class="k">BEGIN</span>
   <span class="k">IF EXISTS</span> (
@@ -195,7 +189,7 @@
      <span class="k">WHERE</span> transaction_id = <span class="k">COALESCE</span>(NEW.transaction_id, OLD.transaction_id)
      <span class="k">GROUP BY</span> currency <span class="k">HAVING</span> sum(amount) &lt;&gt; 0
   ) <span class="k">THEN</span>
-    <span class="k">RAISE EXCEPTION</span> <span class="s">'transaction non équilibrée (%)'</span>,
+    <span class="k">RAISE EXCEPTION</span> <span class="s">'unbalanced transaction (%)'</span>,
       <span class="k">COALESCE</span>(NEW.transaction_id, OLD.transaction_id);
   <span class="k">END IF</span>;
   <span class="k">RETURN NULL</span>;
@@ -207,58 +201,58 @@
   <span class="k">FOR EACH ROW EXECUTE FUNCTION</span> assert_balanced();</pre>
 
   <div class="box box-dec">
-    <div class="box-t">Décision — le déclencheur est <code>DEFERRABLE INITIALLY DEFERRED</code></div>
-    <p>La vérification n'a lieu qu'au <code>COMMIT</code> : on peut donc insérer les lignes d'une transaction
-    une par une. Sans ce mode, la première ligne échouerait toujours puisqu'elle est seule et déséquilibrée.
-    C'est le détail qui rend l'invariant utilisable en pratique.</p>
+    <div class="box-t">Decision — the trigger is <code>DEFERRABLE INITIALLY DEFERRED</code></div>
+    <p>The check runs only at <code>COMMIT</code>, so a transaction's lines can be inserted one at a time.
+    Without deferral the first line would always fail, being alone and therefore unbalanced. This is the
+    detail that makes the invariant usable in practice.</p>
   </div>
 
-  <h3>5.4 Propriété : la table qui débloque le foyer</h3>
+  <h3>5.4 Ownership: the table that unlocks households</h3>
   <pre><span class="k">CREATE TABLE</span> owners (
   id            uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   household_id  uuid <span class="k">NOT NULL</span>,
   kind          text <span class="k">NOT NULL</span>,   <span class="c">-- person | child | company | trust | undivided</span>
   display_name  text <span class="k">NOT NULL</span>,
-  birth_date    date,                <span class="c">-- majorité → bascule des règles de visibilité</span>
-  user_id       uuid <span class="k">REFERENCES</span> users(id),  <span class="c">-- NULL si le propriétaire ne se connecte pas</span>
-  attributes    jsonb <span class="k">NOT NULL DEFAULT</span> <span class="s">'{}'</span>  <span class="c">-- SIREN, forme juridique, régime matrimonial…</span>
+  birth_date    date,                <span class="c">-- majority → switches visibility rules</span>
+  user_id       uuid <span class="k">REFERENCES</span> users(id),  <span class="c">-- NULL when the owner never logs in</span>
+  attributes    jsonb <span class="k">NOT NULL DEFAULT</span> <span class="s">'{}'</span>  <span class="c">-- company number, legal form, marital regime…</span>
 );
 
-<span class="c">-- Quote-part datée : gère la donation, le changement de régime, l'entrée d'un associé</span>
+<span class="c">-- Dated share: handles gifts, changes of regime, a new shareholder joining</span>
 <span class="k">CREATE TABLE</span> ownerships (
   id          uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   account_id  uuid <span class="k">NOT NULL REFERENCES</span> accounts(id) <span class="k">ON DELETE CASCADE</span>,
   owner_id    uuid <span class="k">NOT NULL REFERENCES</span> owners(id),
   share       numeric(9,6) <span class="k">NOT NULL CHECK</span> (share &gt; 0 <span class="k">AND</span> share &lt;= 1),
-  <span class="c">-- démembrement : utile pour l'immobilier familial</span>
+  <span class="c">-- split ownership: useful for family real estate</span>
   right_type  text <span class="k">NOT NULL DEFAULT</span> <span class="s">'full'</span>,   <span class="c">-- full | usufruct | bare</span>
   valid_from  date <span class="k">NOT NULL DEFAULT</span> <span class="s">'-infinity'</span>,
   valid_to    date <span class="k">NOT NULL DEFAULT</span> <span class="s">'infinity'</span>,
-  <span class="c">-- interdit deux quotes-parts qui se chevauchent pour le même couple</span>
+  <span class="c">-- forbids two overlapping shares for the same account/owner pair</span>
   <span class="k">EXCLUDE USING</span> gist (
     account_id <span class="k">WITH</span> =, owner_id <span class="k">WITH</span> =,
     daterange(valid_from, valid_to) <span class="k">WITH</span> &amp;&amp;
   )
 );</pre>
-  <p>La somme des quotes-parts d'un compte à une date donnée doit valoir 1. Ce contrôle est applicatif (une
-  contrainte SQL le rendrait impossible à éditer par étapes), vérifié à l'enregistrement et par une
-  commande <code>altitude doctor</code>.</p>
+  <p>The shares of an account at a given date must sum to 1. That check lives in the application (a SQL
+  constraint would make step-by-step editing impossible); it runs on save and in the
+  <code>altitude doctor</code> command.</p>
 
-  <h3>5.5 Référentiel marché et exposition</h3>
+  <h3>5.5 Market reference and exposure</h3>
   <pre><span class="k">CREATE TABLE</span> instruments (
   id           uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   isin         char(12), ticker text, mic char(4),
   name         text <span class="k">NOT NULL</span>,
   asset_class  text <span class="k">NOT NULL</span>,   <span class="c">-- equity|etf|fund|bond|crypto|commodity|cash|derivative</span>
   currency     char(3) <span class="k">NOT NULL</span>,
-  country      char(2),           <span class="c">-- domiciliation, ≠ exposition réelle</span>
+  country      char(2),           <span class="c">-- domicile, which is NOT real exposure</span>
   sector       text, ter numeric(6,4),
-  is_custom    boolean <span class="k">NOT NULL DEFAULT</span> false,  <span class="c">-- créé par l'utilisateur (SCPI, part de SCI…)</span>
-  household_id uuid                             <span class="c">-- non NULL seulement si is_custom</span>
+  is_custom    boolean <span class="k">NOT NULL DEFAULT</span> false,  <span class="c">-- user-created (REIT shares, SCI units…)</span>
+  household_id uuid                             <span class="c">-- non-NULL only when is_custom</span>
 );
 <span class="k">CREATE UNIQUE INDEX</span> ON instruments (isin) <span class="k">WHERE</span> isin <span class="k">IS NOT NULL AND NOT</span> is_custom;
 
-<span class="c">-- Séries de cotations : volumineuses → partitionnées par année</span>
+<span class="c">-- Quote series: large → partitioned by year</span>
 <span class="k">CREATE TABLE</span> instrument_prices (
   instrument_id uuid <span class="k">NOT NULL REFERENCES</span> instruments(id) <span class="k">ON DELETE CASCADE</span>,
   as_of         date <span class="k">NOT NULL</span>,
@@ -269,7 +263,7 @@
 ) <span class="k">PARTITION BY RANGE</span> (as_of);
 <span class="k">CREATE INDEX</span> ON instrument_prices <span class="k">USING</span> brin (as_of);
 
-<span class="c">-- ⚑ La table qui alimente le Globe : transparisation d'un ETF</span>
+<span class="c">-- ⚑ The table that feeds the Globe: ETF look-through</span>
 <span class="k">CREATE TABLE</span> instrument_exposures (
   instrument_id uuid <span class="k">NOT NULL REFERENCES</span> instruments(id) <span class="k">ON DELETE CASCADE</span>,
   dimension     text <span class="k">NOT NULL</span>,   <span class="c">-- country | region | sector | asset_class | currency</span>
@@ -280,7 +274,7 @@
   <span class="k">PRIMARY KEY</span> (instrument_id, dimension, key, as_of)
 );
 
-<span class="c">-- Taux de change : source de référence BCE, gratuite et officielle</span>
+<span class="c">-- FX: European Central Bank as the reference source, free and official</span>
 <span class="k">CREATE TABLE</span> fx_rates (
   base char(3) <span class="k">NOT NULL</span>, quote char(3) <span class="k">NOT NULL</span>,
   as_of date <span class="k">NOT NULL</span>, rate numeric(24,12) <span class="k">NOT NULL</span>, source text <span class="k">NOT NULL</span>,
@@ -288,38 +282,38 @@
 );</pre>
 
   <div class="box box-note">
-    <div class="box-t">Le jeu de données communautaire d'expositions</div>
-    <p>Les compositions de fonds ne sont pas librement redistribuables chez la plupart des fournisseurs.
-    Altitude embarque donc un fichier <code>data/exposures/*.json</code> maintenu par la communauté, couvrant
-    les ETF les plus détenus en Europe (MSCI World, S&amp;P 500, émergents, Europe, obligataires…), avec date
-    d'arrêté et source citée. L'utilisateur peut surcharger n'importe quelle ligne. C'est un excellent
-    « premier ticket » pour les contributeurs, et cela rend le Globe utile dès l'installation.</p>
+    <div class="box-t">The community exposure dataset</div>
+    <p>Fund compositions are not freely redistributable from most providers. Altitude therefore ships a
+    community-maintained <code>data/exposures/*.json</code> set covering the ETFs most widely held in Europe
+    (MSCI World, S&amp;P 500, emerging markets, Europe, bond funds…), each with an as-of date and a cited
+    source. Users can override any line. It is an excellent "first contribution" task, and it makes the
+    Globe useful straight after installation.</p>
   </div>
 
-  <h3>5.6 Cache de valorisation</h3>
+  <h3>5.6 Valuation cache</h3>
   <pre><span class="k">CREATE TABLE</span> daily_balances (
   account_id  uuid <span class="k">NOT NULL REFERENCES</span> accounts(id) <span class="k">ON DELETE CASCADE</span>,
   as_of       date <span class="k">NOT NULL</span>,
-  <span class="c">-- solde espèces + valorisation des titres, dans la devise du compte</span>
+  <span class="c">-- cash balance plus market value of holdings, in the account's currency</span>
   cash        numeric(28,10) <span class="k">NOT NULL DEFAULT</span> 0,
   market_value numeric(28,10) <span class="k">NOT NULL DEFAULT</span> 0,
   cost_basis  numeric(28,10) <span class="k">NOT NULL DEFAULT</span> 0,
   currency    char(3) <span class="k">NOT NULL</span>,
-  base_value  numeric(28,10) <span class="k">NOT NULL</span>,  <span class="c">-- converti dans la devise de référence du foyer</span>
-  <span class="c">-- flux du jour : indispensables au TWR (§6.3)</span>
+  base_value  numeric(28,10) <span class="k">NOT NULL</span>,  <span class="c">-- converted to the household's base currency</span>
+  <span class="c">-- the day's flows: indispensable for TWR (§6.3)</span>
   net_flow    numeric(28,10) <span class="k">NOT NULL DEFAULT</span> 0,
-  is_estimated boolean <span class="k">NOT NULL DEFAULT</span> false,  <span class="c">-- prix reporté / valeur manuelle</span>
+  is_estimated boolean <span class="k">NOT NULL DEFAULT</span> false,  <span class="c">-- carried-forward price / manual value</span>
   <span class="k">PRIMARY KEY</span> (account_id, as_of)
 ) <span class="k">PARTITION BY RANGE</span> (as_of);</pre>
-  <p><code>net_flow</code> est le champ qu'on oublie systématiquement et sans lequel aucune performance
-  correcte n'est calculable : il isole les apports et retraits de la variation due au marché.</p>
+  <p><code>net_flow</code> is the field everyone forgets and without which no correct performance figure is
+  possible: it separates deposits and withdrawals from market-driven change.</p>
 
-  <h3>5.7 Cloisonnement par RLS</h3>
+  <h3>5.7 Tenant isolation through RLS</h3>
   <pre><span class="k">ALTER TABLE</span> accounts <span class="k">ENABLE ROW LEVEL SECURITY</span>;
 <span class="k">CREATE POLICY</span> household_isolation <span class="k">ON</span> accounts
   <span class="k">USING</span> (household_id = current_setting(<span class="s">'app.current_household'</span>, true)::uuid);
 
-<span class="c">-- Ouverture de transaction applicative, systématique :</span>
+<span class="c">-- Every application transaction opens with, without exception:</span>
 <span class="c">--   SET LOCAL app.current_household = '…';  SET LOCAL app.current_user = '…';</span>
-<span class="c">-- Deux rôles distincts : altitude_app (soumis au RLS) et altitude_migrate (BYPASSRLS)</span></pre>
+<span class="c">-- Two distinct roles: altitude_app (subject to RLS) and altitude_migrate (BYPASSRLS)</span></pre>
 </section>

@@ -1,83 +1,83 @@
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">12</div>
-    <h2>Interface, design system, le Globe</h2>
+    <h2>Interface, design system, the Globe</h2>
     <div class="sec-kicker">UI</div>
   </div>
 
-  <h3>12.1 Plan de navigation</h3>
-  <pre>/                          <span class="c">→ page publique (Magic UI : hero, globe, bento, marquee)</span>
-/login  /setup             <span class="c">→ auth · assistant de première installation</span>
+  <h3>12.1 Navigation map</h3>
+  <pre>/                          <span class="c">→ public landing page (Magic UI: hero, globe, bento, marquee)</span>
+/login  /setup             <span class="c">→ auth · first-run wizard</span>
 /app
-├─ /                       <span class="c">Dashboard — patrimoine net, allocation, globe, mouvements</span>
-├─ /patrimoine             <span class="c">Arbre portefeuilles + comptes (vue liste ou treemap)</span>
-│   └─ /comptes/[id]       <span class="c">  positions · transactions · performance · documents</span>
-├─ /transactions           <span class="c">Table globale : filtres, actions groupées, rapprochement</span>
-├─ /import                 <span class="c">Centre d'import : dépôt, mapping, doublons, historique</span>
-├─ /analyse
-│   ├─ /allocation         <span class="c">  classe d'actifs · secteur · devise · liquidité</span>
-│   ├─ /geographie         <span class="c">  ⚑ le Globe + tableau d'exposition par pays</span>
-│   ├─ /performance        <span class="c">  TWR vs TRI vs indice, contribution par ligne</span>
-│   ├─ /revenus            <span class="c">  dividendes, coupons, loyers · calendrier prévisionnel</span>
-│   └─ /frais              <span class="c">  frais cumulés, TER pondéré, impact sur 20 ans</span>
-├─ /immobilier             <span class="c">Biens, baux, crédits, rendement</span>
-├─ /budget                 <span class="c">Catégories, budgets, récurrences (v1.1)</span>
-├─ /objectifs              <span class="c">Objectifs, simulateur FIRE, Monte-Carlo (v1.1)</span>
-├─ /foyer                  <span class="c">Propriétaires, membres, rôles, partages</span>
-└─ /parametres             <span class="c">Devise, fournisseurs, connecteurs, sauvegarde, export, clés API</span></pre>
+├─ /                       <span class="c">Dashboard — net worth, allocation, globe, recent movements</span>
+├─ /wealth                 <span class="c">Portfolio + account tree (list or treemap view)</span>
+│   └─ /accounts/[id]      <span class="c">  positions · transactions · performance · documents</span>
+├─ /transactions           <span class="c">Global table: filters, bulk actions, reconciliation</span>
+├─ /import                 <span class="c">Import centre: upload, mapping, duplicates, history</span>
+├─ /analysis
+│   ├─ /allocation         <span class="c">  asset class · sector · currency · liquidity</span>
+│   ├─ /geography          <span class="c">  ⚑ the Globe + country exposure table</span>
+│   ├─ /performance        <span class="c">  TWR vs MWR vs benchmark, contribution by holding</span>
+│   ├─ /income             <span class="c">  dividends, coupons, rents · forward calendar</span>
+│   └─ /fees               <span class="c">  cumulative fees, weighted TER, 20-year impact</span>
+├─ /property               <span class="c">Properties, leases, loans, yield</span>
+├─ /budget                 <span class="c">Categories, budgets, recurrences (v1.1)</span>
+├─ /goals                  <span class="c">Goals, FIRE simulator, Monte Carlo (v1.1)</span>
+├─ /household              <span class="c">Owners, members, roles, shares</span>
+└─ /settings               <span class="c">Currency, providers, connectors, backup, export, API keys</span></pre>
 
-  <h3>12.2 Le Globe — spécification</h3>
+  <h3>12.2 The Globe — specification</h3>
   <div class="grid2">
     <div class="card">
-      <h5>Données</h5>
+      <h5>Data</h5>
       <ul>
-        <li>Une requête serveur renvoie <code>[{ iso2, lat, lng, value, pct, label }]</code>, plafonnée à <b>60 pays</b> ; le reste est regroupé en « autres ».</li>
-        <li>Rayon du marqueur ∝ √(poids) — la surface perçue reste proportionnelle à la valeur.</li>
-        <li>Couleur par région (Amérique du Nord, Europe, Asie-Pacifique, émergents), cohérente avec les autres graphiques d'allocation.</li>
-        <li>Un anneau autour du globe indique la part <b>non transparisée</b>.</li>
-        <li>Centroïdes des pays : jeu de données embarqué (~4 ko), aucun appel réseau.</li>
+        <li>One server query returns <code>[{ iso2, lat, lng, value, pct, label }]</code>, capped at <b>60 countries</b>; the rest is grouped as "other".</li>
+        <li>Marker radius ∝ √(weight) — so perceived area stays proportional to value.</li>
+        <li>Colour by region (North America, Europe, Asia-Pacific, emerging), consistent with the other allocation charts.</li>
+        <li>A ring around the globe shows the share that could <b>not be looked through</b>.</li>
+        <li>Country centroids: an embedded dataset (~4 kB), no network call.</li>
       </ul>
     </div>
     <div class="card">
-      <h5>Contraintes</h5>
+      <h5>Constraints</h5>
       <ul>
-        <li><b>Chargement différé</b> : <code>next/dynamic</code> + <code>IntersectionObserver</code>. Le globe ne doit pas peser sur le rendu initial du dashboard.</li>
-        <li><b>Réduction de mouvement</b> : si <code>prefers-reduced-motion</code>, rotation désactivée, rendu statique.</li>
-        <li><b>Accessibilité</b> : un tableau trié équivalent est <em>toujours</em> présent sous le globe, pas caché derrière un onglet. Le globe est décoratif au sens ARIA ; la donnée vit dans le tableau.</li>
-        <li><b>Repli</b> : si WebGL est indisponible, une carte SVG en projection équirectangulaire prend le relais.</li>
-        <li><b>Interaction</b> : survol → infobulle pays / montant / pourcentage. Clic → filtre le tableau sur ce pays.</li>
-        <li><b>Perf</b> : ≤ 16 ms par image sur un portable milieu de gamme ; animation stoppée quand l'onglet est masqué.</li>
+        <li><b>Lazy loading</b>: <code>next/dynamic</code> plus <code>IntersectionObserver</code>. The globe must not weigh on the dashboard's first paint.</li>
+        <li><b>Reduced motion</b>: under <code>prefers-reduced-motion</code>, rotation is disabled and the render is static.</li>
+        <li><b>Accessibility</b>: an equivalent sorted table is <em>always</em> present below the globe, not hidden behind a tab. The globe is decorative in ARIA terms; the data lives in the table.</li>
+        <li><b>Fallback</b>: if WebGL is unavailable, an equirectangular SVG map takes over.</li>
+        <li><b>Interaction</b>: hover → country / amount / percentage tooltip. Click → filters the table to that country.</li>
+        <li><b>Performance</b>: ≤ 16 ms per frame on a mid-range laptop; animation stopped when the tab is hidden.</li>
       </ul>
     </div>
   </div>
 
-  <h3>12.3 Jetons de design</h3>
-  <pre><span class="c">/* Sémantique, jamais littérale : "gain" et non "green" */</span>
+  <h3>12.3 Design tokens</h3>
+  <pre><span class="c">/* Semantic, never literal: "gain" rather than "green" */</span>
 --gain: <span class="n">oklch(0.62 0.15 155)</span>;    --loss: <span class="n">oklch(0.58 0.19 25)</span>;
 --neutral: <span class="n">oklch(0.55 0.02 260)</span>; --estimated: <span class="n">oklch(0.72 0.04 260)</span>;
-<span class="c">/* Classes d'actifs — palette stable, réutilisée par TOUS les graphiques */</span>
+<span class="c">/* Asset classes — a stable palette, reused by EVERY chart */</span>
 --ac-equity --ac-bond --ac-cash --ac-crypto --ac-realestate --ac-alt</pre>
   <ul>
-    <li>Un actif garde <strong>la même couleur</strong> dans le camembert, la courbe empilée, le treemap et le globe. Sans cette règle, l'utilisateur doit relire la légende à chaque graphique.</li>
-    <li>Gain et perte ne reposent <strong>jamais uniquement sur la couleur</strong> : signe explicite, flèche, et libellé. 8 % des hommes ont une déficience de vision des couleurs rouge-vert.</li>
-    <li>Chiffres en <code>font-variant-numeric: tabular-nums</code> : les colonnes de montants doivent s'aligner.</li>
-    <li>Thème clair et sombre à parité, jamais un thème sombre bricolé par inversion.</li>
+    <li>An asset keeps <strong>the same colour</strong> in the pie chart, the stacked area, the treemap and the globe. Without that rule, users must re-read the legend on every chart.</li>
+    <li>Gain and loss are <strong>never encoded by colour alone</strong>: explicit sign, arrow and label. Around 8% of men have a red-green colour vision deficiency.</li>
+    <li>Figures use <code>font-variant-numeric: tabular-nums</code>: columns of amounts must line up.</li>
+    <li>Light and dark themes are peers, never a dark theme bolted on by inversion.</li>
   </ul>
 
-  <h3>12.4 Mode confidentialité</h3>
-  <p>Raccourci <code>Ctrl/⌘ + Shift + H</code> : tous les montants deviennent <code>•••••</code>, pourcentages
-  et graphiques restent lisibles. Indispensable pour une capture d'écran, une démonstration ou un train.
-  L'état persiste par appareil (stockage local) et n'est <em>pas</em> synchronisé.</p>
+  <h3>12.4 Privacy mode</h3>
+  <p><code>Ctrl/⌘ + Shift + H</code> replaces every amount with <code>•••••</code> while percentages and
+  charts stay readable. Essential for a screenshot, a demo or a train journey. The state persists per
+  device (local storage) and is <em>not</em> synchronised.</p>
 
-  <h3>12.5 Accessibilité — engagements vérifiables</h3>
+  <h3>12.5 Accessibility — verifiable commitments</h3>
   <table class="tight">
-    <thead><tr><th style="width:26%">Engagement</th><th>Vérification</th></tr></thead>
+    <thead><tr><th style="width:26%">Commitment</th><th>Verification</th></tr></thead>
     <tbody>
-      <tr><td>Contraste AA minimum (4,5:1)</td><td>Audit automatisé en CI sur les jetons de couleur ; échec bloquant.</td></tr>
-      <tr><td>Navigation clavier complète</td><td>Test Playwright : créer une transaction sans souris, de bout en bout.</td></tr>
-      <tr><td>Tout graphique a un équivalent tabulaire</td><td>Revue de conception ; règle inscrite dans le guide de contribution.</td></tr>
-      <tr><td>Zoom 200 % sans perte de fonction</td><td>Test visuel sur les trois écrans principaux.</td></tr>
-      <tr><td>Libellés explicites, pas d'icône seule</td><td>Règle ESLint <code>jsx-a11y</code> + revue.</td></tr>
+      <tr><td>AA contrast minimum (4.5:1)</td><td>Automated audit in CI over the colour tokens; failure blocks the build.</td></tr>
+      <tr><td>Full keyboard navigation</td><td>Playwright test: create a transaction end to end without a mouse.</td></tr>
+      <tr><td>Every chart has a tabular equivalent</td><td>Design review; the rule is written into the contribution guide.</td></tr>
+      <tr><td>200% zoom without loss of function</td><td>Visual test on the three main screens.</td></tr>
+      <tr><td>Explicit labels, never icon-only</td><td><code>jsx-a11y</code> ESLint rules plus review.</td></tr>
     </tbody>
   </table>
 </section>
@@ -85,57 +85,57 @@
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">13</div>
-    <h2>Sécurité, vie privée, RGPD</h2>
-    <div class="sec-kicker">Sécurité</div>
+    <h2>Security, privacy, GDPR</h2>
+    <div class="sec-kicker">Security</div>
   </div>
 
-  <p class="lede">Une instance Altitude contient la carte complète du patrimoine d'un foyer. C'est une cible
-  de valeur : le modèle de menace doit être explicite, pas implicite.</p>
+  <p class="lede">An Altitude instance holds a complete map of a household's wealth. That is a valuable
+  target: the threat model must be explicit, not implicit.</p>
 
-  <h3>13.1 Modèle de menace</h3>
+  <h3>13.1 Threat model</h3>
   <table class="tight">
-    <thead><tr><th style="width:22%">Scénario</th><th style="width:12%">Probabilité</th><th style="width:12%">Impact</th><th>Contre-mesures</th></tr></thead>
+    <thead><tr><th style="width:22%">Scenario</th><th style="width:12%">Likelihood</th><th style="width:12%">Impact</th><th>Countermeasures</th></tr></thead>
     <tbody>
-      <tr><td>Instance exposée sur Internet sans durcissement</td><td>Élevée</td><td>Critique</td><td>HTTPS imposé par Caddy, 2FA fortement incitée à l'installation, limitation de débit sur l'authentification, verrouillage progressif, avertissement visible tant que le 2FA n'est pas activé.</td></tr>
-      <tr><td>Mot de passe faible ou réutilisé</td><td>Élevée</td><td>Critique</td><td>Argon2id, longueur minimale 12, vérification contre les listes de mots de passe compromis (hors ligne, k-anonymat), passkeys proposées en priorité.</td></tr>
-      <tr><td>Vol de la sauvegarde ou du disque</td><td>Moyenne</td><td>Critique</td><td>Secrets de connecteurs chiffrés avec une clé hors base ; documentation appuyée sur le chiffrement du volume ; sauvegardes chiffrées par défaut dans l'outil fourni.</td></tr>
-      <tr><td>XSS via un libellé de transaction importé</td><td>Moyenne</td><td>Élevé</td><td>Échappement React par défaut, aucun <code>dangerouslySetInnerHTML</code> sur des données utilisateur, CSP stricte sans <code>unsafe-inline</code>.</td></tr>
-      <tr><td>SSRF via une URL fournie par l'utilisateur</td><td>Faible</td><td>Élevé</td><td>Liste blanche de domaines pour les fournisseurs, résolution DNS contrôlée, blocage des plages privées, pas de suivi de redirection hors liste.</td></tr>
-      <tr><td>Fuite inter-foyers</td><td>Faible</td><td>Critique</td><td>Double barrière <code>scopedDb</code> + RLS (ADR-007), plus un test qui tente systématiquement l'accès croisé sur chaque point d'entrée.</td></tr>
-      <tr><td>Chaîne d'approvisionnement npm</td><td>Moyenne</td><td>Élevé</td><td>Verrouillage des versions, <code>pnpm audit</code> en CI, Renovate avec délai de quarantaine, revue humaine obligatoire pour toute nouvelle dépendance, dépendances minimales dans <code>core</code>.</td></tr>
-      <tr><td>CSRF sur une Server Action</td><td>Faible</td><td>Élevé</td><td>Protection native Next.js, cookies <code>SameSite=Lax</code> + <code>Secure</code> + <code>HttpOnly</code>, vérification d'origine.</td></tr>
+      <tr><td>Instance exposed to the internet without hardening</td><td>High</td><td>Critical</td><td>HTTPS enforced by Caddy, 2FA strongly prompted at setup, rate limiting on authentication, progressive lockout, a visible warning until 2FA is enabled.</td></tr>
+      <tr><td>Weak or reused password</td><td>High</td><td>Critical</td><td>Argon2id, 12-character minimum, checking against breached-password lists (offline, k-anonymity), passkeys offered first.</td></tr>
+      <tr><td>Stolen backup or disk</td><td>Medium</td><td>Critical</td><td>Connector secrets encrypted with a key held outside the database; documentation pushes volume encryption; backups encrypted by default in the supplied tool.</td></tr>
+      <tr><td>XSS through an imported transaction description</td><td>Medium</td><td>High</td><td>React escaping by default, no <code>dangerouslySetInnerHTML</code> on user data, strict CSP without <code>unsafe-inline</code>.</td></tr>
+      <tr><td>SSRF via a user-supplied URL</td><td>Low</td><td>High</td><td>Domain allow-list for providers, controlled DNS resolution, private ranges blocked, no redirect following outside the list.</td></tr>
+      <tr><td>Cross-household leak</td><td>Low</td><td>Critical</td><td>Two barriers, <code>scopedDb</code> plus RLS (ADR-007), and a test that attempts cross-tenant access on every entry point.</td></tr>
+      <tr><td>npm supply chain</td><td>Medium</td><td>High</td><td>Locked versions, <code>pnpm audit</code> in CI, Renovate with a quarantine delay, mandatory human review for any new dependency, minimal dependencies in <code>core</code>.</td></tr>
+      <tr><td>CSRF on a Server Action</td><td>Low</td><td>High</td><td>Next.js built-in protection, <code>SameSite=Lax</code> + <code>Secure</code> + <code>HttpOnly</code> cookies, origin checking.</td></tr>
     </tbody>
   </table>
 
-  <h3>13.2 Vie privée — les engagements du projet</h3>
+  <h3>13.2 Privacy — the project's commitments</h3>
   <div class="box box-go">
-    <div class="box-t">Contrat de confidentialité</div>
+    <div class="box-t">Privacy contract</div>
     <ul style="margin-bottom:0">
-      <li><b>Zéro télémétrie.</b> Pas d'analytics, pas de « ping de version » sans consentement explicite. Si une vérification de mise à jour est ajoutée, elle est désactivée par défaut et documentée.</li>
-      <li><b>Zéro ressource tierce.</b> Polices, icônes et scripts sont servis par l'instance. Une instance coupée d'Internet doit s'afficher parfaitement.</li>
-      <li><b>Sorties réseau énumérables.</b> Un écran « Trafic sortant » liste chaque destination contactée, pourquoi, et permet de la désactiver.</li>
-      <li><b>Mode hors-ligne.</b> <code>ALTITUDE_OFFLINE=true</code> coupe tout appel externe : les prix deviennent manuels, le reste fonctionne.</li>
-      <li><b>Effacement réel.</b> Supprimer un foyer purge les lignes, les fichiers et les sauvegardes applicatives — pas seulement un drapeau <code>deleted_at</code>.</li>
+      <li><b>Zero telemetry.</b> No analytics, no "version ping" without explicit consent. If an update check is ever added, it is off by default and documented.</li>
+      <li><b>Zero third-party assets.</b> Fonts, icons and scripts are served by the instance. An instance cut off from the internet must render perfectly.</li>
+      <li><b>Enumerable outbound traffic.</b> An "Outbound traffic" screen lists every destination contacted, why, and lets you disable it.</li>
+      <li><b>Offline mode.</b> <code>ALTITUDE_OFFLINE=true</code> cuts every external call: prices become manual, everything else keeps working.</li>
+      <li><b>Real erasure.</b> Deleting a household purges rows, files and application backups — not merely a <code>deleted_at</code> flag.</li>
     </ul>
   </div>
 
-  <h3>13.3 RGPD pour un logiciel auto-hébergé</h3>
-  <p>Point souvent mal compris : quand un particulier héberge Altitude pour son foyer, il relève en général
-  de l'<strong>exemption domestique</strong>. Le projet, lui, n'est pas responsable de traitement puisqu'il ne
-  reçoit aucune donnée. En revanche, il doit <em>outiller</em> la conformité pour les instances partagées :</p>
+  <h3>13.3 GDPR for self-hosted software</h3>
+  <p>A frequently misunderstood point: when an individual hosts Altitude for their own household, they
+  generally fall under the <strong>household exemption</strong>. The project itself is not a data controller,
+  since it receives no data. It must nevertheless <em>equip</em> compliance for shared instances:</p>
   <table class="tight">
-    <thead><tr><th style="width:26%">Droit / obligation</th><th>Ce que fournit Altitude</th></tr></thead>
+    <thead><tr><th style="width:26%">Right / obligation</th><th>What Altitude provides</th></tr></thead>
     <tbody>
-      <tr><td>Portabilité (art. 20)</td><td>Export intégral JSON + CSV, en un clic, réimportable.</td></tr>
-      <tr><td>Effacement (art. 17)</td><td>Suppression réelle et cascadée, avec compte-rendu de ce qui a été supprimé.</td></tr>
-      <tr><td>Accès (art. 15)</td><td>Page « Mes données » : ce qui est stocké, où, depuis quand.</td></tr>
-      <tr><td>Minimisation</td><td>Aucun champ collecté « au cas où ». Les fichiers bruts d'import sont purgés automatiquement.</td></tr>
-      <tr><td>Sécurité (art. 32)</td><td>Chiffrement en transit et des secrets, journal d'audit, 2FA, documentation de durcissement.</td></tr>
-      <tr><td>Registre &amp; sous-traitants</td><td>Modèle de registre fourni dans la documentation, et liste des sous-traitants potentiels (agrégateur, fournisseur de cotations) selon la configuration choisie.</td></tr>
+      <tr><td>Portability (art. 20)</td><td>Complete JSON + CSV export, one click, re-importable.</td></tr>
+      <tr><td>Erasure (art. 17)</td><td>Real cascading deletion, with a report of what was removed.</td></tr>
+      <tr><td>Access (art. 15)</td><td>A "My data" page: what is stored, where, and since when.</td></tr>
+      <tr><td>Minimisation</td><td>No field collected "just in case". Raw import files are purged automatically.</td></tr>
+      <tr><td>Security (art. 32)</td><td>Encryption in transit and of secrets, audit log, 2FA, hardening documentation.</td></tr>
+      <tr><td>Records &amp; processors</td><td>A records template in the documentation, plus a list of potential processors (aggregator, quote provider) depending on the chosen configuration.</td></tr>
     </tbody>
   </table>
 
-  <h3>13.4 En-têtes et durcissement</h3>
+  <h3>13.4 Headers and hardening</h3>
   <pre>Content-Security-Policy: default-src <span class="s">'self'</span>; script-src <span class="s">'self'</span> <span class="s">'wasm-unsafe-eval'</span>;
   style-src <span class="s">'self'</span> <span class="s">'unsafe-inline'</span>; img-src <span class="s">'self'</span> data: blob:; connect-src <span class="s">'self'</span>;
   frame-ancestors <span class="s">'none'</span>; base-uri <span class="s">'self'</span>; form-action <span class="s">'self'</span>
@@ -143,7 +143,7 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
 X-Content-Type-Options: nosniff
 Referrer-Policy: no-referrer
 Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()</pre>
-  <p>Le conteneur tourne en utilisateur non privilégié, système de fichiers en lecture seule sauf le volume
-  de données, <code>no-new-privileges</code>, capacités Linux réduites au strict nécessaire. Un
-  <code>docker-compose.hardened.yml</code> est fourni.</p>
+  <p>The container runs as a non-privileged user, with a read-only filesystem except the data volume,
+  <code>no-new-privileges</code>, and Linux capabilities reduced to the strict minimum. A
+  <code>docker-compose.hardened.yml</code> is provided.</p>
 </section>

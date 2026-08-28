@@ -1,15 +1,15 @@
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">14</div>
-    <h2>Self-hosting &amp; déploiement</h2>
+    <h2>Self-hosting &amp; deployment</h2>
     <div class="sec-kicker">Ops</div>
   </div>
 
-  <p class="lede">Critère de réussite : un utilisateur qui n'a jamais vu le projet doit avoir une instance
-  fonctionnelle en <strong>moins de cinq minutes</strong>, avec deux commandes.</p>
+  <p class="lede">Success criterion: someone who has never seen the project gets a working instance in
+  <strong>under five minutes</strong>, with two commands.</p>
 
-  <h3>14.1 Compose de référence</h3>
-  <pre><span class="c"># docker-compose.yml — la seule chose à télécharger</span>
+  <h3>14.1 Reference compose file</h3>
+  <pre><span class="c"># docker-compose.yml — the only thing to download</span>
 services:
   <span class="k">db</span>:
     image: postgres:17-alpine
@@ -26,7 +26,7 @@ services:
     depends_on: { db: { condition: service_healthy } }
     environment:
       DATABASE_URL: postgres://altitude@db:5432/altitude
-      ALTITUDE_BASE_URL: https://altitude.exemple.fr
+      ALTITUDE_BASE_URL: https://altitude.example.com
       ALTITUDE_BASE_CURRENCY: EUR
     secrets: [ db_password, encryption_key, auth_secret ]
     volumes: [ files:/data/files ]
@@ -36,14 +36,14 @@ services:
 
   <span class="k">worker</span>:
     image: ghcr.io/&lt;org&gt;/altitude:1.0
-    command: [<span class="s">"node"</span>, <span class="s">"worker.js"</span>]                <span class="c"># même image, rôle différent</span>
+    command: [<span class="s">"node"</span>, <span class="s">"worker.js"</span>]                <span class="c"># same image, different role</span>
     depends_on: { db: { condition: service_healthy } }
     environment: { DATABASE_URL: <span class="s">"..."</span> }
     secrets: [ db_password, encryption_key ]
     deploy: { resources: { limits: { memory: 1g } } }
     restart: unless-stopped
 
-  <span class="k">caddy</span>:                                        <span class="c"># TLS automatique, zéro configuration</span>
+  <span class="k">caddy</span>:                                        <span class="c"># automatic TLS, zero configuration</span>
     image: caddy:2-alpine
     ports: [<span class="s">"80:80"</span>, <span class="s">"443:443"</span>]
     volumes: [ ./Caddyfile:/etc/caddy/Caddyfile, caddydata:/data ]
@@ -56,121 +56,119 @@ secrets:
   auth_secret:    { file: ./secrets/auth_secret }</pre>
 
   <div class="box box-dec">
-    <div class="box-t">Décision — secrets par fichier, jamais par variable d'environnement</div>
-    <p>Les variables d'environnement fuient : <code>docker inspect</code>, listing de processus, journaux de
-    plantage. Les secrets Docker sont montés en fichiers lus au démarrage. Un script
-    <code>./scripts/init-secrets.sh</code> les génère avec la bonne entropie — c'est le seul geste manuel de
-    l'installation, et il est scripté.</p>
+    <div class="box-t">Decision — file-based secrets, never environment variables</div>
+    <p>Environment variables leak: <code>docker inspect</code>, process listings, crash logs. Docker secrets
+    are mounted as files and read at startup. A <code>./scripts/init-secrets.sh</code> script generates them
+    with proper entropy — the single manual step of the installation, and it is scripted.</p>
   </div>
 
-  <h3>14.2 Variables de configuration</h3>
+  <h3>14.2 Configuration variables</h3>
   <table class="tight">
-    <thead><tr><th style="width:32%">Variable</th><th style="width:14%">Défaut</th><th>Rôle</th></tr></thead>
+    <thead><tr><th style="width:32%">Variable</th><th style="width:14%">Default</th><th>Purpose</th></tr></thead>
     <tbody>
-      <tr><td><code>DATABASE_URL</code></td><td>—</td><td>Requis. Le mot de passe est lu depuis le secret, pas dans l'URL.</td></tr>
-      <tr><td><code>ALTITUDE_BASE_URL</code></td><td>—</td><td>Requis. Sert aux liens de rappel OAuth et aux courriels.</td></tr>
-      <tr><td><code>ALTITUDE_ENCRYPTION_KEY</code></td><td>—</td><td>Requis. 32 octets. <strong>Sa perte rend les secrets de connecteurs irrécupérables</strong> — averti à l'installation et rappelé dans les sauvegardes.</td></tr>
-      <tr><td><code>ALTITUDE_BASE_CURRENCY</code></td><td><code>EUR</code></td><td>Devise de consolidation par défaut, modifiable par foyer ensuite.</td></tr>
-      <tr><td><code>ALTITUDE_OFFLINE</code></td><td><code>false</code></td><td>Coupe tout appel réseau sortant.</td></tr>
-      <tr><td><code>ALTITUDE_PRICE_PROVIDERS</code></td><td>vide</td><td>Liste ordonnée avec repli. Vide = prix saisis manuellement.</td></tr>
-      <tr><td><code>ALTITUDE_FX_PROVIDER</code></td><td><code>ecb</code></td><td>Banque centrale européenne : gratuit, officiel, sans clé.</td></tr>
-      <tr><td><code>ALTITUDE_CONNECTORS</code></td><td>vide</td><td>Connecteurs activés. Vide = aucune connexion bancaire possible.</td></tr>
-      <tr><td><code>ALTITUDE_REGISTRATION</code></td><td><code>closed</code></td><td>Fermé après le premier compte : une instance personnelle ne doit pas accepter d'inscriptions.</td></tr>
-      <tr><td><code>SMTP_URL</code></td><td>vide</td><td>Vide = pas de courriel, dégradation silencieuse.</td></tr>
-      <tr><td><code>ALTITUDE_BACKUP_CRON</code></td><td><code>0 3 * * *</code></td><td>Sauvegarde automatique quotidienne.</td></tr>
+      <tr><td><code>DATABASE_URL</code></td><td>—</td><td>Required. The password comes from the secret, not from the URL.</td></tr>
+      <tr><td><code>ALTITUDE_BASE_URL</code></td><td>—</td><td>Required. Used for OAuth callbacks and email links.</td></tr>
+      <tr><td><code>ALTITUDE_ENCRYPTION_KEY</code></td><td>—</td><td>Required. 32 bytes. <strong>Losing it makes connector secrets unrecoverable</strong> — warned at install and repeated in backups.</td></tr>
+      <tr><td><code>ALTITUDE_BASE_CURRENCY</code></td><td><code>EUR</code></td><td>Default consolidation currency, changeable per household afterwards.</td></tr>
+      <tr><td><code>ALTITUDE_OFFLINE</code></td><td><code>false</code></td><td>Cuts every outbound network call.</td></tr>
+      <tr><td><code>ALTITUDE_PRICE_PROVIDERS</code></td><td>empty</td><td>Ordered list with fallback. Empty means prices are entered manually.</td></tr>
+      <tr><td><code>ALTITUDE_FX_PROVIDER</code></td><td><code>ecb</code></td><td>European Central Bank: free, official, no API key.</td></tr>
+      <tr><td><code>ALTITUDE_CONNECTORS</code></td><td>empty</td><td>Enabled connectors. Empty means no bank connection is possible.</td></tr>
+      <tr><td><code>ALTITUDE_REGISTRATION</code></td><td><code>closed</code></td><td>Closed after the first account: a personal instance must not accept signups.</td></tr>
+      <tr><td><code>SMTP_URL</code></td><td>empty</td><td>Empty means no email, degrading silently.</td></tr>
+      <tr><td><code>ALTITUDE_BACKUP_CRON</code></td><td><code>0 3 * * *</code></td><td>Automatic daily backup.</td></tr>
     </tbody>
   </table>
 
-  <h3>14.3 Sauvegarde et restauration</h3>
-  <pre>altitude backup create              <span class="c"># pg_dump + fichiers + manifeste, chiffré</span>
-altitude backup verify &lt;id&gt;        <span class="c"># restaure dans une base jetable et compare les totaux</span>
-altitude backup restore &lt;id&gt;       <span class="c"># restauration complète</span>
-altitude export --format=json      <span class="c"># export lisible, indépendant du moteur</span>
-altitude doctor                    <span class="c"># vérifie invariants, quotes-parts, cohérence des soldes</span>
+  <h3>14.3 Backup and restore</h3>
+  <pre>altitude backup create              <span class="c"># pg_dump + files + manifest, encrypted</span>
+altitude backup verify &lt;id&gt;        <span class="c"># restores into a throwaway database and compares totals</span>
+altitude backup restore &lt;id&gt;       <span class="c"># full restore</span>
+altitude export --format=json      <span class="c"># readable export, engine-independent</span>
+altitude doctor                    <span class="c"># checks invariants, ownership shares, balance coherence</span>
 altitude recompute --from=2015-01-01</pre>
   <div class="box box-warn">
-    <div class="box-t">Une sauvegarde non testée n'est pas une sauvegarde</div>
-    <p><code>backup verify</code> est une commande de premier plan, pas une option cachée : elle restaure
-    dans une base temporaire et compare le patrimoine net à une date de contrôle. La tâche planifiée
-    l'exécute une fois par semaine et alerte en cas d'échec. C'est ce qui distingue un projet
-    d'auto-hébergement sérieux d'un projet amateur.</p>
+    <div class="box-t">An untested backup is not a backup</div>
+    <p><code>backup verify</code> is a first-class command, not a hidden flag: it restores into a temporary
+    database and compares net worth at a control date. The scheduled task runs it weekly and alerts on
+    failure. This is what separates a serious self-hosting project from an amateur one.</p>
   </div>
 
-  <h3>14.4 Mises à jour</h3>
+  <h3>14.4 Upgrades</h3>
   <ul>
-    <li>Migrations exécutées au démarrage par le conteneur <code>app</code>, sous un verrou consultatif Postgres — deux répliques ne migrent jamais en parallèle.</li>
-    <li>Migrations <strong>en avant seulement</strong>, écrites pour être compatibles avec la version précédente (ajout de colonne nullable, remplissage, puis contrainte dans une version ultérieure). Pas de retour arrière automatique : une sauvegarde vérifiée est la stratégie de repli.</li>
-    <li>Versionnage sémantique. Toute rupture est annoncée une version mineure à l'avance et listée dans <code>UPGRADING.md</code>.</li>
-    <li>Étiquettes d'images : <code>1.2.3</code>, <code>1.2</code>, <code>1</code>, <code>latest</code>. La documentation recommande d'épingler la version mineure.</li>
-    <li>Sauvegarde automatique déclenchée avant toute migration destructive.</li>
+    <li>Migrations run at startup from the <code>app</code> container, under a Postgres advisory lock — two replicas never migrate concurrently.</li>
+    <li><strong>Forward-only</strong> migrations, written to remain compatible with the previous version (add a nullable column, backfill, then add the constraint in a later release). No automatic rollback: a verified backup is the fallback strategy.</li>
+    <li>Semantic versioning. Any breaking change is announced one minor version ahead and listed in <code>UPGRADING.md</code>.</li>
+    <li>Image tags: <code>1.2.3</code>, <code>1.2</code>, <code>1</code>, <code>latest</code>. Documentation recommends pinning the minor version.</li>
+    <li>An automatic backup is triggered before any destructive migration.</li>
   </ul>
 
-  <h3>14.5 Dimensionnement</h3>
+  <h3>14.5 Sizing</h3>
   <table class="tight">
-    <thead><tr><th style="width:24%">Profil</th><th style="width:16%">RAM</th><th style="width:14%">CPU</th><th>Notes</th></tr></thead>
+    <thead><tr><th style="width:24%">Profile</th><th style="width:16%">RAM</th><th style="width:14%">CPU</th><th>Notes</th></tr></thead>
     <tbody>
-      <tr><td>Foyer, &lt; 20 k transactions</td><td>1 Go</td><td>1 vCPU</td><td>Tourne sur un Raspberry Pi 4 ou un NAS. Image arm64 native.</td></tr>
-      <tr><td>Foyer, historique &gt; 10 ans</td><td>2 Go</td><td>2 vCPU</td><td>Le poste principal est le recalcul des instantanés.</td></tr>
-      <tr><td>Petit collectif, 10–50 foyers</td><td>4 Go</td><td>4 vCPU</td><td>Séparer worker et app sur deux hôtes, ajouter une réplique en lecture si besoin.</td></tr>
+      <tr><td>Household, &lt; 20k transactions</td><td>1 GB</td><td>1 vCPU</td><td>Runs on a Raspberry Pi 4 or a NAS. Native arm64 image.</td></tr>
+      <tr><td>Household, &gt; 10 years of history</td><td>2 GB</td><td>2 vCPU</td><td>The main load is snapshot recomputation.</td></tr>
+      <tr><td>Small group, 10–50 households</td><td>4 GB</td><td>4 vCPU</td><td>Split worker and app across two hosts, add a read replica if needed.</td></tr>
     </tbody>
   </table>
-  <p>Volumétrie indicative : 100 000 transactions ≈ 250 Mo avec les index ; les cotations dominent le volume
-  (10 ans × 500 instruments ≈ 1,8 M lignes ≈ 200 Mo) — d'où le partitionnement et l'index BRIN.</p>
+  <p>Indicative volumes: 100,000 transactions ≈ 250 MB including indexes; quotes dominate storage (10 years
+  × 500 instruments ≈ 1.8M rows ≈ 200 MB) — hence the partitioning and the BRIN index.</p>
 </section>
 
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">15</div>
-    <h2>Qualité, tests, CI/CD</h2>
+    <h2>Quality, testing, CI/CD</h2>
     <div class="sec-kicker">Ops</div>
   </div>
 
-  <h3>15.1 Stratégie de tests</h3>
+  <h3>15.1 Testing strategy</h3>
   <table class="tight">
-    <thead><tr><th style="width:18%">Niveau</th><th style="width:16%">Outil</th><th style="width:12%">Cible</th><th>Ce qui est testé</th></tr></thead>
+    <thead><tr><th style="width:18%">Level</th><th style="width:16%">Tool</th><th style="width:12%">Target</th><th>What it covers</th></tr></thead>
     <tbody>
-      <tr><td><b>Unitaire</b></td><td>Vitest</td><td>&gt; 85 % sur <code>core</code></td><td>Grand livre, valorisation, TWR/TRI, lots, conversions. Rapide, sans base.</td></tr>
-      <tr><td><b>Propriétés</b></td><td>fast-check</td><td>Invariants</td><td>« Toute transaction générée aléatoirement est équilibrée » · « rejouer le journal redonne le solde » · « import puis export puis import est idempotent ».</td></tr>
-      <tr><td><b>Oracle</b></td><td>Vitest + fichiers</td><td>20 scénarios</td><td>Résultats de performance comparés à Portfolio Performance et à <code>XIRR()</code>, tolérance 10⁻⁶.</td></tr>
-      <tr><td><b>Importeurs</b></td><td>Vitest + échantillons</td><td>1 par preset</td><td>Chaque preset a un fichier anonymisé et un résultat attendu figé. Un preset sans test n'est pas fusionné.</td></tr>
-      <tr><td><b>Intégration</b></td><td>Testcontainers</td><td>Chemins critiques</td><td>Vrai PostgreSQL : migrations, RLS, déclencheurs, partitionnement, annulation d'import.</td></tr>
-      <tr><td><b>Bout en bout</b></td><td>Playwright</td><td>8 parcours</td><td>Installation, création de compte, saisie, import CSV, dashboard, partage, export, sauvegarde-restauration.</td></tr>
-      <tr><td><b>Visuel</b></td><td>Playwright captures</td><td>12 écrans</td><td>Clair et sombre. Évite les régressions de mise en page silencieuses.</td></tr>
-      <tr><td><b>Sécurité</b></td><td>Tests dédiés</td><td>Systématique</td><td>Tentative d'accès inter-foyers sur chaque point d'entrée ; échec du test = faille.</td></tr>
+      <tr><td><b>Unit</b></td><td>Vitest</td><td>&gt; 85% on <code>core</code></td><td>Ledger, valuation, TWR/MWR, lots, conversions. Fast, no database.</td></tr>
+      <tr><td><b>Property-based</b></td><td>fast-check</td><td>Invariants</td><td>"Any randomly generated transaction balances" · "replaying the ledger reproduces the balance" · "import then export then import is idempotent".</td></tr>
+      <tr><td><b>Oracle</b></td><td>Vitest + fixtures</td><td>20 scenarios</td><td>Performance figures compared against Portfolio Performance and <code>XIRR()</code>, tolerance 10⁻⁶.</td></tr>
+      <tr><td><b>Importers</b></td><td>Vitest + samples</td><td>1 per preset</td><td>Every preset has an anonymised file and a frozen expected result. A preset without a test is not merged.</td></tr>
+      <tr><td><b>Integration</b></td><td>Testcontainers</td><td>Critical paths</td><td>Real PostgreSQL: migrations, RLS, triggers, partitioning, import rollback.</td></tr>
+      <tr><td><b>End-to-end</b></td><td>Playwright</td><td>8 journeys</td><td>Install, account creation, manual entry, CSV import, dashboard, sharing, export, backup-restore.</td></tr>
+      <tr><td><b>Visual</b></td><td>Playwright snapshots</td><td>12 screens</td><td>Light and dark. Catches silent layout regressions.</td></tr>
+      <tr><td><b>Security</b></td><td>Dedicated tests</td><td>Systematic</td><td>Cross-household access attempts on every entry point; a passing attempt means a vulnerability.</td></tr>
     </tbody>
   </table>
 
   <div class="box box-dec">
-    <div class="box-t">Décision — les tests de propriétés sur le grand livre sont écrits en premier</div>
-    <p>Avant la première ligne d'interface. Ils formalisent le modèle et le figent. C'est un investissement
-    de deux jours qui évite un mois de traque de bugs d'arrondi et de déséquilibre six mois plus tard.</p>
+    <div class="box-t">Decision — the ledger's property tests are written first</div>
+    <p>Before the first line of interface. They formalise the model and pin it down. Two days of investment
+    that save a month of hunting rounding and imbalance bugs six months later.</p>
   </div>
 
-  <h3>15.2 Intégration continue</h3>
-  <pre><span class="c"># .github/workflows/ci.yml — étapes, dans l'ordre</span>
-1. install        pnpm, cache du store
-2. lint           ESLint + Prettier + dependency-cruiser (core ne dépend pas de Next)
-3. typecheck      tsc --noEmit sur tous les paquets
-4. test:unit      Vitest + couverture, seuil bloquant sur core
+  <h3>15.2 Continuous integration</h3>
+  <pre><span class="c"># .github/workflows/ci.yml — steps, in order</span>
+1. install        pnpm, store cache
+2. lint           ESLint + Prettier + dependency-cruiser (core must not depend on Next)
+3. typecheck      tsc --noEmit across every package
+4. test:unit      Vitest + coverage, blocking threshold on core
 5. test:db        Testcontainers Postgres 17, migrations + RLS
-6. build          next build + build worker
-7. test:e2e       Playwright sur l'image construite
-8. audit          pnpm audit + analyse des licences
-9. sbom           génération CycloneDX
-10. docker        buildx amd64 + arm64, signature cosign, publication ghcr</pre>
-  <p>Règles : branche principale protégée, une revue obligatoire, commits conventionnels, changelog généré
-  par Changesets, badge de couverture. Un chemin de contribution « preset uniquement » allège la CI pour
-  encourager les petites contributions.</p>
+6. build          next build + worker build
+7. test:e2e       Playwright against the built image
+8. audit          pnpm audit + licence scan
+9. sbom           CycloneDX generation
+10. docker        buildx amd64 + arm64, cosign signing, publish to ghcr</pre>
+  <p>Rules: protected main branch, one mandatory review, conventional commits, changelog generated by
+  Changesets, coverage badge. A "preset only" contribution path runs a lighter CI to encourage small
+  contributions.</p>
 
-  <h3>15.3 Budgets de performance vérifiés en CI</h3>
+  <h3>15.3 Performance budgets enforced in CI</h3>
   <table class="tight">
-    <thead><tr><th style="width:34%">Métrique</th><th style="width:16%">Budget</th><th>Mesure</th></tr></thead>
+    <thead><tr><th style="width:34%">Metric</th><th style="width:16%">Budget</th><th>Measurement</th></tr></thead>
     <tbody>
-      <tr><td>JS initial du dashboard</td><td>&lt; 180 ko gzip</td><td>Analyse du bundle, échec si dépassement.</td></tr>
-      <tr><td>LCP du dashboard (données de démo)</td><td>&lt; 1,5 s</td><td>Lighthouse CI.</td></tr>
-      <tr><td>INP sur la table de transactions</td><td>&lt; 200 ms</td><td>Playwright + trace de performance, 50 k lignes.</td></tr>
-      <tr><td>Requête de patrimoine, 10 ans</td><td>&lt; 300 ms p95</td><td>Test d'intégration chronométré sur base de démo.</td></tr>
-      <tr><td>Import de 10 k lignes</td><td>&lt; 30 s</td><td>Test d'intégration.</td></tr>
+      <tr><td>Dashboard initial JS</td><td>&lt; 180 kB gzip</td><td>Bundle analysis, build fails on overshoot.</td></tr>
+      <tr><td>Dashboard LCP (demo data)</td><td>&lt; 1.5 s</td><td>Lighthouse CI.</td></tr>
+      <tr><td>INP on the transactions table</td><td>&lt; 200 ms</td><td>Playwright plus a performance trace, 50k rows.</td></tr>
+      <tr><td>Net worth query, 10 years</td><td>&lt; 300 ms p95</td><td>Timed integration test on the demo database.</td></tr>
+      <tr><td>Import of 10k rows</td><td>&lt; 30 s</td><td>Integration test.</td></tr>
     </tbody>
   </table>
 </section>
@@ -178,56 +176,55 @@ altitude recompute --from=2015-01-01</pre>
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">16</div>
-    <h2>Gouvernance open source</h2>
-    <div class="sec-kicker">Projet</div>
+    <h2>Open-source governance</h2>
+    <div class="sec-kicker">Project</div>
   </div>
 
   <h3>16.1 Licence</h3>
   <div class="box box-dec">
-    <div class="box-t">Décision — AGPL-3.0-or-later</div>
-    <p>L'AGPL impose à quiconque exploite une version modifiée <em>en tant que service réseau</em> d'en
-    publier le code. C'est exactement la protection nécessaire face à un concurrent commercial qui voudrait
-    reprendre le travail communautaire sans rien rendre. Précédents directs : Firefly III, Ghostfolio, Sure.
-    Contrainte assumée : certaines entreprises s'interdisent l'AGPL en interne — c'est un coût d'adoption
-    accepté au profit de la pérennité du commun.</p>
-    <p style="margin-bottom:0">Contributions sous <strong>DCO</strong> (<code>Signed-off-by</code>) plutôt
-    que CLA : moins de friction, et pas de transfert de droits à une entité unique. Si une double licence
-    commerciale devient souhaitable plus tard, elle exigera un CLA — mieux vaut alors trancher tôt.</p>
+    <div class="box-t">Decision — AGPL-3.0-or-later</div>
+    <p>The AGPL requires anyone operating a modified version <em>as a network service</em> to publish its
+    source. That is exactly the protection needed against a commercial competitor rebuilding community work
+    without giving anything back. Direct precedents: Firefly III, Ghostfolio, Sure. Accepted cost: some
+    companies ban the AGPL internally — an adoption price paid for the durability of the commons.</p>
+    <p style="margin-bottom:0">Contributions under <strong>DCO</strong> (<code>Signed-off-by</code>) rather
+    than a CLA: less friction, and no transfer of rights to a single entity. If commercial dual licensing
+    later becomes desirable it will require a CLA — better to settle that question early.</p>
   </div>
 
-  <h3>16.2 Structure du dépôt</h3>
+  <h3>16.2 Repository layout</h3>
   <table class="tight">
-    <thead><tr><th style="width:26%">Fichier</th><th>Contenu attendu</th></tr></thead>
+    <thead><tr><th style="width:26%">File</th><th>Expected content</th></tr></thead>
     <tbody>
-      <tr><td><code>README.md</code></td><td>Capture d'écran en premier, promesse en une phrase, installation en trois lignes, lien vers la démo.</td></tr>
-      <tr><td><code>CONTRIBUTING.md</code></td><td>Environnement en moins de 10 minutes, conventions, comment ajouter un preset (le chemin d'entrée le plus simple).</td></tr>
-      <tr><td><code>ARCHITECTURE.md</code></td><td>Résumé des sections 4 et 5 de ce document, tenu à jour.</td></tr>
-      <tr><td><code>SECURITY.md</code></td><td>Divulgation coordonnée, contact, délai de réponse annoncé (7 jours).</td></tr>
-      <tr><td><code>CONNECTORS.md</code></td><td>Position juridique sur la synchronisation bancaire, ce que le projet supporte et ce qu'il ne supporte pas (§7).</td></tr>
-      <tr><td><code>UPGRADING.md</code></td><td>Ruptures par version, avec la marche à suivre.</td></tr>
-      <tr><td><code>docs/adr/</code></td><td>Décisions d'architecture, une par fichier.</td></tr>
+      <tr><td><code>README.md</code></td><td>Screenshot first, one-sentence promise, three-line install, link to the demo.</td></tr>
+      <tr><td><code>CONTRIBUTING.md</code></td><td>Environment running in under ten minutes, conventions, and how to add a preset (the easiest entry point).</td></tr>
+      <tr><td><code>ARCHITECTURE.md</code></td><td>A summary of sections 4 and 5 of this document, kept current.</td></tr>
+      <tr><td><code>SECURITY.md</code></td><td>Coordinated disclosure, contact, stated response time (7 days).</td></tr>
+      <tr><td><code>CONNECTORS.md</code></td><td>The legal position on bank synchronisation, what the project supports and what it does not (§7).</td></tr>
+      <tr><td><code>UPGRADING.md</code></td><td>Breaking changes by version, with the steps to take.</td></tr>
+      <tr><td><code>docs/adr/</code></td><td>Architecture decisions, one per file.</td></tr>
     </tbody>
   </table>
 
-  <h3>16.3 Amorcer une communauté</h3>
+  <h3>16.3 Bootstrapping a community</h3>
   <ul>
-    <li><b>Démo publique</b> avec données factices, réinitialisée toutes les 24 h. C'est le premier convertisseur : personne n'installe un logiciel de patrimoine sans l'avoir vu tourner.</li>
-    <li><b>15 tickets « bonne première contribution »</b> préparés avant l'annonce, majoritairement des presets d'import et des jeux d'exposition d'ETF — utiles, cadrés, sans risque.</li>
-    <li><b>Feuille de route publique</b> (GitHub Projects), discussions ouvertes pour les demandes de fonctionnalités.</li>
-    <li><b>Annonce</b> quand la démo tient debout : r/selfhosted, r/vosfinances, Hacker News, Awesome-Selfhosted, forums d'auto-hébergement francophones. Une seule chance de première impression : ne pas annoncer avant que l'import et le dashboard soient solides.</li>
-    <li><b>Bilingue dès le départ</b> : documentation FR et EN. Le marché de l'auto-hébergement est anglophone, le besoin patrimonial visé est francophone.</li>
-    <li><b>Financement</b> : GitHub Sponsors / Liberapay pour couvrir démo et domaine. Pas de promesse de version « pro » tant que la v1.0 n'est pas livrée.</li>
+    <li><b>Public demo</b> with fabricated data, reset every 24 hours. It is the primary converter: nobody installs a wealth tracker without seeing it run.</li>
+    <li><b>Fifteen "good first issue" tickets</b> prepared before announcing, mostly import presets and ETF exposure datasets — useful, well-scoped, low-risk.</li>
+    <li><b>Public roadmap</b> (GitHub Projects), with open discussions for feature requests.</li>
+    <li><b>Announcement</b> once the demo stands up: r/selfhosted, personal-finance communities, Hacker News, Awesome-Selfhosted, self-hosting forums. You get one first impression: do not announce before import and the dashboard are solid.</li>
+    <li><b>Bilingual from day one</b>: English and French documentation. The self-hosting market is anglophone; the wealth-tracking need targeted here is francophone.</li>
+    <li><b>Funding</b>: GitHub Sponsors / Liberapay to cover the demo and the domain. No promise of a "pro" edition until v1.0 ships.</li>
   </ul>
 
-  <h3>16.4 Extensibilité — les quatre points d'extension publics</h3>
+  <h3>16.4 Extensibility — the four public extension points</h3>
   <table class="tight">
-    <thead><tr><th style="width:24%">Extension</th><th style="width:20%">Forme</th><th>Exemple</th></tr></thead>
+    <thead><tr><th style="width:24%">Extension</th><th style="width:20%">Form</th><th>Example</th></tr></thead>
     <tbody>
-      <tr><td>Preset d'import</td><td>Fichier JSON + échantillon</td><td>Ajouter une banque : aucune compétence en TypeScript requise.</td></tr>
-      <tr><td>Exposition d'instrument</td><td>Fichier JSON</td><td>Répartition géographique d'un ETF, avec date et source.</td></tr>
-      <tr><td>Fournisseur de prix</td><td>Interface TypeScript</td><td>Brancher une source de cotations locale ou payante.</td></tr>
-      <tr><td>Connecteur</td><td>Paquet npm séparé</td><td>Agrégateur DSP2, courtier, exchange (§7.7).</td></tr>
-      <tr><td>Module fiscal</td><td>Paquet + schéma</td><td>Règles françaises (PFU, PEA, IFI), belges, suisses… Volontairement hors du cœur : la fiscalité change chaque année et diffère par pays.</td></tr>
+      <tr><td>Import preset</td><td>JSON file + sample</td><td>Adding a bank: no TypeScript required.</td></tr>
+      <tr><td>Instrument exposure</td><td>JSON file</td><td>An ETF's geographic breakdown, with date and source.</td></tr>
+      <tr><td>Price provider</td><td>TypeScript interface</td><td>Plugging in a local or paid quote source.</td></tr>
+      <tr><td>Connector</td><td>Separate npm package</td><td>PSD2 aggregator, broker, exchange (§7.7).</td></tr>
+      <tr><td>Tax module</td><td>Package + schema</td><td>French rules (flat tax, PEA, wealth tax), Belgian, Swiss… Deliberately outside the core: tax law changes yearly and differs by country.</td></tr>
     </tbody>
   </table>
 </section>
