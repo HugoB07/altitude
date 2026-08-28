@@ -63,9 +63,17 @@ node build-html.mjs && node build-pdf.mjs
 
 ## Contributing
 
-The project is not open to code contributions yet — there is no code. Once phase 0
-lands, the easiest entry point will be adding an import preset for your bank: a JSON
+There is no code yet, so code contributions cannot be reviewed. What *is* useful today:
+critique of the plan, anonymised bank export samples, and ETF exposure data. Once phase 0
+lands, the easiest entry point will be adding an import preset for your bank — a JSON
 file and a test fixture, no TypeScript required.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the anonymisation checklist
+before attaching any export file.
+
+## Security
+
+Found a vulnerability? Do not open a public issue — see [SECURITY.md](SECURITY.md).
 
 ## License
 
