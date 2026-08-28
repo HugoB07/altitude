@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Altitude — Plan de développement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0B1220; --ink-2:#1E293B; --muted:#64748B; --line:#E2E8F0; --line-2:#CBD5E1;
+  --sky:#0284C7; --sky-dk:#075985; --sky-lt:#E0F2FE;
+  --amber:#B45309; --amber-lt:#FEF3C7;
+  --green:#047857; --green-lt:#D1FAE5;
+  --red:#B91C1C; --red-lt:#FEE2E2;
+  --violet:#6D28D9; --violet-lt:#EDE9FE;
+  --paper:#FFFFFF; --paper-2:#F8FAFC;
+}
+@page{ size:A4; margin:16mm 14mm 18mm 14mm; }
+*{ box-sizing:border-box; }
+html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body{
+  font-family:"Inter",-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:9.6pt; line-height:1.55; color:var(--ink); margin:0; background:var(--paper);
+  font-variant-numeric:tabular-nums;
+}
+h1,h2,h3,h4{ line-height:1.2; margin:0; font-weight:700; letter-spacing:-.01em; }
+p{ margin:0 0 7pt; }
+ul,ol{ margin:0 0 8pt; padding-left:16pt; }
+li{ margin-bottom:3pt; }
+li::marker{ color:var(--sky); font-weight:600; }
+a{ color:var(--sky-dk); text-decoration:none; }
+code,pre{ font-family:"JetBrains Mono",Consolas,monospace; }
+code{ font-size:8.4pt; background:var(--paper-2); border:1px solid var(--line); border-radius:3px; padding:.5pt 3pt; color:var(--sky-dk); }
+strong{ font-weight:650; color:var(--ink); }
+em{ color:var(--ink-2); }
+
+.cover{ height:262mm; display:flex; flex-direction:column; page-break-after:always; }
+.cover-top{ flex:1; display:flex; flex-direction:column; justify-content:center; }
+.brand{ display:flex; align-items:center; gap:9pt; margin-bottom:26pt; }
+.brand-mark{ width:34pt; height:34pt; }
+.brand-name{ font-size:15pt; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+.brand-sub{ font-size:7.6pt; color:var(--muted); letter-spacing:.22em; text-transform:uppercase; margin-top:1pt; }
+.cover h1{ font-family:"Newsreader",Georgia,serif; font-size:40pt; font-weight:600; letter-spacing:-.02em; margin-bottom:10pt; }
+.cover h1 span{ color:var(--sky); }
+.cover-lede{ font-size:11.5pt; color:var(--ink-2); max-width:135mm; line-height:1.5; }
+.cover-rule{ height:3pt; width:60mm; background:linear-gradient(90deg,var(--sky),var(--violet)); margin:20pt 0; border-radius:2pt; }
+.cover-meta{ display:grid; grid-template-columns:repeat(4,1fr); gap:8pt; border-top:1px solid var(--line); padding-top:12pt; }
+.cover-meta div span{ display:block; font-size:7pt; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:2pt; }
+.cover-meta div b{ font-size:9.5pt; font-weight:600; }
+.cover-chips{ display:flex; flex-wrap:wrap; gap:5pt; margin-top:16pt; }
+.chip{ font-size:7.6pt; font-weight:600; padding:3pt 8pt; border-radius:20pt; background:var(--sky-lt); color:var(--sky-dk); border:1px solid #BAE6FD; }
+
+.sec{ page-break-before:always; }
+.sec-head{ display:flex; align-items:baseline; gap:10pt; border-bottom:2.5pt solid var(--ink); padding-bottom:6pt; margin-bottom:14pt; }
+.sec-num{ font-family:"Newsreader",serif; font-size:26pt; font-weight:600; color:var(--sky); line-height:1; }
+.sec-head h2{ font-size:17pt; letter-spacing:-.02em; }
+.sec-kicker{ margin-left:auto; font-size:7.2pt; text-transform:uppercase; letter-spacing:.16em; color:var(--muted); }
+h3{ font-size:11.4pt; margin:14pt 0 6pt; padding-left:7pt; border-left:3pt solid var(--sky); }
+h3:first-of-type{ margin-top:4pt; }
+h4{ margin:9pt 0 4pt; color:var(--sky-dk); text-transform:uppercase; letter-spacing:.06em; font-size:8pt; }
+.lede{ font-size:10.4pt; color:var(--ink-2); border-left:2pt solid var(--line-2); padding-left:9pt; margin-bottom:12pt; }
+
+table{ width:100%; border-collapse:collapse; font-size:8.4pt; margin:6pt 0 10pt; page-break-inside:avoid; }
+thead th{ background:var(--ink); color:#fff; text-align:left; padding:5pt 6pt; font-weight:600; font-size:7.6pt; text-transform:uppercase; letter-spacing:.06em; }
+tbody td{ padding:4.5pt 6pt; border-bottom:1px solid var(--line); vertical-align:top; }
+tbody tr:nth-child(even){ background:var(--paper-2); }
+tbody tr:last-child td{ border-bottom:1px solid var(--line-2); }
+td b{ font-weight:600; }
+table.tight td, table.tight th{ padding:3.5pt 5pt; font-size:8pt; }
+
+.box{ border-radius:5pt; padding:8pt 10pt; margin:9pt 0; page-break-inside:avoid; border:1px solid; font-size:9pt; }
+.box .box-t{ font-size:7.4pt; font-weight:700; text-transform:uppercase; letter-spacing:.12em; margin-bottom:4pt; }
+.box p:last-child, .box ul:last-child{ margin-bottom:0; }
+.box-go{ background:var(--green-lt); border-color:#6EE7B7; } .box-go .box-t{ color:var(--green); }
+.box-no{ background:var(--red-lt); border-color:#FCA5A5; } .box-no .box-t{ color:var(--red); }
+.box-warn{ background:var(--amber-lt); border-color:#FCD34D; } .box-warn .box-t{ color:var(--amber); }
+.box-dec{ background:var(--sky-lt); border-color:#7DD3FC; } .box-dec .box-t{ color:var(--sky-dk); }
+.box-note{ background:var(--violet-lt); border-color:#C4B5FD; } .box-note .box-t{ color:var(--violet); }
+
+pre{ background:#0B1220; color:#E2E8F0; border-radius:5pt; padding:8pt 10pt; font-size:7.6pt; line-height:1.5;
+     white-space:pre-wrap; word-break:break-word; margin:7pt 0 10pt; page-break-inside:avoid; }
+pre .c{ color:#7C8BA1; } pre .k{ color:#7DD3FC; } pre .s{ color:#86EFAC; } pre .n{ color:#FCD34D; }
+
+.grid2{ display:grid; grid-template-columns:1fr 1fr; gap:9pt; margin:8pt 0; }
+.grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:8pt; margin:8pt 0; }
+.card{ border:1px solid var(--line); border-radius:5pt; padding:8pt 9pt; page-break-inside:avoid; background:#fff; }
+.card h5{ margin:0 0 4pt; font-size:8.6pt; font-weight:700; color:var(--sky-dk); }
+.card p{ margin:0; font-size:8.4pt; color:var(--ink-2); }
+.card ul{ margin:3pt 0 0; font-size:8.2pt; padding-left:13pt; }
+
+.kv{ display:grid; grid-template-columns:40mm 1fr; gap:2pt 8pt; font-size:8.6pt; margin:6pt 0 10pt; }
+.kv dt{ font-weight:600; color:var(--sky-dk); }
+.kv dd{ margin:0; color:var(--ink-2); }
+.tag{ display:inline-block; font-size:7pt; font-weight:700; padding:1.5pt 5pt; border-radius:3pt; letter-spacing:.04em; text-transform:uppercase; }
+.t-p0{ background:#DC2626; color:#fff; } .t-p1{ background:#EA580C; color:#fff; }
+.t-p2{ background:#0284C7; color:#fff; } .t-p3{ background:#64748B; color:#fff; }
+.t-yes{ background:var(--green-lt); color:var(--green); } .t-no{ background:var(--red-lt); color:var(--red); }
+.t-part{ background:var(--amber-lt); color:var(--amber); }
+figure{ margin:10pt 0; page-break-inside:avoid; }
+figcaption{ font-size:7.6pt; color:var(--muted); text-align:center; margin-top:4pt; font-style:italic; }
+figure svg{ display:block; margin:0 auto; max-width:100%; }
+.brand-mark{ flex:0 0 auto; }
+.footnote{ font-size:7.6pt; color:var(--muted); border-top:1px solid var(--line); padding-top:5pt; margin-top:10pt; }
+
+.toc{ page-break-after:always; }
+.toc h2{ font-family:"Newsreader",serif; font-size:24pt; font-weight:600; margin-bottom:4pt; }
+.toc-sub{ color:var(--muted); font-size:9pt; margin-bottom:16pt; }
+.toc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 18pt; }
+.toc-item{ display:flex; gap:8pt; padding:4.5pt 0; border-bottom:1px dotted var(--line-2); font-size:9pt; break-inside:avoid; }
+.toc-item b{ color:var(--sky); font-weight:700; min-width:14pt; }
+.toc-item span{ color:var(--ink-2); }
+.toc-item i{ margin-left:auto; font-style:normal; font-size:7.4pt; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="cover-top">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" fill="none">
+        <rect width="48" height="48" rx="11" fill="#0B1220"/>
+        <path d="M9 34 L19 18 L25 27 L31 14 L39 34 Z" fill="url(#g1)"/>
+        <path d="M9 34 L19 18 L25 27 L20 34 Z" fill="#38BDF8" opacity=".55"/>
+        <circle cx="31" cy="14" r="2.6" fill="#FCD34D"/>
+        <defs><linearGradient id="g1" x1="9" y1="34" x2="39" y2="14">
+          <stop stop-color="#0284C7"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs>
+      </svg>
+      <div>
+        <div class="brand-name">Altitude</div>
+        <div class="brand-sub">Open-source wealth platform</div>
+      </div>
+    </div>
+
+    <h1>Plan de développement<br><span>v0 → v1.0</span></h1>
+    <div class="cover-rule"></div>
+    <p class="cover-lede">
+      Spécification technique et feuille de route pour <strong>Altitude</strong> : une alternative
+      open-source et auto-hébergeable à Finary. Suivi de patrimoine multi-actifs, multi-devises et
+      multi-propriétaires — comptes bancaires, PEA, CTO, assurance-vie, crypto, immobilier, crédits —
+      avec import de fichiers, saisie manuelle, portefeuilles enfants et connecteurs bancaires optionnels.
+    </p>
+
+    <div class="cover-chips">
+      <span class="chip">Next.js 15 · App Router</span>
+      <span class="chip">PostgreSQL 17</span>
+      <span class="chip">Drizzle ORM</span>
+      <span class="chip">shadcn/ui + Magic UI</span>
+      <span class="chip">Docker Compose</span>
+      <span class="chip">AGPL-3.0</span>
+      <span class="chip">Partie double</span>
+      <span class="chip">DSP2 optionnel</span>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    <div><span>Document</span><b>Plan technique</b></div>
+    <div><span>Version</span><b>1.0 — brouillon</b></div>
+    <div><span>Date</span><b>28 août 2026</b></div>
+    <div><span>Statut</span><b>À valider</b></div>
+  </div>
+</section>
+
+<section class="toc">
+  <h2>Sommaire</h2>
+  <p class="toc-sub">20 sections — de la décision d'architecture à la checklist de la première semaine.</p>
+  <div class="toc-grid">
+    <div class="toc-item"><b>1</b><span>Résumé exécutif — les 12 décisions</span><i>Décisions</i></div>
+    <div class="toc-item"><b>2</b><span>Vision, état de l'art, positionnement</span><i>Produit</i></div>
+    <div class="toc-item"><b>3</b><span>Décisions d'architecture (ADR)</span><i>Archi</i></div>
+    <div class="toc-item"><b>4</b><span>Stack technique détaillée</span><i>Archi</i></div>
+    <div class="toc-item"><b>5</b><span>Modèle de domaine &amp; schéma SQL</span><i>Données</i></div>
+    <div class="toc-item"><b>6</b><span>Moteur de calcul &amp; performance</span><i>Données</i></div>
+    <div class="toc-item"><b>7</b><span>Synchronisation bancaire : l'analyse</span><i>Décisif</i></div>
+    <div class="toc-item"><b>8</b><span>Import CSV / XLSX / OFX / CAMT</span><i>Ingestion</i></div>
+    <div class="toc-item"><b>9</b><span>Saisie manuelle &amp; UX transactions</span><i>Ingestion</i></div>
+    <div class="toc-item"><b>10</b><span>Foyer, propriétaires, portefeuilles enfants</span><i>Produit</i></div>
+    <div class="toc-item"><b>11</b><span>Modules patrimoniaux</span><i>Produit</i></div>
+    <div class="toc-item"><b>12</b><span>Interface, design system, le Globe</span><i>UI</i></div>
+    <div class="toc-item"><b>13</b><span>Sécurité, vie privée, RGPD</span><i>Sécurité</i></div>
+    <div class="toc-item"><b>14</b><span>Self-hosting &amp; déploiement</span><i>Ops</i></div>
+    <div class="toc-item"><b>15</b><span>Qualité, tests, CI/CD</span><i>Ops</i></div>
+    <div class="toc-item"><b>16</b><span>Gouvernance open source</span><i>Projet</i></div>
+    <div class="toc-item"><b>17</b><span>Roadmap par phases</span><i>Projet</i></div>
+    <div class="toc-item"><b>18</b><span>Semaine 1 : checklist concrète</span><i>Projet</i></div>
+    <div class="toc-item"><b>19</b><span>Risques &amp; mitigations</span><i>Projet</i></div>
+    <div class="toc-item"><b>20</b><span>Annexes &amp; sources de données</span><i>Annexe</i></div>
+  </div>
+
+  <div class="box box-note" style="margin-top:18pt">
+    <div class="box-t">Comment lire ce document</div>
+    <p>Les sections <strong>3, 5, 7 et 17</strong> sont les plus engageantes : elles fixent la stack, le modèle de
+    données, l'arbitrage sur la synchronisation bancaire et l'ordre de construction. Les autres sections
+    peuvent être ajustées en cours de route sans coût de refonte. Chaque décision structurante est
+    encadrée par un bloc <strong>Décision</strong> avec sa justification et son alternative rejetée.</p>
+  </div>
+</section>

@@ -1,0 +1,201 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <h2>Stack technique détaillée</h2>
+    <div class="sec-kicker">Archi</div>
+  </div>
+
+  <h3>4.1 Vue d'ensemble</h3>
+  <figure>
+    <svg viewBox="0 0 760 340" width="760" height="340" font-family="Inter,sans-serif">
+      <defs>
+        <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 z" fill="#64748B"/>
+        </marker>
+        <marker id="arb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 z" fill="#0284C7"/>
+        </marker>
+      </defs>
+
+      <!-- Browser -->
+      <rect x="14" y="20" width="150" height="96" rx="7" fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="89" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0B1220">Navigateur</text>
+      <text x="89" y="57" text-anchor="middle" font-size="8" fill="#475569">React 19 · RSC</text>
+      <text x="89" y="70" text-anchor="middle" font-size="8" fill="#475569">shadcn/ui + Magic UI</text>
+      <text x="89" y="83" text-anchor="middle" font-size="8" fill="#475569">TanStack Query/Table</text>
+      <text x="89" y="96" text-anchor="middle" font-size="8" fill="#475569">Recharts · cobe (Globe)</text>
+      <text x="89" y="109" text-anchor="middle" font-size="8" fill="#475569">PWA · offline shell</text>
+
+      <!-- Next -->
+      <rect x="196" y="20" width="196" height="152" rx="7" fill="#E0F2FE" stroke="#7DD3FC"/>
+      <text x="294" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#075985">Next.js 15 — App Router</text>
+      <rect x="208" y="50" width="172" height="26" rx="4" fill="#fff" stroke="#BAE6FD"/>
+      <text x="294" y="67" text-anchor="middle" font-size="8" fill="#0B1220">Server Components · pages</text>
+      <rect x="208" y="80" width="82" height="26" rx="4" fill="#fff" stroke="#BAE6FD"/>
+      <text x="249" y="97" text-anchor="middle" font-size="7.5" fill="#0B1220">Server Actions</text>
+      <rect x="298" y="80" width="82" height="26" rx="4" fill="#fff" stroke="#BAE6FD"/>
+      <text x="339" y="97" text-anchor="middle" font-size="7.5" fill="#0B1220">Route Handlers</text>
+      <rect x="208" y="110" width="172" height="50" rx="4" fill="#0B1220"/>
+      <text x="294" y="127" text-anchor="middle" font-size="8.5" font-weight="700" fill="#7DD3FC">packages/core</text>
+      <text x="294" y="140" text-anchor="middle" font-size="7.5" fill="#CBD5E1">services · domaine · valorisation</text>
+      <text x="294" y="152" text-anchor="middle" font-size="7.5" fill="#CBD5E1">autorisation · politiques</text>
+
+      <!-- Worker -->
+      <rect x="196" y="196" width="196" height="118" rx="7" fill="#EDE9FE" stroke="#C4B5FD"/>
+      <text x="294" y="216" text-anchor="middle" font-size="10.5" font-weight="700" fill="#6D28D9">Worker (même image)</text>
+      <text x="294" y="233" text-anchor="middle" font-size="8" fill="#3730A3">pg-boss · planificateur cron</text>
+      <text x="294" y="248" text-anchor="middle" font-size="8" fill="#475569">▸ cotations &amp; taux de change</text>
+      <text x="294" y="262" text-anchor="middle" font-size="8" fill="#475569">▸ traitement des imports</text>
+      <text x="294" y="276" text-anchor="middle" font-size="8" fill="#475569">▸ instantanés quotidiens</text>
+      <text x="294" y="290" text-anchor="middle" font-size="8" fill="#475569">▸ synchro connecteurs</text>
+      <text x="294" y="304" text-anchor="middle" font-size="8" fill="#475569">▸ sauvegardes &amp; alertes</text>
+
+      <!-- Postgres -->
+      <rect x="428" y="88" width="150" height="140" rx="7" fill="#0B1220"/>
+      <text x="503" y="110" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">PostgreSQL 17</text>
+      <text x="503" y="128" text-anchor="middle" font-size="8" fill="#7DD3FC">grand livre · positions</text>
+      <text x="503" y="142" text-anchor="middle" font-size="8" fill="#7DD3FC">cotations · FX · agrégats</text>
+      <text x="503" y="156" text-anchor="middle" font-size="8" fill="#7DD3FC">sessions · file pg-boss</text>
+      <text x="503" y="170" text-anchor="middle" font-size="8" fill="#7DD3FC">journal d'audit</text>
+      <rect x="440" y="182" width="126" height="34" rx="4" fill="#1E293B"/>
+      <text x="503" y="196" text-anchor="middle" font-size="7.5" fill="#94A3B8">RLS · ltree · pgcrypto</text>
+      <text x="503" y="208" text-anchor="middle" font-size="7.5" fill="#94A3B8">pg_trgm · btree_gist</text>
+
+      <!-- Storage -->
+      <rect x="428" y="244" width="150" height="70" rx="7" fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="503" y="264" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0B1220">Stockage fichiers</text>
+      <text x="503" y="280" text-anchor="middle" font-size="8" fill="#475569">volume local (défaut)</text>
+      <text x="503" y="293" text-anchor="middle" font-size="8" fill="#475569">ou S3 / MinIO</text>
+      <text x="503" y="306" text-anchor="middle" font-size="8" fill="#475569">imports bruts · justificatifs</text>
+
+      <!-- External -->
+      <rect x="612" y="20" width="136" height="294" rx="7" fill="#FFFBEB" stroke="#FCD34D" stroke-dasharray="4 3"/>
+      <text x="680" y="40" text-anchor="middle" font-size="9.5" font-weight="700" fill="#B45309">Sortants — opt-in</text>
+      <text x="680" y="54" text-anchor="middle" font-size="7" fill="#92400E">tous désactivables</text>
+      <rect x="622" y="64" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
+      <text x="680" y="80" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">Cotations</text>
+      <text x="680" y="93" text-anchor="middle" font-size="7" fill="#475569">actions · ETF · fonds</text>
+      <rect x="622" y="112" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
+      <text x="680" y="128" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">FX — BCE</text>
+      <text x="680" y="141" text-anchor="middle" font-size="7" fill="#475569">gratuit, sans clé</text>
+      <rect x="622" y="160" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
+      <text x="680" y="176" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">Crypto</text>
+      <text x="680" y="189" text-anchor="middle" font-size="7" fill="#475569">API lecture · on-chain</text>
+      <rect x="622" y="208" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
+      <text x="680" y="224" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">DSP2 (v2)</text>
+      <text x="680" y="237" text-anchor="middle" font-size="7" fill="#475569">agrégateur AISP</text>
+      <rect x="622" y="256" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
+      <text x="680" y="272" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">SMTP</text>
+      <text x="680" y="285" text-anchor="middle" font-size="7" fill="#475569">alertes · invitations</text>
+
+      <!-- arrows -->
+      <line x1="164" y1="68" x2="192" y2="68" stroke="#0284C7" stroke-width="1.6" marker-end="url(#arb)"/>
+      <line x1="392" y1="130" x2="424" y2="150" stroke="#0284C7" stroke-width="1.6" marker-end="url(#arb)"/>
+      <line x1="392" y1="250" x2="424" y2="200" stroke="#6D28D9" stroke-width="1.6" marker-end="url(#ar)"/>
+      <line x1="392" y1="270" x2="424" y2="272" stroke="#6D28D9" stroke-width="1.6" marker-end="url(#ar)"/>
+      <line x1="392" y1="228" x2="608" y2="180" stroke="#B45309" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+      <text x="196" y="14" font-size="7.5" fill="#64748B">HTTPS · cookie de session</text>
+    </svg>
+    <figcaption>Figure 1 — Architecture cible. Une seule image applicative, lancée en deux rôles (web et worker), une base, et des dépendances externes toutes optionnelles.</figcaption>
+  </figure>
+
+  <h3>4.2 Frontend</h3>
+  <table class="tight">
+    <thead><tr><th style="width:22%">Brique</th><th style="width:20%">Choix</th><th>Justification et usage précis</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td><b>Next.js 15</b>, App Router</td><td>Rendu serveur des tableaux de bord (les agrégats se calculent au plus près de la base). <code>next/dynamic</code> pour le Globe et les gros graphiques.</td></tr>
+      <tr><td>Langage</td><td><b>TypeScript strict</b></td><td><code>strict</code>, <code>noUncheckedIndexedAccess</code>, <code>exactOptionalPropertyTypes</code>. Types de marque pour <code>AccountId</code>, <code>Money</code>, <code>Currency</code>.</td></tr>
+      <tr><td>Styles</td><td><b>Tailwind CSS v4</b></td><td>Configuration par variables CSS, thème clair/sombre par <code>data-theme</code>, jetons de couleur sémantiques (<code>--gain</code>, <code>--loss</code>) et non littéraux.</td></tr>
+      <tr><td>Composants</td><td><b>shadcn/ui</b></td><td>Copie dans <code>packages/ui</code> : on possède le code, pas de dépendance qui casse. Base Radix = accessibilité clavier correcte d'emblée.</td></tr>
+      <tr><td>Effets</td><td><b>Magic UI</b></td><td>Détail en §4.3. Règle : jamais d'animation sur un chiffre financier en cours de lecture ; respect de <code>prefers-reduced-motion</code>.</td></tr>
+      <tr><td>Graphiques</td><td><b>Recharts</b> (+ visx si besoin)</td><td>Recharts pour aires, barres, camemberts via <code>shadcn/charts</code>. Sous-échantillonnage LTTB au-delà de 2 000 points.</td></tr>
+      <tr><td>Globe</td><td><b>cobe</b> (Magic UI Globe)</td><td>WebGL léger (~5 ko), tourne à 60 fps sans three.js. Voir §12.2.</td></tr>
+      <tr><td>Tableaux</td><td><b>TanStack Table v8</b></td><td>Tri, filtres, colonnes redimensionnables, virtualisation via TanStack Virtual au-delà de 500 lignes.</td></tr>
+      <tr><td>Données client</td><td><b>TanStack Query v5</b></td><td>Uniquement pour l'interactif (filtres, rafraîchissement). Le premier rendu vient des RSC : pas de spinner à l'ouverture.</td></tr>
+      <tr><td>État d'URL</td><td><b>nuqs</b></td><td>Période, devise, portefeuille sélectionné vivent dans l'URL → partageable, revenir en arrière fonctionne.</td></tr>
+      <tr><td>Formulaires</td><td><b>react-hook-form + Zod</b></td><td>Le <em>même</em> schéma Zod valide côté client et côté serveur — source unique de vérité.</td></tr>
+      <tr><td>i18n</td><td><b>next-intl</b></td><td>FR + EN au lancement. Formats via <code>Intl.NumberFormat</code> : séparateurs et symboles corrects par locale.</td></tr>
+      <tr><td>Dates</td><td><b>date-fns</b> + <code>@date-fns/tz</code></td><td>Tout est stocké en UTC ; les dates comptables sont des <code>DATE</code> nues, sans fuseau — piège classique de décalage d'un jour.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 Cartographie Magic UI → écrans</h3>
+  <p>Magic UI est distribué à la manière de shadcn : on copie le composant dans le projet. Les composants
+  sont sélectionnés pour un usage précis, pas pour décorer.</p>
+  <table class="tight">
+    <thead><tr><th style="width:22%">Composant</th><th style="width:26%">Où</th><th>Rôle fonctionnel</th></tr></thead>
+    <tbody>
+      <tr><td><b>Globe</b> <span class="tag t-p0">clé</span></td><td>Dashboard · page Allocation</td><td>Exposition géographique après transparisation des ETF. Marqueurs dimensionnés par poids, survol = pays + montant + %. Fallback tableau obligatoire.</td></tr>
+      <tr><td><b>Number Ticker</b></td><td>Patrimoine net, cartes KPI</td><td>Animation du compteur au chargement uniquement — jamais pendant une mise à jour temps réel.</td></tr>
+      <tr><td><b>Bento Grid</b></td><td>Dashboard, page d'accueil publique</td><td>Grille de cartes hétérogènes : patrimoine, allocation, globe, derniers mouvements, objectifs.</td></tr>
+      <tr><td><b>Animated Beam</b></td><td>Onboarding, page Connecteurs</td><td>Montre visuellement le flux banque → agrégateur → instance : pédagogique sur « où passent mes données ».</td></tr>
+      <tr><td><b>Border Beam / Magic Card</b></td><td>Cartes de comptes</td><td>Mise en avant discrète d'un compte sélectionné ou d'une alerte.</td></tr>
+      <tr><td><b>Animated List</b></td><td>Flux d'activité, avancement d'import</td><td>Arrivée progressive des lignes traitées pendant un import — rend l'attente lisible.</td></tr>
+      <tr><td><b>Marquee</b></td><td>Page d'accueil publique</td><td>Défilé des banques et courtiers supportés à l'import.</td></tr>
+      <tr><td><b>Blur Fade</b></td><td>Transitions de section</td><td>Apparition douce, désactivée si <code>prefers-reduced-motion</code>.</td></tr>
+      <tr><td><b>Animated Circular Progress</b></td><td>Objectifs, avancement FIRE</td><td>Progression vers un objectif d'épargne.</td></tr>
+      <tr><td><b>File Tree</b></td><td>Sélecteur de portefeuilles</td><td>Représentation de l'arbre portefeuille → sous-portefeuille → comptes.</td></tr>
+      <tr><td><b>Terminal</b> · <b>Retro Grid</b> · <b>Particles</b></td><td>Page d'accueil / docs</td><td>Démonstration du <code>docker compose up</code> et habillage. Zéro usage dans l'application connectée.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-warn">
+    <div class="box-t">Garde-fou UI</div>
+    <p>Un outil de patrimoine se lit, il ne se regarde pas. Règle de revue : <strong>aucun composant animé
+    dans un écran de saisie ou de rapprochement</strong>. Les effets Magic UI vivent sur la page d'accueil,
+    l'onboarding et le dashboard « vitrine ». Budget de performance : <strong>INP &lt; 200 ms</strong> sur la
+    page Transactions avec 50 000 lignes.</p>
+  </div>
+
+  <h3>4.4 Backend — où mettre quoi</h3>
+  <table class="tight">
+    <thead><tr><th style="width:24%">Besoin</th><th style="width:24%">Mécanisme</th><th>Règle</th></tr></thead>
+    <tbody>
+      <tr><td>Afficher une page</td><td>Server Component</td><td>Appelle directement <code>core/services</code>. Aucun <code>fetch</code> vers sa propre API — c'est un aller-retour réseau inutile.</td></tr>
+      <tr><td>Créer / modifier depuis l'UI</td><td>Server Action</td><td>Validation Zod → <code>assertCan(ctx, 'transaction:create', accountId)</code> → appel service → <code>revalidateTag</code>. 20 lignes maximum.</td></tr>
+      <tr><td>API pour scripts, mobile, agents</td><td>Route Handler <code>app/api/v1/**</code></td><td>Jeton d'API porteur, portées (<code>read:accounts</code>, <code>write:transactions</code>), limitation de débit, OpenAPI généré depuis les schémas Zod.</td></tr>
+      <tr><td>Rappel d'un agrégateur</td><td>Route Handler <code>app/api/webhooks/**</code></td><td>Vérification de signature, journalisation brute avant traitement, idempotence par identifiant d'événement.</td></tr>
+      <tr><td>Progression longue durée</td><td>SSE via Route Handler</td><td>Avancement d'import et de synchro. Pas de WebSocket : trop d'infra pour le gain.</td></tr>
+      <tr><td>Travail lourd</td><td>Job pg-boss</td><td>Tout ce qui dépasse 2 s ou touche le réseau externe. Une requête HTTP ne doit jamais attendre une API tierce.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.5 Monorepo</h3>
+  <pre><span class="c"># pnpm workspaces + Turborepo</span>
+altitude/
+├─ apps/
+│  ├─ <span class="k">web</span>/                 <span class="c"># Next.js 15 — UI + Route Handlers + Server Actions</span>
+│  ├─ <span class="k">worker</span>/              <span class="c"># Node — pg-boss, cron, aucune dépendance à Next</span>
+│  └─ <span class="k">docs</span>/                <span class="c"># Fumadocs — documentation publique</span>
+├─ packages/
+│  ├─ <span class="k">db</span>/                  <span class="c"># schéma Drizzle, migrations SQL, seeds, RLS</span>
+│  ├─ <span class="k">core</span>/                <span class="c"># domaine pur : grand livre, valorisation, perf, autorisation</span>
+│  ├─ <span class="k">importers</span>/           <span class="c"># CSV/XLSX/OFX/QIF/CAMT + presets + jeux de test</span>
+│  ├─ <span class="k">connectors</span>/          <span class="c"># interface Connector + implémentations optionnelles</span>
+│  ├─ <span class="k">market-data</span>/         <span class="c"># fournisseurs de cotations et FX, cache, repli</span>
+│  ├─ <span class="k">ui</span>/                  <span class="c"># shadcn + Magic UI + graphiques + jetons de design</span>
+│  └─ <span class="k">shared</span>/              <span class="c"># types, Zod, Money/Decimal, erreurs, constantes</span>
+├─ tools/
+│  ├─ <span class="k">cli</span>/                 <span class="c"># altitude backup|restore|recompute|import|doctor</span>
+│  └─ <span class="k">fixtures</span>/            <span class="c"># générateur de données de démonstration</span>
+├─ docker/                   <span class="c"># Dockerfile, compose, entrypoint, healthcheck</span>
+└─ docs/adr/                 <span class="c"># décisions d'architecture</span></pre>
+
+  <div class="box box-dec">
+    <div class="box-t">Décision — <code>packages/core</code> ne dépend ni de Next, ni de React, ni de HTTP</div>
+    <p>C'est la règle qui garde le projet testable et durable : le domaine se teste en millisecondes avec
+    Vitest, sans navigateur ni serveur. Elle est vérifiable automatiquement avec <code>dependency-cruiser</code>
+    en CI. Si demain Next.js change de paradigme, on réécrit <code>apps/web</code>, pas la logique métier.</p>
+  </div>
+
+  <h3>4.6 Briques transverses</h3>
+  <div class="kv">
+    <dt>Journalisation</dt><dd><code>pino</code> en JSON, identifiant de corrélation par requête, <strong>rédaction automatique</strong> des montants, IBAN et jetons en niveau <code>info</code>.</dd>
+    <dt>Erreurs</dt><dd>Sentry auto-hébergeable ou GlitchTip, <strong>désactivé par défaut</strong>. Aucune donnée financière dans le contexte d'erreur.</dd>
+    <dt>Métriques</dt><dd>Point <code>/api/health</code> (liveness/readiness) + <code>/metrics</code> Prometheus optionnel, protégé par jeton.</dd>
+    <dt>Courriel</dt><dd><code>nodemailer</code> + SMTP fourni par l'hébergeur. Gabarits React Email. Aucun envoi si SMTP non configuré (dégradation silencieuse, pas d'erreur).</dd>
+    <dt>Fichiers</dt><dd>Interface <code>Storage</code> à deux implémentations : disque local (défaut) et S3 compatible. Fichiers d'import conservés 30 jours par défaut, configurable.</dd>
+    <dt>Recherche</dt><dd><code>pg_trgm</code> + <code>unaccent</code> sur libellés de transactions et noms d'instruments. Aucun moteur externe.</dd>
+    <dt>Chiffrement</dt><dd>AES-256-GCM applicatif pour les secrets de connecteurs, clé maître dans <code>ALTITUDE_ENCRYPTION_KEY</code> (secret Docker), chiffrement enveloppe avec clé par enregistrement. Voir §7.8.</dd>
+  </div>
+</section>

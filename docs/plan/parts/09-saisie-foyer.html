@@ -1,0 +1,197 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <h2>Saisie manuelle &amp; UX transactions</h2>
+    <div class="sec-kicker">Ingestion</div>
+  </div>
+
+  <p class="lede">Objectif mesurable : <strong>saisir un achat de titre en moins de 10 secondes, au clavier,
+  sans souris</strong>. Si c'est plus lent qu'une ligne d'Excel, l'utilisateur retourne à Excel.</p>
+
+  <h3>9.1 Les quatre modes de saisie</h3>
+  <table class="tight">
+    <thead><tr><th style="width:20%">Mode</th><th style="width:14%">Déclencheur</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ajout rapide</b></td><td><code>Ctrl/⌘ + K</code></td><td>Palette de commandes universelle. On tape « achat », on choisit le compte, l'instrument, la quantité, le prix. Tabulation entre les champs, <code>Entrée</code> valide, <code>Ctrl+Entrée</code> valide et rouvre pour la ligne suivante.</td></tr>
+      <tr><td><b>Formulaire guidé</b></td><td>Bouton « Nouvelle opération »</td><td>Un formulaire par type d'opération, qui n'affiche que les champs pertinents. Un dividende demande la retenue à la source ; un achat ne la demande pas.</td></tr>
+      <tr><td><b>Grille type tableur</b></td><td>Onglet « Saisie en lot »</td><td>Pour rattraper un historique : collage direct depuis Excel, validation ligne par ligne, erreurs signalées en place. C'est le mode de migration.</td></tr>
+      <tr><td><b>Modèles &amp; récurrences</b></td><td>Compte ou transaction</td><td>« Versement programmé DCA 300 € sur CW8, le 5 du mois » : génère les écritures d'avance, l'utilisateur confirme. Fait gagner l'essentiel du temps de saisie mensuelle.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.2 Recettes d'écriture</h3>
+  <p>L'utilisateur ne voit jamais la partie double ; il choisit une opération, le moteur génère les lignes.</p>
+  <table class="tight">
+    <thead><tr><th style="width:24%">Opération saisie</th><th>Lignes générées</th></tr></thead>
+    <tbody>
+      <tr><td><b>Achat de titre</b><br><span style="font-size:7.4pt;color:#64748B">10 CW8 à 512,30 €, 1,95 € de frais</span></td>
+          <td><code>−5 124,95 € espèces (PEA)</code> · <code>+10 qté CW8 @ 512,30 (PEA)</code> · <code>−1,95 € frais</code> → création d'un lot</td></tr>
+      <tr><td><b>Vente</b></td><td>Symétrique, plus consommation de lots et matérialisation de la plus-value dans <code>lot_closures</code>.</td></tr>
+      <tr><td><b>Dividende étranger</b><br><span style="font-size:7.4pt;color:#64748B">120 $ brut, 18 $ retenue</span></td>
+          <td><code>+120 $ revenu</code> · <code>−18 $ impôt</code> · <code>+102 $ espèces</code>, avec le taux de change du jour figé sur chaque ligne</td></tr>
+      <tr><td><b>Virement interne</b></td><td>Deux lignes opposées sur deux comptes. <b>Aucun impact sur le patrimoine net</b> — c'est précisément ce que le modèle plat rate.</td></tr>
+      <tr><td><b>Échéance de prêt</b></td><td><code>−780 € compte courant</code> · <code>+620 € capital (réduit le passif)</code> · <code>−160 € intérêts (charge)</code>. Le capital restant dû décroît correctement.</td></tr>
+      <tr><td><b>Réévaluation</b><br><span style="font-size:7.4pt;color:#64748B">immobilier, montre, non coté</span></td>
+          <td>Écriture spéciale <code>revaluation</code> vers un compte technique d'écarts de valorisation, pour ne pas polluer les flux réels et fausser le TWR.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.3 Détails d'ergonomie qui font la différence</h3>
+  <div class="grid2">
+    <div class="card">
+      <h5>Saisie</h5>
+      <ul>
+        <li>Recherche d'instrument par ISIN, ticker ou nom, avec les instruments déjà détenus en tête.</li>
+        <li>Montants acceptant <code>1 234,56</code> comme <code>1234.56</code>, et les expressions : <code>=12*45.3</code>.</li>
+        <li>Dates en langage naturel : « hier », « 5/3 », « lundi dernier ».</li>
+        <li>Devise pré-remplie depuis le compte, modifiable, avec taux du jour suggéré et modifiable.</li>
+        <li>Pièce jointe par glisser-déposer, y compris par collage d'une capture.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>Correction</h5>
+      <ul>
+        <li>Édition en ligne dans la table, sans quitter la page.</li>
+        <li>Actions groupées : recatégoriser, étiqueter, rattacher à un compte, supprimer.</li>
+        <li>Scission d'une transaction (une dépense de 120 € ventilée en trois catégories).</li>
+        <li>Rapprochement : marquer un solde comme vérifié à une date, et voir l'écart avec le relevé.</li>
+        <li><code>Ctrl+Z</code> global sur les 10 dernières opérations, y compris les actions groupées.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="box box-dec">
+    <div class="box-t">Décision — mode « suivi de solde » pour les comptes qu'on ne veut pas détailler</div>
+    <p>Personne ne saisira 400 lignes par an sur son livret A. Chaque compte peut donc fonctionner en
+    <strong>mode solde</strong> : on renseigne une valeur à une date, et Altitude génère l'écriture
+    d'ajustement correspondante. On garde une courbe de patrimoine juste sans imposer un travail de
+    comptable. Un compte peut passer du mode solde au mode détaillé sans perte, et le mode est affiché
+    clairement — un solde saisi n'est pas un solde calculé.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">10</div>
+    <h2>Foyer, propriétaires, portefeuilles enfants</h2>
+    <div class="sec-kicker">Produit</div>
+  </div>
+
+  <p class="lede">C'est le différenciateur le plus net face à Ghostfolio et à Finary. Il repose entièrement
+  sur la séparation <em>utilisateur ≠ propriétaire ≠ portefeuille</em> posée en §5.4.</p>
+
+  <h3>10.1 Les trois axes de découpage</h3>
+  <table class="tight">
+    <thead><tr><th style="width:18%">Axe</th><th style="width:22%">Répond à</th><th>Exemple</th></tr></thead>
+    <tbody>
+      <tr><td><b>Portefeuille</b><br><span style="font-size:7.4pt;color:#64748B">arbre ltree</span></td><td>« À quoi sert cet argent ? »</td><td><code>foyer</code> › <code>retraite</code>, <code>projet-maison</code>, <code>enfants.lea</code>, <code>sci-lecomte</code></td></tr>
+      <tr><td><b>Propriétaire</b><br><span style="font-size:7.4pt;color:#64748B">quotes-parts</span></td><td>« À qui appartient-il ? »</td><td>Marc 50 % / Léa 50 % sur le compte joint ; Léa 100 % sur son PEA ; SCI Lecomte sur le locatif</td></tr>
+      <tr><td><b>Utilisateur</b><br><span style="font-size:7.4pt;color:#64748B">rôles</span></td><td>« Qui a le droit de voir et de modifier ? »</td><td>Marc administrateur, Léa administratrice, Théo (14 ans) accès limité à son propre portefeuille</td></tr>
+    </tbody>
+  </table>
+  <p>Ces trois axes sont indépendants. Un enfant peut posséder un compte rattaché au portefeuille
+  <code>enfants.lea</code> et logé chez la même banque que ses parents, sans qu'il puisse voir leurs comptes,
+  et sans que sa part soit comptée deux fois dans le patrimoine du foyer.</p>
+
+  <h3>10.2 Portefeuilles enfants — le scénario complet</h3>
+  <div class="grid2">
+    <div class="card">
+      <h5>Ce qu'on veut permettre</h5>
+      <ul>
+        <li>Créer un propriétaire <code>kind = 'child'</code> avec une date de naissance.</li>
+        <li>Lui rattacher livret A, PEA jeune, assurance-vie ouverte à son nom, épargne offerte par les grands-parents.</li>
+        <li>Suivre les <b>versements par donateur</b> (utile pour les présents d'usage et le suivi des donations).</li>
+        <li>Une vue « enfant » simplifiée : un solde, une courbe, un objectif — sans jargon.</li>
+        <li>Un objectif daté : « 18 ans », avec projection à taux configurable.</li>
+        <li>Consolidation dans le patrimoine du foyer, mais <b>ligne séparée</b> et exclusion possible d'un clic.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>Bascule à la majorité</h5>
+      <ul>
+        <li>À 18 ans, une alerte propose de transférer la propriété.</li>
+        <li>L'enfant peut recevoir une invitation et devenir utilisateur à part entière.</li>
+        <li>Option « détacher vers un nouveau foyer » : export d'un sous-arbre complet avec son historique, importable dans une autre instance. <b>C'est la promesse de réversibilité appliquée aux personnes.</b></li>
+        <li>Aucune suppression automatique : la bascule est toujours une action humaine explicite.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>10.3 Rôles et permissions</h3>
+  <table class="tight">
+    <thead><tr>
+      <th style="width:15%">Rôle</th><th style="width:15%">Portée</th><th style="width:12%">Lecture</th>
+      <th style="width:12%">Écriture</th><th style="width:14%">Connecteurs</th><th>Cas d'usage</th></tr></thead>
+    <tbody>
+      <tr><td><b>Propriétaire</b></td><td>Foyer entier</td><td>Tout</td><td>Tout</td><td>Oui</td><td>Le créateur de l'instance. Seul à pouvoir supprimer le foyer.</td></tr>
+      <tr><td><b>Administrateur</b></td><td>Foyer entier</td><td>Tout</td><td>Tout</td><td>Oui</td><td>Le conjoint.</td></tr>
+      <tr><td><b>Contributeur</b></td><td>Portefeuilles assignés</td><td>Assignés</td><td>Assignés</td><td>Non</td><td>Un membre qui gère sa poche sans voir le reste.</td></tr>
+      <tr><td><b>Observateur</b></td><td>Portefeuilles assignés</td><td>Assignés</td><td>Non</td><td>Non</td><td>Conseiller, comptable, parent qui surveille.</td></tr>
+      <tr><td><b>Enfant</b></td><td>Son sous-arbre</td><td>Le sien</td><td>Non</td><td>Non</td><td>Vue simplifiée, montants affichables en pourcentage si les parents le souhaitent.</td></tr>
+    </tbody>
+  </table>
+  <p>Implémentation : une fonction unique <code>can(actor, action, resource)</code> dans
+  <code>packages/core/auth</code>, appelée par <strong>toutes</strong> les Server Actions et Route Handlers.
+  Les permissions ne sont jamais évaluées dans un composant : un test de couverture vérifie que chaque point
+  d'entrée mutant passe par <code>assertCan</code>.</p>
+
+  <h3>10.4 Partage en lecture seule</h3>
+  <ul>
+    <li><b>Lien de partage</b> avec expiration, mot de passe optionnel, portée limitée à un portefeuille.</li>
+    <li><b>Mode pourcentage</b> : allocation et performance visibles, montants absolus masqués. Idéal pour partager sa stratégie publiquement sans exposer son patrimoine.</li>
+    <li><b>Instantané figé</b> : le lien pointe une photographie à une date, pas les données vivantes.</li>
+    <li>Journalisation des accès, révocation immédiate, en-tête <code>noindex</code> systématique.</li>
+  </ul>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">11</div>
+    <h2>Modules patrimoniaux</h2>
+    <div class="sec-kicker">Produit</div>
+  </div>
+
+  <p class="lede">Chaque type d'actif est un module : un schéma d'attributs, une stratégie de valorisation,
+  quelques écrans. Ajouter un type ne touche jamais au grand livre.</p>
+
+  <h3>11.1 Immobilier</h3>
+  <div class="kv">
+    <dt>Attributs</dt><dd>Adresse géocodée, surface, type, date et prix d'acquisition, frais de notaire, travaux capitalisés, DPE, taxe foncière.</dd>
+    <dt>Valorisation</dt><dd>Trois modes : (1) manuelle datée — le défaut honnête ; (2) indexation sur un indice de prix configurable ; (3) estimation assistée par les données publiques <strong>DVF</strong> (Demandes de valeurs foncières, données ouvertes) sur des ventes comparables du secteur. Le mode utilisé est toujours affiché.</dd>
+    <dt>Locatif</dt><dd>Baux, loyers, charges, vacance, travaux. Calculs : rendement brut, rendement net, cash-flow mensuel, TRI incluant l'effet de levier du crédit.</dd>
+    <dt>Fiscalité</dt><dd>Régime (micro-foncier, réel, LMNP), amortissements en LMNP. Module fiscal séparé, par pays — voir §16.4.</dd>
+    <dt>Sur le globe</dt><dd>Exposition 100 % au pays du bien, marqueur positionné sur les coordonnées réelles.</dd>
+  </div>
+
+  <h3>11.2 Crédits et passifs</h3>
+  <ul>
+    <li>Tableau d'amortissement généré (mensualité constante, taux fixe ou variable, différé, assurance emprunteur).</li>
+    <li>Le capital restant dû est un <strong>compte de passif</strong> dans le grand livre : le patrimoine net est juste par construction, sans calcul parallèle.</li>
+    <li>Remboursements anticipés, renégociation, rachat : gérés comme des transactions, l'historique reste cohérent.</li>
+    <li>Indicateurs : coût total du crédit, part d'intérêts déjà payée, LTV, capacité de remboursement.</li>
+    <li>Prêts entre particuliers et créances (compte courant d'associé, prêt familial) : mêmes mécanismes.</li>
+  </ul>
+
+  <h3>11.3 Crypto</h3>
+  <table class="tight">
+    <thead><tr><th style="width:24%">Source</th><th style="width:16%">Sûreté</th><th>Traitement</th></tr></thead>
+    <tbody>
+      <tr><td>Clé API d'exchange</td><td><span class="tag t-yes">Lecture seule</span></td><td>Refus explicite d'une clé disposant de droits de retrait ou de trading, vérifié à l'enregistrement. Restriction par IP recommandée dans la documentation.</td></tr>
+      <tr><td>Adresse publique / xpub</td><td><span class="tag t-yes">Sans secret</span></td><td>Lecture d'une donnée publique. Support BTC (xpub/zpub avec dérivation locale), EVM, Solana. Aucune clé privée n'entre jamais dans Altitude — c'est écrit en clair dans l'interface.</td></tr>
+      <tr><td>Import CSV</td><td><span class="tag t-yes">Total</span></td><td>Presets pour les exports des principaux exchanges.</td></tr>
+    </tbody>
+  </table>
+  <p>Spécificités traitées : staking et récompenses (revenu au cours du jour), airdrops, frais de gaz, swaps
+  (deux lignes + une opération de change), stablecoins traités comme des devises et non comme des titres,
+  et calcul de plus-value en FIFO ou selon la méthode retenue par compte.</p>
+
+  <h3>11.4 Autres actifs</h3>
+  <div class="grid3">
+    <div class="card"><h5>Non coté / private equity</h5><p>Instrument personnalisé, valorisation manuelle datée, appels de fonds et distributions, TRI depuis l'origine, engagements non appelés suivis séparément.</p></div>
+    <div class="card"><h5>Objets de valeur</h5><p>Montres, art, véhicules, vin. Photo, provenance, assurance, valorisation manuelle ou indexée. Décote automatique optionnelle pour les véhicules.</p></div>
+    <div class="card"><h5>Actionnariat salarié</h5><p>Stock-options, actions gratuites, BSPCE : calendrier d'acquisition, valorisation à la dernière valeur connue, prix d'exercice, part acquise vs non acquise clairement distinguée.</p></div>
+    <div class="card"><h5>Épargne salariale</h5><p>PEE, PERCO : abondement, blocage, cas de déblocage anticipé. Alimentation par import du relevé annuel.</p></div>
+    <div class="card"><h5>SCPI &amp; pierre-papier</h5><p>Parts, prix de retrait, valeur de reconstitution, revenus trimestriels, délai de jouissance. Instrument personnalisé + valorisation périodique.</p></div>
+    <div class="card"><h5>Métaux &amp; matières</h5><p>Or physique, argent. Poids et titrage, cours au gramme, prime sur les pièces.</p></div>
+  </div>
+</section>
