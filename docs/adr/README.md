@@ -13,6 +13,7 @@ reasoning that led there stays readable.
 | ------------------------------------------------ | -------------------------------------- | ---------- |
 | [0001](0001-postgresql-as-the-only-datastore.md) | PostgreSQL as the only datastore       | 2026-08-28 |
 | [0002](0002-double-entry-ledger.md)              | Double-entry ledger, derived positions | 2026-08-28 |
+| [0009](0009-next-16-and-typescript-6.md)         | Next.js 16 and TypeScript 6            | 2026-08-29 |
 
 ## Reserved
 

@@ -36,7 +36,7 @@ export from day one. No lock-in, no telemetry, no outbound call you did not conf
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · PostgreSQL 17 · Drizzle ORM · pg-boss ·
+Next.js 16 (App Router) · TypeScript · PostgreSQL 17 · Drizzle ORM · pg-boss ·
 Better Auth · Tailwind v4 · shadcn/ui + Magic UI · Docker Compose.
 
 ## Development plan

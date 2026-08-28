@@ -26,7 +26,7 @@
       <text x="89" y="109" text-anchor="middle" font-size="8" fill="#475569">PWA · offline shell</text>
 
       <rect x="196" y="20" width="196" height="152" rx="7" fill="#E0F2FE" stroke="#7DD3FC"/>
-      <text x="294" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#075985">Next.js 15 — App Router</text>
+      <text x="294" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#075985">Next.js 16 — App Router</text>
       <rect x="208" y="50" width="172" height="26" rx="4" fill="#fff" stroke="#BAE6FD"/>
       <text x="294" y="67" text-anchor="middle" font-size="8" fill="#0B1220">Server Components · pages</text>
       <rect x="208" y="80" width="82" height="26" rx="4" fill="#fff" stroke="#BAE6FD"/>
@@ -96,7 +96,7 @@
   <table class="tight">
     <thead><tr><th style="width:22%">Concern</th><th style="width:20%">Choice</th><th>Rationale and precise usage</th></tr></thead>
     <tbody>
-      <tr><td>Framework</td><td><b>Next.js 15</b>, App Router</td><td>Server-render the dashboards (aggregates are computed closest to the database). <code>next/dynamic</code> for the Globe and heavy charts.</td></tr>
+      <tr><td>Framework</td><td><b>Next.js 16</b>, App Router</td><td>Server-render the dashboards (aggregates are computed closest to the database). <code>next/dynamic</code> for the Globe and heavy charts.</td></tr>
       <tr><td>Language</td><td><b>TypeScript strict</b></td><td><code>strict</code>, <code>noUncheckedIndexedAccess</code>, <code>exactOptionalPropertyTypes</code>. Branded types for <code>AccountId</code>, <code>Money</code>, <code>Currency</code>.</td></tr>
       <tr><td>Styling</td><td><b>Tailwind CSS v4</b></td><td>CSS-variable configuration, light/dark via <code>data-theme</code>, semantic colour tokens (<code>--gain</code>, <code>--loss</code>) rather than literal ones.</td></tr>
       <tr><td>Components</td><td><b>shadcn/ui</b></td><td>Copied into <code>packages/ui</code>: we own the code, nothing breaks under us. The Radix base gives correct keyboard accessibility from the start.</td></tr>
@@ -156,7 +156,7 @@
   <pre><span class="c"># pnpm workspaces + Turborepo</span>
 altitude/
 ├─ apps/
-│  ├─ <span class="k">web</span>/                 <span class="c"># Next.js 15 — UI + Route Handlers + Server Actions</span>
+│  ├─ <span class="k">web</span>/                 <span class="c"># Next.js 16 — UI + Route Handlers + Server Actions</span>
 │  ├─ <span class="k">worker</span>/              <span class="c"># Node — pg-boss, cron, no dependency on Next</span>
 │  └─ <span class="k">docs</span>/                <span class="c"># Fumadocs — public documentation</span>
 ├─ packages/
