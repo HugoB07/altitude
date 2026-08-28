@@ -5,20 +5,27 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const CHROME = process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME =
+  process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 // resolve() accepts relative, Windows and POSIX paths alike.
 const HTML = resolve(process.argv[2] ?? 'altitude-plan.html');
 const OUT = resolve(process.argv[3] ?? 'Altitude-Dev-Plan.pdf');
 const PORT = 9333;
 
 const profile = mkdtempSync(join(tmpdir(), 'altitude-chrome-'));
-const chrome = spawn(CHROME, [
-  '--headless=new',
-  `--remote-debugging-port=${PORT}`,
-  `--user-data-dir=${profile}`,
-  '--no-first-run', '--no-default-browser-check', '--disable-gpu',
-  pathToFileURL(HTML).href,
-], { stdio: 'ignore' });
+const chrome = spawn(
+  CHROME,
+  [
+    '--headless=new',
+    `--remote-debugging-port=${PORT}`,
+    `--user-data-dir=${profile}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-gpu',
+    pathToFileURL(HTML).href,
+  ],
+  { stdio: 'ignore' },
+);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -29,7 +36,9 @@ async function findPage() {
       const targets = await res.json();
       const page = targets.find((t) => t.type === 'page' && t.url.startsWith('file:'));
       if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
-    } catch { /* Chrome not ready yet */ }
+    } catch {
+      /* Chrome not ready yet */
+    }
     await sleep(250);
   }
   throw new Error('Chrome DevTools endpoint not found');
@@ -37,7 +46,10 @@ async function findPage() {
 
 const wsUrl = await findPage();
 const ws = new WebSocket(wsUrl);
-await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+await new Promise((res, rej) => {
+  ws.onopen = res;
+  ws.onerror = rej;
+});
 
 let id = 0;
 const pending = new Map();
@@ -70,7 +82,8 @@ for (let i = 0; i < 80; i++) {
 }
 await sleep(1200); // settle final layout
 
-const style = 'font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:7px;color:#94A3B8;width:100%;padding:0 14mm;-webkit-print-color-adjust:exact;';
+const style =
+  'font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:7px;color:#94A3B8;width:100%;padding:0 14mm;-webkit-print-color-adjust:exact;';
 
 const { data } = await send('Page.printToPDF', {
   printBackground: true,

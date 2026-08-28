@@ -5,13 +5,13 @@ to PDF through headless Chrome.
 
 ## Layout
 
-| Path | Role |
-|------|------|
-| `parts/*.html` | Tracked sources. `00-head.html` carries the CSS, the cover and the table of contents; the rest are the numbered sections. |
-| `build-html.mjs` | Concatenates `parts/` into a single HTML file, in natural numeric order. |
-| `build-pdf.mjs` | Renders that HTML to PDF through headless Chrome driven over CDP. No npm dependencies. |
-| `altitude-plan.html` | Generated concatenation — **not tracked**. |
-| `*.pdf` | Generated output — **not tracked**. |
+| Path                 | Role                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `parts/*.html`       | Tracked sources. `00-head.html` carries the CSS, the cover and the table of contents; the rest are the numbered sections. |
+| `build-html.mjs`     | Concatenates `parts/` into a single HTML file, in natural numeric order.                                                  |
+| `build-pdf.mjs`      | Renders that HTML to PDF through headless Chrome driven over CDP. No npm dependencies.                                    |
+| `altitude-plan.html` | Generated concatenation — **not tracked**.                                                                                |
+| `*.pdf`              | Generated output — **not tracked**.                                                                                       |
 
 Only the sources are versioned. Both generated files are rebuilt on demand, so they
 stay out of git history rather than landing as a 3 MB binary blob on every edit.

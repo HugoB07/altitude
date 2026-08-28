@@ -88,7 +88,7 @@ Before attaching any export file:
 - [ ] Replace all amounts with invented ones. **Keep the format** — the decimal comma, the
       thousands separator, the parentheses for negatives — because the format is exactly
       what the parser is being tested on. The values themselves are irrelevant.
-- [ ] Replace counterparty and merchant names, but keep their *shape*: if the bank writes
+- [ ] Replace counterparty and merchant names, but keep their _shape_: if the bank writes
       `CARTE 12/03 CARREFOUR MARKET 3388`, keep the prefix, the embedded date and the
       trailing digits, because the preset's rules key off that structure.
 - [ ] Remove your name, address, phone number, customer number and adviser's name.
