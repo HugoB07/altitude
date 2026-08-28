@@ -1,0 +1,103 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <h2>Vision, état de l'art, positionnement</h2>
+    <div class="sec-kicker">Produit</div>
+  </div>
+
+  <h3>2.1 Le problème que résout Altitude</h3>
+  <p>Finary a prouvé qu'il existe une demande forte pour une vue unifiée du patrimoine — bancaire, boursier,
+  crypto, immobilier — plutôt qu'un énième outil de budget. Ses limites structurelles ouvrent l'espace :</p>
+
+  <table class="tight">
+    <thead><tr><th style="width:26%">Limite constatée</th><th style="width:37%">Conséquence pour l'utilisateur</th><th style="width:37%">Réponse d'Altitude</th></tr></thead>
+    <tbody>
+      <tr><td><b>Données chez un tiers</b></td><td>L'intégralité du patrimoine, des IBAN et des positions transite et réside chez un prestataire.</td><td>Auto-hébergement complet, base incluse. Aucun appel sortant hors fournisseurs explicitement configurés.</td></tr>
+      <tr><td><b>Modèle payant par paliers</b></td><td>Les fonctionnalités d'analyse (allocation fine, performance) sont derrière un abonnement.</td><td>Tout est inclus, sans limite d'actifs ni de comptes.</td></tr>
+      <tr><td><b>Couverture d'actifs figée</b></td><td>Impossible de modéliser une SCI, un pacte Dutreil, des parts de groupement forestier, une montre.</td><td>Types de comptes extensibles + attributs JSONB validés par schéma, plugins d'actifs.</td></tr>
+      <tr><td><b>Mono-utilisateur</b></td><td>Un couple gère mal l'indivision ; les comptes des enfants sont hors modèle.</td><td>Foyer, propriétaires multiples, quotes-parts, portefeuilles enfants (§10).</td></tr>
+      <tr><td><b>Export limité</b></td><td>Effet de verrouillage : sortir ses données est pénible.</td><td>Export intégral (JSON canonique + CSV par table) et import du même format. Objectif : réversibilité totale.</td></tr>
+      <tr><td><b>Boîte noire de calcul</b></td><td>On ne sait pas si la performance affichée est un TWR, un TRI ou une variation brute.</td><td>Méthode de calcul nommée, documentée, testée contre des références publiques (§6.3).</td></tr>
+    </tbody>
+  </table>
+
+  <h3>2.2 État de l'art open source — ce qu'on emprunte, ce qu'on évite</h3>
+  <p>Aucun projet existant ne couvre à la fois le patrimoine <em>et</em> le multi-propriétaire <em>et</em>
+  l'immobilier. Chacun apporte une leçon.</p>
+
+  <table class="tight">
+    <thead><tr><th style="width:16%">Projet</th><th style="width:16%">Stack / licence</th><th style="width:24%">Point fort à emprunter</th><th style="width:44%">Limite qui laisse la place</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ghostfolio</b></td><td>Angular + NestJS + Prisma + Postgres + Redis, AGPL</td><td>Le concurrent le plus proche : suivi de portefeuille titres/crypto, dashboards soignés, self-host Docker.</td><td>Centré titres : pas de partie double, immobilier et crédits marginaux, pas de foyer multi-propriétaires, import limité.</td></tr>
+      <tr><td><b>Firefly III</b></td><td>PHP / Laravel, AGPL</td><td>Référence de la <em>partie double</em> grand public : règles, budgets, récurrences, multi-devises solide, API mûre.</td><td>Orienté budget et trésorerie : pas de positions titres, pas de valorisation de marché, pas d'allocation.</td></tr>
+      <tr><td><b>Actual Budget</b></td><td>JS local-first, sync CRDT, MIT</td><td>Modèle local-first et synchronisation chiffrée : excellente inspiration pour la confidentialité et l'offline.</td><td>Enveloppes budgétaires uniquement, pas de patrimoine.</td></tr>
+      <tr><td><b>Sure</b> <span class="tag t-part">fork communautaire</span></td><td>Ruby on Rails, AGPL</td><td>Fork communautaire de <code>maybe-finance/maybe</code>, archivé en juillet 2025 ; couvre budget + patrimoine, self-host Docker.</td><td>Écosystème Rails (moins accessible à la communauté JS visée), agrégation historiquement dépendante d'un fournisseur payant.</td></tr>
+      <tr><td><b>Kresus</b></td><td>Node + <code>woob</code>, AGPL</td><td>Le précédent français : agrégation bancaire auto-hébergée via scraping.</td><td>Démontre justement la fragilité du scraping : casse à chaque refonte de site bancaire, friction 2FA. Voir §7.5.</td></tr>
+      <tr><td><b>Portfolio Performance</b></td><td>Java desktop, GPL</td><td><em>La</em> référence de calcul : TWR, TRI, Modified Dietz, gestion des lots. À utiliser comme oracle de test.</td><td>Application de bureau mono-poste, courbe d'apprentissage forte, pas de web.</td></tr>
+      <tr><td><b>Beancount / hledger</b></td><td>Texte brut, double entrée</td><td>Rigueur du modèle : invariants, immuabilité, réversibilité. Inspire directement le schéma §5.</td><td>Réservé aux utilisateurs techniques, aucune interface grand public.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-dec">
+    <div class="box-t">Décision — positionnement</div>
+    <p>Altitude = <strong>la rigueur comptable de Firefly III</strong> + <strong>la valorisation de marché de
+    Ghostfolio</strong> + <strong>l'exactitude de calcul de Portfolio Performance</strong>, dans une
+    interface web moderne, avec deux ajouts qu'aucun ne propose : le <strong>foyer multi-propriétaires avec
+    portefeuilles enfants</strong> et les <strong>enveloppes françaises</strong> (PEA, assurance-vie, PER)
+    modélisées correctement.</p>
+  </div>
+
+  <h3>2.3 Personas et travaux à accomplir</h3>
+  <div class="grid2">
+    <div class="card">
+      <h5>Camille — l'investisseur méthodique (cible primaire)</h5>
+      <p>32 ans, tech, 180 k€ répartis sur PEA, CTO, AV, livrets, 3 exchanges crypto. Tient un Excel depuis
+      5 ans qu'elle ne supporte plus.</p>
+      <ul>
+        <li>« Migrer mon Excel sans ressaisir 4 ans d'historique. »</li>
+        <li>« Connaître ma vraie performance nette de frais. »</li>
+        <li>« Voir mon exposition US vs Europe vs émergents en transparisant mes ETF. »</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>Marc &amp; Léa — le foyer</h5>
+      <p>Couple, deux enfants, RP avec crédit, un locatif en SCI, comptes séparés + joint, livrets A des enfants.</p>
+      <ul>
+        <li>« Voir le patrimoine du foyer et celui de chacun. »</li>
+        <li>« Suivre les livrets des enfants séparément, sans qu'ils voient nos comptes. »</li>
+        <li>« Savoir ce que l'immobilier pèse vraiment, net de crédit. »</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>Idriss — l'auto-hébergeur</h5>
+      <p>Homelab, Proxmox, Traefik. Refuse par principe qu'un tiers voie ses finances.</p>
+      <ul>
+        <li>« Un compose qui marche du premier coup, sur arm64. »</li>
+        <li>« Des sauvegardes que je peux vérifier et restaurer. »</li>
+        <li>« Zéro télémétrie, zéro appel sortant non consenti. »</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>Sofia — la contributrice</h5>
+      <p>Dev front, utilise l'outil, veut ajouter le preset d'import de sa banque espagnole.</p>
+      <ul>
+        <li>« Ajouter un preset = un fichier JSON + un test, pas une refonte. »</li>
+        <li>« Lancer le projet en local en moins de 10 minutes. »</li>
+        <li>« Comprendre le modèle de données sans lire tout le code. »</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>2.4 Principes directeurs</h3>
+  <table class="tight">
+    <thead><tr><th style="width:24%">Principe</th><th>Ce que ça implique concrètement dans le code</th></tr></thead>
+    <tbody>
+      <tr><td><b>Tes données t'appartiennent</b></td><td>Export intégral réimportable depuis le jour 1. Aucun champ calculé qui ne soit pas reconstructible. La suppression de compte purge réellement.</td></tr>
+      <tr><td><b>Hors-ligne par défaut</b></td><td>L'application est pleinement fonctionnelle sans accès Internet, hors rafraîchissement des cotations. Aucune police, aucun script, aucune icône chargés depuis un CDN tiers.</td></tr>
+      <tr><td><b>Exactitude avant élégance</b></td><td>Un chiffre faux est pire que pas de chiffre. Chaque agrégat porte sa méthode et sa date d'arrêté. Les valeurs estimées sont visuellement distinctes des valeurs constatées.</td></tr>
+      <tr><td><b>Le grand livre est immuable</b></td><td>On ne modifie pas une écriture passée : on la contrepasse. Le journal d'audit est en ajout seul. C'est ce qui rend un import annulable.</td></tr>
+      <tr><td><b>Extension sans fork</b></td><td>Types d'actifs, presets d'import, fournisseurs de prix et connecteurs sont des <em>interfaces</em> déclarées, pas des <code>switch</code> dans le cœur.</td></tr>
+      <tr><td><b>La saisie manuelle est un citoyen de première classe</b></td><td>Elle n'est pas le mode dégradé de la synchro : c'est le mode de référence. Elle doit être plus rapide qu'une ligne Excel.</td></tr>
+    </tbody>
+  </table>
+</section>

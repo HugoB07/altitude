@@ -1,0 +1,263 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">17</div>
+    <h2>Roadmap par phases</h2>
+    <div class="sec-kicker">Projet</div>
+  </div>
+
+  <p class="lede">Durées estimées pour <strong>un développeur à temps plein</strong>. Doubler pour un projet
+  de soirées et de week-ends. Chaque phase se termine par un critère de sortie <em>vérifiable</em> — pas par
+  un sentiment d'avancement.</p>
+
+  <table class="tight">
+    <thead><tr><th style="width:5%">Ph.</th><th style="width:22%">Contenu</th><th style="width:9%">Durée</th><th style="width:30%">Livrables</th><th>Critère de sortie</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>0</b></td>
+        <td><b>Fondations</b><br><span style="font-size:7.4pt;color:#64748B">socle technique</span></td>
+        <td>2 sem.</td>
+        <td>Monorepo, Docker Compose, CI, Better Auth, schéma v1, migrations, seeds, shadcn + jetons de design</td>
+        <td><code>docker compose up</code> donne une page connectée avec un compte de démonstration.</td>
+      </tr>
+      <tr>
+        <td><b>1</b></td>
+        <td><b>Grand livre</b><br><span style="font-size:7.4pt;color:#64748B">le cœur</span></td>
+        <td>3 sem.</td>
+        <td>Comptes, transactions, entries, invariant SQL, recettes d'écriture, saisie rapide, table de transactions, <code>daily_balances</code>, courbe de patrimoine</td>
+        <td>Tests de propriétés verts ; saisie de 100 transactions manuelles avec un patrimoine juste au centime.</td>
+      </tr>
+      <tr>
+        <td><b>2</b></td>
+        <td><b>Import</b><br><span style="font-size:7.4pt;color:#64748B">le remplaçant de la synchro</span></td>
+        <td>3 sem.</td>
+        <td>Pipeline complet, CSV + XLSX + OFX, écran de mapping, presets FR, déduplication, annulation, règles</td>
+        <td>Import d'un vrai export bancaire de 3 ans, sans intervention manuelle, résultat rapproché au relevé.</td>
+      </tr>
+      <tr>
+        <td><b>3</b></td>
+        <td><b>Marché</b><br><span style="font-size:7.4pt;color:#64748B">valorisation</span></td>
+        <td>4 sem.</td>
+        <td>Instruments, cotations, FX BCE, positions, lots, PMP/FIFO, TWR, TRI, allocation, <b>le Globe</b></td>
+        <td>Scénarios oracle conformes à 10⁻⁶ ; globe affichant une exposition transparisée cohérente.</td>
+      </tr>
+      <tr>
+        <td><b>4</b></td>
+        <td><b>Foyer</b><br><span style="font-size:7.4pt;color:#64748B">le différenciateur</span></td>
+        <td>3 sem.</td>
+        <td>Arbre ltree, propriétaires, quotes-parts, rôles, RLS, portefeuilles enfants, partage lecture seule</td>
+        <td>Tests d'accès croisés tous rouges (= bloqués) ; un enfant ne voit que son sous-arbre.</td>
+      </tr>
+      <tr>
+        <td><b>5</b></td>
+        <td><b>Actifs réels</b></td>
+        <td>4 sem.</td>
+        <td>Immobilier, crédits amortissables, locatif, crypto (API lecture seule + on-chain), objets, non coté</td>
+        <td>Un bien avec crédit affiche un patrimoine net correct ; un portefeuille crypto se synchronise en lecture seule.</td>
+      </tr>
+      <tr>
+        <td><b>6</b></td>
+        <td><b>Finition v1.0</b></td>
+        <td>3 sem.</td>
+        <td>Export/import complet, sauvegarde-restauration + <code>verify</code>, <code>doctor</code>, i18n FR/EN, a11y, documentation, page publique, démo</td>
+        <td>Installation à blanc par un tiers en moins de 5 min ; sauvegarde restaurée et vérifiée.</td>
+      </tr>
+      <tr style="background:#E0F2FE">
+        <td colspan="5" style="text-align:center;font-weight:700;color:#075985;padding:6pt">
+          ▲ v1.0 — environ 22 semaines · annonce publique
+        </td>
+      </tr>
+      <tr>
+        <td><b>7</b></td>
+        <td><b>Connecteurs</b></td>
+        <td>3 sem.</td>
+        <td>Interface <code>Connector</code>, implémentation Enable Banking, cycle de consentement, IBKR Flex, écran de gestion des connexions</td>
+        <td>Un compte courant se synchronise et se déduplique correctement avec un import du même compte.</td>
+      </tr>
+      <tr>
+        <td><b>8</b></td>
+        <td><b>Budget &amp; projection</b></td>
+        <td>4 sem.</td>
+        <td>Budgets, récurrences, prévisions de trésorerie, objectifs, simulateur FIRE, Monte-Carlo</td>
+        <td>Projection reproductible avec graine fixée ; scénarios documentés.</td>
+      </tr>
+      <tr>
+        <td><b>9</b></td>
+        <td><b>Rapports &amp; fiscalité</b></td>
+        <td>4 sem.</td>
+        <td>Rapport PDF de revue, calendrier de dividendes, analyse de frais, module fiscal FR (aide à la déclaration, jamais de conseil)</td>
+        <td>Rapport annuel généré ; export de plus-values conforme au format attendu.</td>
+      </tr>
+      <tr>
+        <td><b>10</b></td>
+        <td><b>Mobile &amp; API</b></td>
+        <td>4 sem.</td>
+        <td>PWA installable, mode hors-ligne en lecture, API v1 publique + OpenAPI, webhooks</td>
+        <td>Dashboard consultable hors ligne ; API documentée et testée par un client tiers.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box box-warn">
+    <div class="box-t">Si le temps manque : couper dans cet ordre</div>
+    <p>Monte-Carlo → module fiscal → PWA → CAMT/MT940 → objets de valeur → budget. <strong>Ne jamais
+    couper</strong> : les tests de propriétés du grand livre, la sauvegarde vérifiée, l'export intégral et
+    l'écran de mapping d'import. Ce sont les quatre choses qui décident si un utilisateur reste ou fuit.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">18</div>
+    <h2>Semaine 1 : checklist concrète</h2>
+    <div class="sec-kicker">Projet</div>
+  </div>
+
+  <p class="lede">De quoi démarrer lundi matin. Rien ici n'est spéculatif : chaque ligne est exécutable.</p>
+
+  <h3>Jour 1 — squelette</h3>
+  <pre>pnpm dlx create-turbo@latest altitude
+cd altitude &amp;&amp; git init &amp;&amp; git commit -m <span class="s">"chore: init"</span>
+pnpm dlx create-next-app@latest apps/web --ts --tailwind --app --src-dir --import-alias <span class="s">"@/*"</span>
+pnpm add -w -D typescript vitest @vitest/coverage-v8 eslint prettier dependency-cruiser
+pnpm add -F @altitude/db drizzle-orm postgres &amp;&amp; pnpm add -F @altitude/db -D drizzle-kit
+pnpm add -F @altitude/shared decimal.js zod
+mkdir -p docs/adr packages/{db,core,shared,ui,importers} apps/worker docker</pre>
+  <ul>
+    <li>Écrire <code>docs/adr/0001-postgres.md</code> et <code>0002-partie-double.md</code> — figer les deux décisions les plus structurantes avant d'écrire du code.</li>
+    <li>Créer <code>docker/docker-compose.dev.yml</code> avec le seul service <code>db</code> (Postgres 17).</li>
+    <li>Configurer <code>tsconfig</code> strict à la racine, hérité par tous les paquets.</li>
+  </ul>
+
+  <h3>Jour 2 — le domaine avant l'interface</h3>
+  <ul>
+    <li>Dans <code>packages/shared</code> : types <code>Money</code>, <code>Currency</code>, <code>Decimal</code>, types de marque pour les identifiants.</li>
+    <li>Dans <code>packages/core</code> : <code>Ledger.createTransaction()</code> avec validation de l'équilibre, en mémoire, <strong>sans base de données</strong>.</li>
+    <li>Écrire les tests de propriétés fast-check <em>maintenant</em> : ils définissent le modèle.</li>
+    <li>Vérifier que <code>packages/core</code> n'a aucune dépendance à React ou Next — règle dependency-cruiser en place dès le premier jour.</li>
+  </ul>
+
+  <h3>Jour 3 — schéma et migrations</h3>
+  <ul>
+    <li>Schéma Drizzle : <code>households</code>, <code>users</code>, <code>owners</code>, <code>portfolios</code>, <code>accounts</code>, <code>transactions</code>, <code>entries</code>.</li>
+    <li>Migration SQL manuelle pour ce que Drizzle ne génère pas : extensions, <code>ltree</code>, déclencheur d'équilibre, politiques RLS.</li>
+    <li>Seed de démonstration : un foyer, deux propriétaires, quatre comptes, cinquante transactions.</li>
+    <li>Premier test Testcontainers : la migration s'applique, le déclencheur rejette bien une transaction déséquilibrée.</li>
+  </ul>
+
+  <h3>Jour 4 — authentification et coquille</h3>
+  <ul>
+    <li>Better Auth avec adaptateur Drizzle, courriel + mot de passe, session en base.</li>
+    <li><code>getContext()</code> serveur → <code>{ user, household, role }</code> ; <code>scopedDb(ctx)</code> qui pose <code>SET LOCAL</code>.</li>
+    <li>Coquille applicative : barre latérale, sélecteur de portefeuille, thème clair/sombre, shadcn installé.</li>
+    <li>Assistant de première installation : création du foyer, devise de référence, premier compte.</li>
+  </ul>
+
+  <h3>Jour 5 — la boucle qui prouve tout</h3>
+  <ul>
+    <li>Server Action <code>createTransaction</code> → service <code>core</code> → base.</li>
+    <li>Formulaire d'ajout rapide (dépôt, retrait, virement) et table listant les transactions.</li>
+    <li>Calcul du solde par compte en SQL, affiché sur le dashboard.</li>
+    <li><b>Objectif de fin de semaine :</b> saisir un dépôt de 1 000 €, un virement de 300 € vers un second compte, et voir un patrimoine net de 1 000 € — pas 1 300 €. Si ce chiffre est juste, le modèle est bon et tout le reste est de l'assemblage.</li>
+  </ul>
+
+  <div class="box box-go">
+    <div class="box-t">Le premier vrai jalon</div>
+    <p>Fin de semaine 3 : <strong>importer son propre export bancaire et voir sa vraie courbe de
+    patrimoine</strong>. À partir de ce moment, le projet devient son propre utilisateur — c'est le meilleur
+    moteur de motivation et le meilleur détecteur de défauts d'ergonomie.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">19</div>
+    <h2>Risques &amp; mitigations</h2>
+    <div class="sec-kicker">Projet</div>
+  </div>
+
+  <table class="tight">
+    <thead><tr><th style="width:24%">Risque</th><th style="width:9%">Prob.</th><th style="width:9%">Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td><b>Périmètre qui enfle</b><br><span style="font-size:7.4pt;color:#64748B">le risque n°1, et de loin</span></td><td>Très élevée</td><td>Fatal</td><td>Périmètre v1.0 gelé (§1.2). Toute nouvelle idée va dans le dépôt de la roadmap, pas dans la branche courante. Le critère de sortie de chaque phase est écrit avant de commencer la phase.</td></tr>
+      <tr><td>Épuisement du mainteneur</td><td>Élevée</td><td>Fatal</td><td>Être son propre utilisateur dès la semaine 3. Livrer une version utilisable en 6 semaines plutôt qu'un chef-d'œuvre en 12 mois. Refuser les demandes hors périmètre sans culpabilité.</td></tr>
+      <tr><td>Fournisseur de cotations qui ferme ou passe payant</td><td>Élevée</td><td>Moyen</td><td>Interface multi-fournisseurs avec repli dès la phase 3. Prix saisissables manuellement. FX par la BCE, qui ne fermera pas.</td></tr>
+      <tr><td>Agrégateur qui change ses conditions</td><td>Élevée</td><td>Faible</td><td>Précisément la raison pour laquelle la synchro est optionnelle et hors du cœur. Le produit fonctionne sans.</td></tr>
+      <tr><td>Bug de calcul silencieux</td><td>Moyenne</td><td>Fatal</td><td>Tests de propriétés + scénarios oracle + <code>altitude doctor</code>. Chaque agrégat affiche sa méthode et sa date d'arrêté.</td></tr>
+      <tr><td>Faille d'isolation entre foyers</td><td>Faible</td><td>Fatal</td><td>Double barrière (ADR-007) et tests d'accès croisés systématiques sur chaque point d'entrée.</td></tr>
+      <tr><td>Perte de données utilisateur</td><td>Faible</td><td>Fatal</td><td>Sauvegarde vérifiée hebdomadaire, journal immuable, annulation d'import, export permanent.</td></tr>
+      <tr><td>Adoption nulle</td><td>Moyenne</td><td>Élevé</td><td>Démo publique avant l'annonce, capture d'écran en tête du README, installation en 5 minutes, documentation bilingue.</td></tr>
+      <tr><td>Utilisateur perdu à l'onboarding</td><td>Élevée</td><td>Élevé</td><td>Assistant guidé, données de démonstration explorables sans rien saisir, import comme deuxième écran et non enterré dans les réglages.</td></tr>
+      <tr><td>Confusion « conseil financier »</td><td>Moyenne</td><td>Moyen</td><td>Aucune recommandation d'investissement. Les projections sont des simulations, étiquetées comme telles. Les modules fiscaux produisent des chiffres <em>d'aide à la déclaration</em>, jamais un conseil.</td></tr>
+      <tr><td>Dette technique du schéma</td><td>Moyenne</td><td>Élevé</td><td>Le temps investi en §5 <em>est</em> la mitigation. Migrations en avant seulement, testées sur des données réalistes.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-no">
+    <div class="box-t">Le seul risque vraiment fatal</div>
+    <p>Ce n'est ni la technique, ni le juridique : c'est de <strong>construire pendant huit mois sans jamais
+    livrer</strong>. Un outil de patrimoine est un projet à la surface d'attaque fonctionnelle infinie — il y
+    aura toujours une classe d'actifs de plus, un preset de plus, un ratio de plus. La discipline de sortir
+    une v1.0 étroite mais irréprochable est la compétence critique de ce projet, plus que n'importe quel
+    choix de stack.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">20</div>
+    <h2>Annexes</h2>
+    <div class="sec-kicker">Annexe</div>
+  </div>
+
+  <h3>20.1 Sources de données</h3>
+  <table class="tight">
+    <thead><tr><th style="width:20%">Donnée</th><th style="width:22%">Source recommandée</th><th style="width:12%">Coût</th><th>Remarques</th></tr></thead>
+    <tbody>
+      <tr><td><b>Taux de change</b></td><td>Banque centrale européenne</td><td>Gratuit</td><td>Officiel, sans clé, base EUR, ~30 devises, jours ouvrés. À utiliser par défaut. Interpolation par report pour les week-ends.</td></tr>
+      <tr><td>Actions &amp; ETF</td><td>Multi-fournisseurs avec repli</td><td>Variable</td><td>Vérifier les CGU de chaque fournisseur avant de l'intégrer par défaut. Prévoir la saisie manuelle et l'import de séries CSV.</td></tr>
+      <tr><td>Crypto</td><td>API publique d'exchange</td><td>Gratuit</td><td>Limites de débit à respecter ; cache local des cours.</td></tr>
+      <tr><td>Expositions d'ETF</td><td>Jeu communautaire embarqué</td><td>Gratuit</td><td>Fichiers JSON versionnés, date d'arrêté et source citées, surchargeables par l'utilisateur.</td></tr>
+      <tr><td>Immobilier France</td><td>DVF — données ouvertes</td><td>Gratuit</td><td>Ventes réelles enregistrées, licence ouverte. Sert d'estimation comparative, jamais d'expertise.</td></tr>
+      <tr><td>Référentiel ISIN</td><td>Saisie + cache local</td><td>Gratuit</td><td>Les bases ISIN complètes sont payantes. Le référentiel se construit à l'usage, alimenté par les imports.</td></tr>
+      <tr><td>Centroïdes de pays</td><td>Jeu embarqué</td><td>Gratuit</td><td>~4 ko, pour le Globe. Aucun appel réseau.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>20.2 Glossaire</h3>
+  <table class="tight">
+    <thead><tr><th style="width:20%">Terme</th><th>Définition</th></tr></thead>
+    <tbody>
+      <tr><td><b>AISP</b></td><td>Account Information Service Provider — prestataire agréé pour lire les données de comptes de paiement au titre de la DSP2.</td></tr>
+      <tr><td><b>SCA</b></td><td>Strong Customer Authentication — authentification forte, requise au premier accès puis périodiquement.</td></tr>
+      <tr><td><b>CAMT.053</b></td><td>Relevé bancaire structuré au format XML ISO 20022. Le format d'export le plus riche disponible.</td></tr>
+      <tr><td><b>TWR</b></td><td>Time-Weighted Return — performance neutralisant l'effet des apports et retraits. Comparable à un indice.</td></tr>
+      <tr><td><b>TRI / MWR</b></td><td>Taux de rendement interne — performance tenant compte du calendrier des flux. Répond à « combien mon argent m'a rapporté ».</td></tr>
+      <tr><td><b>PMP / CUMP</b></td><td>Prix moyen pondéré — méthode de prix de revient utilisée en France pour les titres.</td></tr>
+      <tr><td><b>Transparisation</b></td><td>Décomposition d'un fonds en ses expositions sous-jacentes (pays, secteurs) pour mesurer la vraie diversification.</td></tr>
+      <tr><td><b>Partie double</b></td><td>Principe comptable où chaque opération est enregistrée en au moins deux écritures dont la somme est nulle.</td></tr>
+      <tr><td><b>RLS</b></td><td>Row Level Security — filtrage des lignes appliqué par PostgreSQL lui-même, indépendamment de l'application.</td></tr>
+      <tr><td><b>ltree</b></td><td>Type PostgreSQL représentant un chemin hiérarchique, permettant d'interroger un sous-arbre en une opération.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>20.3 Références consultées</h3>
+  <ul style="font-size:8.6pt">
+    <li><a href="https://developer.gocardless.com/bank-account-data/overview">GoCardless — Bank Account Data (documentation)</a> et <a href="https://www.openbankingtracker.com/guides/free-open-banking-apis">Open Banking Tracker — Free &amp; Indie Open Banking APIs (2026)</a> : état des offres d'agrégation en libre-service.</li>
+    <li><a href="https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-final-report-amendment-its-technical-standards">EBA — rapport final sur l'amendement des RTS (exemption de SCA pour l'accès aux comptes)</a> : durées de consentement.</li>
+    <li><a href="https://www.powens.com/fr/produits/transactions/">Powens</a> et <a href="https://www.bridgeapi.io/solutions/rapprochement-bancaire-automatise-en-continu/service-agregation-de-compte">Bridge</a> : agrégateurs français.</li>
+    <li><a href="https://www.firefly-iii.org/">Firefly III</a>, <a href="https://github.com/we-promise/sure">Sure (fork communautaire de Maybe)</a> : précédents open source directement comparables.</li>
+  </ul>
+
+  <div class="box box-note" style="margin-top:16pt">
+    <div class="box-t">Prochaine étape</div>
+    <p>Ce document fixe le cadre ; il n'a pas vocation à rester figé. Les trois points à trancher avant
+    d'écrire la première ligne : <strong>(1)</strong> confirmer AGPL-3.0 plutôt que MIT — c'est
+    irréversible en pratique une fois les contributions arrivées ; <strong>(2)</strong> valider le périmètre
+    v1.0 de la §1.2 en acceptant explicitement ce qui en est exclu ; <strong>(3)</strong> décider si la
+    cible est d'abord francophone (enveloppes FR, presets FR) ou d'emblée européenne — cela change l'ordre
+    des presets et la priorité du module fiscal, pas l'architecture.</p>
+  </div>
+</section>
+
+</body>
+</html>

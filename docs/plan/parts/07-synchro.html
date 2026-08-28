@@ -1,0 +1,220 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <h2>Synchronisation bancaire : l'analyse</h2>
+    <div class="sec-kicker">Décisif</div>
+  </div>
+
+  <p class="lede">Question posée : <em>faisable et sûr, oui ou non ?</em> Réponse courte : <strong>techniquement
+  faisable, juridiquement encadré, et surtout beaucoup moins utile qu'il n'y paraît pour ce produit
+  précis</strong>. Voici le raisonnement complet.</p>
+
+  <h3>7.1 Le cadre : qui a le droit de lire un compte bancaire</h3>
+  <p>En Europe, l'accès programmatique aux comptes est régi par la <strong>DSP2</strong> (PSD2). Trois faits
+  structurants :</p>
+  <ul>
+    <li>Lire les données d'un compte pour le compte d'un utilisateur est un service réglementé — le
+    <strong>service d'information sur les comptes (AIS)</strong>. L'exercer requiert un agrément
+    <strong>AISP</strong> délivré par une autorité nationale (l'ACPR en France), ou le statut d'agent d'un
+    établissement agréé.</li>
+    <li>Techniquement, les banques exposent une interface dédiée, protégée par des certificats
+    <strong>eIDAS</strong> (QWAC / QSealC) délivrés à des entités <em>agréées</em>. Un projet open source ne
+    peut pas en obtenir, et ne pourrait de toute façon pas les distribuer.</li>
+    <li>Le consentement de l'utilisateur est <strong>daté et limité</strong>. Une authentification forte
+    (SCA) est requise au premier accès puis renouvelée périodiquement — historiquement tous les 90 jours,
+    porté jusqu'à 180 jours par l'amendement 2022 des normes techniques (RTS) selon la banque et
+    l'agrégateur.</li>
+  </ul>
+  <p>Conséquence directe : <strong>Altitude ne se connectera jamais aux banques en direct</strong>. La seule
+  voie conforme passe par un agrégateur agréé, chez qui l'hébergeur ouvre son propre compte.</p>
+
+  <h3>7.2 Ce que la DSP2 ne couvre pas — le point qui change tout</h3>
+  <p>La DSP2 porte sur les <strong>comptes de paiement</strong>. Traduction concrète pour un patrimoine
+  français :</p>
+
+  <table class="tight">
+    <thead><tr><th style="width:28%">Type d'actif</th><th style="width:16%">Accessible en DSP2</th><th>Réalité</th></tr></thead>
+    <tbody>
+      <tr><td>Compte courant</td><td><span class="tag t-yes">Oui</span></td><td>Solde et opérations, généralement 12 à 24 mois d'historique selon la banque.</td></tr>
+      <tr><td>Livret A, LDDS, LEP</td><td><span class="tag t-part">Variable</span></td><td>Dépend de l'établissement : souvent exposés parce qu'accessibles en ligne, mais sans garantie et avec un historique plus court.</td></tr>
+      <tr><td>Compte-titres (CTO)</td><td><span class="tag t-no">Non</span></td><td>Hors périmètre. Au mieux, un solde espèces. Aucune position, aucune quantité, aucun prix de revient.</td></tr>
+      <tr><td><b>PEA</b></td><td><span class="tag t-no">Non</span></td><td>Hors périmètre. Or c'est souvent la plus grosse ligne d'un patrimoine français.</td></tr>
+      <tr><td><b>Assurance-vie</b></td><td><span class="tag t-no">Non</span></td><td>Hors périmètre, et les assureurs n'ont pas d'obligation d'API. Certains agrégateurs le récupèrent — par scraping, pas par la DSP2.</td></tr>
+      <tr><td><b>PER, PERCO, épargne salariale</b></td><td><span class="tag t-no">Non</span></td><td>Hors périmètre. Récupération uniquement par scraping ou par import manuel.</td></tr>
+      <tr><td>Crédit immobilier</td><td><span class="tag t-no">Non</span></td><td>Un prêt n'est pas un compte de paiement. Le capital restant dû n'est pas exposé.</td></tr>
+      <tr><td>Crypto, immobilier, non coté</td><td><span class="tag t-no">Non</span></td><td>Totalement hors sujet DSP2.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-no">
+    <div class="box-t">Constat central</div>
+    <p>Pour un utilisateur français type dont le patrimoine se répartit entre résidence principale, PEA,
+    assurance-vie, livrets et compte courant, la synchronisation DSP2 remonte <strong>le compte courant et
+    peut-être les livrets</strong> — soit typiquement <strong>10 à 25 % de l'encours</strong>, et la partie
+    la moins intéressante à analyser. Construire le produit autour de cette brique, c'est optimiser le
+    quart le moins important en premier.</p>
+  </div>
+
+  <h3>7.3 Les quatre voies, comparées</h3>
+  <table class="tight">
+    <thead><tr>
+      <th style="width:15%">Voie</th><th style="width:11%">Légalité</th><th style="width:11%">Fiabilité</th>
+      <th style="width:11%">Couverture</th><th style="width:11%">Coût</th><th>Verdict Altitude</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>A — Agrégateur AISP</b><br><span style="font-size:7.4pt;color:#64748B">Enable Banking, Powens, Bridge…</span></td>
+        <td><span class="tag t-yes">Conforme</span></td><td>Bonne</td><td>Comptes de paiement</td><td>Gratuit à élevé</td>
+        <td><b>Retenue pour la v2</b>, en option, identifiants fournis par l'hébergeur.</td>
+      </tr>
+      <tr>
+        <td><b>B — Accès direct aux API bancaires</b></td>
+        <td><span class="tag t-no">Impossible</span></td><td>—</td><td>—</td><td>Très élevé</td>
+        <td><b>Écartée.</b> Exige agrément AISP + certificats eIDAS + une intégration par banque.</td>
+      </tr>
+      <tr>
+        <td><b>C — Scraping</b><br><span style="font-size:7.4pt;color:#64748B">woob, Playwright</span></td>
+        <td><span class="tag t-no">Contraire aux CGU</span></td><td>Faible</td><td>Large en théorie</td><td>Maintenance permanente</td>
+        <td><b>Écartée du cœur.</b> Interface de greffon laissée ouverte, sans support officiel.</td>
+      </tr>
+      <tr>
+        <td><b>D — Fichiers &amp; API officielles</b><br><span style="font-size:7.4pt;color:#64748B">CSV, OFX, CAMT, IBKR Flex, API exchanges</span></td>
+        <td><span class="tag t-yes">Totale</span></td><td>Excellente</td><td><b>100 %</b></td><td>Nul</td>
+        <td><b>Socle de la v1.</b> Seule voie qui atteint le PEA, l'AV et le PER.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>7.4 Voie A en détail — l'état du marché en 2026</h3>
+  <table class="tight">
+    <thead><tr><th style="width:17%">Agrégateur</th><th style="width:15%">Accès développeur</th><th style="width:16%">Couverture</th><th>Adéquation à un projet auto-hébergé</th></tr></thead>
+    <tbody>
+      <tr><td><b>Enable Banking</b><br><span style="font-size:7.4pt;color:#64748B">Finlande, agréé FIN-FSA</span></td>
+        <td>Inscription libre, bac à sable, puis « production restreinte » sur <em>ses propres</em> comptes</td>
+        <td>~2 700 banques, ~30 pays</td>
+        <td><span class="tag t-yes">Recommandé</span> C'est aujourd'hui la seule voie réellement en libre-service pour un particulier qui veut lire ses propres comptes. Le modèle colle exactement à l'auto-hébergement : chacun crée son application et connecte ses comptes.</td></tr>
+      <tr><td><b>GoCardless Bank Account Data</b><br><span style="font-size:7.4pt;color:#64748B">ex-Nordigen</span></td>
+        <td><span class="tag t-no">Fermé aux nouveaux</span></td>
+        <td>Large en Europe</td>
+        <td>Historiquement l'offre gratuite de référence, mais les nouvelles inscriptions ont cessé courant 2025. <strong>Ne pas fonder l'implémentation de référence dessus.</strong> Un connecteur reste utile pour les instances disposant déjà d'identifiants.</td></tr>
+      <tr><td><b>Powens</b> <span style="font-size:7.4pt;color:#64748B">(ex-Budget Insight)</span></td>
+        <td>Commercial B2B, contrat requis</td><td>~1 800 établissements en Europe, très forte en France</td>
+        <td>Meilleure couverture française, y compris des produits d'épargne hors DSP2 (via leurs propres moyens). Pas de libre-service : hors de portée d'un auto-hébergeur individuel. Connecteur pertinent pour un déploiement d'entreprise.</td></tr>
+      <tr><td><b>Bridge</b> <span style="font-size:7.4pt;color:#64748B">(Bankin')</span></td>
+        <td>Commercial B2B</td><td>France + Europe</td>
+        <td>Même conclusion que Powens : excellente qualité, modèle inadapté au particulier.</td></tr>
+      <tr><td><b>Tink, TrueLayer, Yapily, Salt Edge, Plaid</b></td>
+        <td>Commercial, quelques bacs à sable gratuits</td><td>Europe / international</td>
+        <td>Connecteurs communautaires bienvenus, aucun ne sera l'implémentation de référence : tarification pensée pour des entreprises.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-warn">
+    <div class="box-t">Trois points à vérifier avant d'écrire la moindre ligne de connecteur</div>
+    <ol style="margin-bottom:0">
+      <li><b>Les CGU de l'agrégateur</b> autorisent-elles l'usage depuis un logiciel auto-hébergé distribué en open source ? La notion de « ses propres comptes » couvre-t-elle le conjoint et les enfants d'un même foyer ? À faire confirmer par écrit avant publication.</li>
+      <li><b>La durée du consentement</b> et le comportement en cas d'expiration : l'expérience de reconnexion doit être douce, sinon l'utilisateur abandonne au bout de deux renouvellements.</li>
+      <li><b>La profondeur d'historique</b> réellement retournée. Beaucoup d'agrégateurs plafonnent à 90 jours au premier appel, ce qui rend l'import de fichiers <em>indispensable</em> de toute façon pour reconstituer l'antériorité.</li>
+    </ol>
+  </div>
+
+  <h3>7.5 Voie C — pourquoi le scraping reste hors du cœur</h3>
+  <p>Kresus a montré que c'est possible en France via <code>woob</code>. Ce n'est pas pour autant une bonne
+  fondation :</p>
+  <div class="grid2">
+    <div class="card">
+      <h5>Les risques réels</h5>
+      <ul>
+        <li><b>CGU bancaires</b> : la plupart interdisent l'automatisation et la communication des identifiants à un tiers, fût-il un logiciel local.</li>
+        <li><b>Responsabilité en cas de fraude</b> : en cas de litige, avoir confié ses identifiants à un outil tiers affaiblit la position du client.</li>
+        <li><b>Authentification forte</b> : validation par application mobile à chaque connexion — l'automatisation devient une notification toutes les heures.</li>
+        <li><b>Blocage de compte</b> : des connexions atypiques déclenchent des dispositifs anti-fraude.</li>
+        <li><b>Coût de maintenance</b> : chaque refonte d'un site bancaire casse un module. C'est un travail sans fin pour des mainteneurs bénévoles.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>La position d'Altitude</h5>
+      <p>Le cœur ne contient <strong>aucun</strong> code de scraping et le projet n'en héberge aucun. En
+      revanche, l'interface <code>Connector</code> est publique et documentée : un tiers peut publier un pont
+      <code>altitude-connector-woob</code> que l'utilisateur installe sciemment.</p>
+      <p style="margin-top:5pt">La documentation énonce clairement le compromis, sans moraliser : c'est le
+      choix de l'utilisateur sur son propre matériel, mais ce n'est ni supporté ni recommandé par le projet.</p>
+    </div>
+  </div>
+
+  <h3>7.6 Voie D — ce qui est à la fois sûr, légal et automatisable</h3>
+  <p>Il existe une catégorie entière de sources <em>officielles</em>, souvent négligée, qui donne une
+  automatisation réelle sans aucun risque juridique :</p>
+  <table class="tight">
+    <thead><tr><th style="width:20%">Source</th><th style="width:16%">Mécanisme</th><th style="width:14%">Sûreté</th><th>Détail</th></tr></thead>
+    <tbody>
+      <tr><td><b>Interactive Brokers</b></td><td>Flex Query (XML) + jeton</td><td><span class="tag t-yes">Officiel</span></td><td>Rapport automatisable : positions, opérations, dividendes, frais. La meilleure intégration courtier possible, entièrement supportée par IBKR.</td></tr>
+      <tr><td><b>Exchanges crypto</b><br><span style="font-size:7.4pt;color:#64748B">Kraken, Binance, Coinbase…</span></td><td>Clé API <b>lecture seule</b></td><td><span class="tag t-yes">Officiel</span></td><td>Clés créées par l'utilisateur, sans droit de retrait ni de trading. Restriction par IP recommandée. Altitude refuse une clé qui expose des droits d'écriture.</td></tr>
+      <tr><td><b>Portefeuilles on-chain</b></td><td>Adresse publique + RPC/indexeur</td><td><span class="tag t-yes">Public</span></td><td>Aucun secret en jeu : on lit une donnée publique. Support xpub pour Bitcoin, adresses EVM, Solana. Zéro risque.</td></tr>
+      <tr><td><b>Banques — export fichier</b></td><td>CSV / OFX / QIF / CAMT.053</td><td><span class="tag t-yes">Officiel</span></td><td>Toutes les banques françaises proposent un export. Manuel, mais fiable et sans limite d'historique.</td></tr>
+      <tr><td><b>Courtiers</b><br><span style="font-size:7.4pt;color:#64748B">Degiro, Trade Republic, Bourse Direct, Saxo</span></td><td>Export CSV / relevé PDF</td><td><span class="tag t-yes">Officiel</span></td><td>Presets d'import dédiés. Les API non documentées de certains courtiers restent hors du cœur, comme le scraping.</td></tr>
+      <tr><td><b>Cotations</b></td><td>API de marché</td><td><span class="tag t-part">Selon CGU</span></td><td>Interface multi-fournisseurs avec repli. Taux de change : <b>BCE</b>, officielle, gratuite, sans clé — à privilégier par défaut.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.7 Verdict et architecture retenue</h3>
+  <div class="box box-go">
+    <div class="box-t">Décision — synchro bancaire : non en v1, oui en option en v2</div>
+    <p><b>v1.0</b> — aucune connexion bancaire. Saisie manuelle + import de fichiers + clés crypto en lecture
+    seule + adresses on-chain + IBKR Flex. Ce périmètre couvre <strong>100 % du patrimoine</strong>, est
+    juridiquement irréprochable et ne dépend d'aucun tiers.</p>
+    <p><b>v2.0</b> — connecteur DSP2 en <strong>greffon optionnel</strong>, désactivé par défaut,
+    <code>ALTITUDE_CONNECTORS=enablebanking</code>. Implémentation de référence : <strong>Enable Banking</strong>,
+    parce que c'est la seule voie en libre-service aujourd'hui. L'hébergeur crée son propre compte et fournit
+    ses identifiants. Le dépôt ne contient <strong>aucune clé</strong>.</p>
+    <p><b>Jamais</b> — initiation de paiement, scraping dans le cœur, stockage d'identifiants bancaires.</p>
+  </div>
+
+  <pre><span class="c">// packages/connectors/src/types.ts — l'interface que tout connecteur implémente</span>
+<span class="k">export interface</span> Connector {
+  <span class="k">readonly</span> id: <span class="s">string</span>;                 <span class="c">// 'enablebanking' | 'ibkr-flex' | 'kraken' …</span>
+  <span class="k">readonly</span> capabilities: {
+    accounts: <span class="k">boolean</span>;
+    transactions: <span class="k">boolean</span>;
+    positions: <span class="k">boolean</span>;          <span class="c">// false pour tous les connecteurs DSP2</span>
+    historyDays: <span class="k">number</span> | <span class="s">'unbounded'</span>;
+    requiresUserConsent: <span class="k">boolean</span>;
+  };
+  <span class="c">// Étape 1 : l'utilisateur est redirigé chez sa banque (jamais d'identifiants chez nous)</span>
+  beginLink(ctx: Ctx, params: LinkParams): Promise&lt;{ redirectUrl: <span class="k">string</span>; state: <span class="k">string</span> }&gt;;
+  completeLink(ctx: Ctx, callback: <span class="k">unknown</span>): Promise&lt;ConnectionHandle&gt;;
+  <span class="c">// Étape 2 : synchronisation — renvoie des transactions CANONIQUES, jamais des écritures</span>
+  fetchAccounts(h: ConnectionHandle): Promise&lt;RawAccount[]&gt;;
+  fetchTransactions(h: ConnectionHandle, since: Date): Promise&lt;RawTransaction[]&gt;;
+  <span class="c">// Étape 3 : cycle de vie du consentement</span>
+  consentExpiresAt(h: ConnectionHandle): Date | <span class="k">null</span>;
+  revoke(h: ConnectionHandle): Promise&lt;<span class="k">void</span>&gt;;
+}</pre>
+  <p>Point d'architecture important : un connecteur produit des <strong>transactions brutes canoniques</strong>,
+  qui traversent ensuite <em>exactement le même pipeline</em> que l'import CSV — normalisation,
+  déduplication, catégorisation, écriture en partie double (§8.2). Aucun code n'est écrit deux fois, et une
+  synchronisation est annulable comme un import.</p>
+
+  <h3>7.8 Sécurité des connecteurs</h3>
+  <table class="tight">
+    <thead><tr><th style="width:26%">Menace</th><th>Contre-mesure</th></tr></thead>
+    <tbody>
+      <tr><td>Vol de la base</td><td>Jetons chiffrés en AES-256-GCM avec clé par enregistrement, elle-même chiffrée par une clé maître hors base (<code>ALTITUDE_ENCRYPTION_KEY</code>, secret Docker). Une base volée sans la clé ne donne aucun accès bancaire.</td></tr>
+      <tr><td>Instance exposée sur Internet</td><td>La page de connexion d'un connecteur exige une réauthentification récente et un second facteur si activé. Limitation de débit stricte sur les points d'entrée de rappel.</td></tr>
+      <tr><td>Détournement du rappel OAuth</td><td><code>state</code> aléatoire lié à la session, PKCE, vérification stricte de l'URL de redirection, fenêtre de validité de 10 minutes.</td></tr>
+      <tr><td>Portée excessive</td><td>Seule la portée AIS est demandée. Toute portée d'initiation de paiement présente dans une réponse déclenche un refus explicite et une alerte.</td></tr>
+      <tr><td>Fuite par les journaux</td><td>Rédaction obligatoire : IBAN, jetons, montants et noms de contreparties ne sont jamais écrits en niveau <code>info</code>. Test automatisé qui échoue si un motif d'IBAN apparaît dans les journaux de test.</td></tr>
+      <tr><td>Connecteur malveillant</td><td>Les connecteurs tiers sont des paquets explicitement installés. La documentation le dit clairement : installer un connecteur, c'est lui accorder l'accès à ses données financières.</td></tr>
+      <tr><td>Révocation</td><td>Un bouton « Déconnecter et tout oublier » supprime jetons et identifiants distants, et propose de conserver ou de purger les transactions déjà importées.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footnote">
+    Sources consultées pour cette section :
+    <a href="https://developer.gocardless.com/bank-account-data/overview">developer.gocardless.com — Bank Account Data</a> ·
+    <a href="https://www.openbankingtracker.com/guides/free-open-banking-apis">openbankingtracker.com — Free &amp; Indie Open Banking APIs (2026)</a> ·
+    <a href="https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-final-report-amendment-its-technical-standards">EBA — amendement des RTS sur l'exemption de SCA pour l'accès aux comptes</a> ·
+    <a href="https://www.powens.com/fr/produits/transactions/">powens.com</a> ·
+    <a href="https://www.bridgeapi.io/solutions/rapprochement-bancaire-automatise-en-continu/service-agregation-de-compte">bridgeapi.io</a>.
+    Les conditions commerciales évoluent vite : à revérifier avant toute implémentation.
+  </div>
+</section>

@@ -1,0 +1,99 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <h2>Résumé exécutif — les 12 décisions</h2>
+    <div class="sec-kicker">Décisions</div>
+  </div>
+
+  <p class="lede">Si tu ne lis qu'une page, c'est celle-ci. Douze arbitrages qui conditionnent tout le reste,
+  avec la raison courte et l'alternative écartée. Le détail est en sections 3 à 7.</p>
+
+  <table class="tight">
+    <thead><tr><th style="width:6%">#</th><th style="width:22%">Sujet</th><th style="width:34%">Décision</th><th style="width:38%">Pourquoi / alternative écartée</th></tr></thead>
+    <tbody>
+      <tr><td><b>1</b></td><td>Base de données</td><td><b>PostgreSQL 17</b> — seule base, y compris pour la file de jobs et le cache applicatif</td><td>Numérique exact (<code>numeric</code>), fenêtres SQL, JSONB, <code>ltree</code>, RLS, écosystème de sauvegarde mûr. Écarté : SQLite (concurrence + pas de RLS), MongoDB (pas de transactions multi-documents naturelles pour un grand livre).</td></tr>
+      <tr><td><b>2</b></td><td>Modèle comptable</td><td><b>Partie double</b> : toute transaction = N lignes dont la somme est nulle par devise</td><td>C'est la seule structure qui rend les virements internes, les frais, les impôts et le multi-devises cohérents sans double comptage. Écarté : table plate <code>transactions(amount)</code> — ingérable dès le 2ᵉ compte.</td></tr>
+      <tr><td><b>3</b></td><td>Synchro bancaire</td><td><b>Non en v1.</b> Connecteur DSP2 <b>optionnel</b> en v2, désactivé par défaut, clés fournies par l'hébergeur</td><td>La DSP2 ne couvre <em>pas</em> PEA / assurance-vie / PER, et l'accès exige un agrément AISP. Détail complet en §7. Écarté : scraping (woob) dans le cœur — fragile, contraire aux CGU bancaires.</td></tr>
+      <tr><td><b>4</b></td><td>Ingestion v1</td><td><b>Saisie manuelle + import fichiers</b> (CSV, XLSX, OFX, QIF, CAMT.053) avec presets par banque</td><td>100 % légal, hors-ligne, fiable, couvre les actifs que la DSP2 ignore. C'est le socle, pas le pis-aller.</td></tr>
+      <tr><td><b>5</b></td><td>Framework</td><td><b>Next.js 15 App Router</b>, React 19, RSC par défaut</td><td>Demandé. Route Handlers pour l'API publique/versionnée, Server Actions pour les mutations du formulaire interne. Règle de partage explicite en §4.4.</td></tr>
+      <tr><td><b>6</b></td><td>ORM</td><td><b>Drizzle ORM</b> + drizzle-kit</td><td>SQL-first : indispensable quand 60 % de la valeur est dans des agrégats fenêtrés. Migrations lisibles en SQL. Écarté : Prisma (moteur binaire, SQL brut moins ergonomique pour les <code>WINDOW</code>).</td></tr>
+      <tr><td><b>7</b></td><td>Jobs de fond</td><td><b>pg-boss</b> (file dans Postgres)</td><td>Zéro infra supplémentaire : un conteneur app + un worker + une base. Écarté : BullMQ + Redis (bon, mais impose Redis à tous les auto-hébergeurs).</td></tr>
+      <tr><td><b>8</b></td><td>Authentification</td><td><b>Better Auth</b> (sessions en base, 2FA TOTP, passkeys, organisations)</td><td>Conçu pour l'auto-hébergement, pas de dépendance SaaS. Le plugin « organization » modélise le foyer. Écarté : Auth.js (moins bon sur 2FA/multi-tenant), Clerk/WorkOS (SaaS — rédhibitoire ici).</td></tr>
+      <tr><td><b>9</b></td><td>Argent en mémoire</td><td><b>Aucun <code>float</code>.</b> <code>numeric</code> en base, <code>decimal.js</code> côté TypeScript, montants en chaînes aux frontières</td><td>Un centime d'erreur d'arrondi détruit la confiance dans un outil de patrimoine. Drizzle renvoie déjà <code>numeric</code> en <code>string</code> : on s'appuie dessus.</td></tr>
+      <tr><td><b>10</b></td><td>Hiérarchie</td><td><b>Arbre de portefeuilles</b> via <code>ltree</code> + propriétaires distincts des utilisateurs</td><td>Permet « portefeuille enfant », SCI, indivision, poche thématique — sans confondre « qui possède » et « qui voit ».</td></tr>
+      <tr><td><b>11</b></td><td>Licence</td><td><b>AGPL-3.0</b> + DCO</td><td>Empêche une reprise SaaS fermée du travail communautaire, précédent établi (Firefly III, Ghostfolio). Écarté : MIT (adoption plus large mais expose au free-riding d'un concurrent commercial).</td></tr>
+      <tr><td><b>12</b></td><td>Déploiement</td><td><b>Docker Compose</b> de référence : <code>app</code>, <code>worker</code>, <code>postgres</code>, <code>caddy</code></td><td>Un <code>docker compose up -d</code> doit suffire. Image unique multi-arch amd64/arm64 pour les NAS et Raspberry Pi.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.1 Le chemin critique en une phrase</h3>
+  <p>Un grand livre en partie double correct, alimenté d'abord à la main puis par import de fichiers, valorisé
+  par un moteur de prix multi-devises, découpé par un arbre de portefeuilles multi-propriétaires — et
+  <em>seulement ensuite</em> branché sur des connecteurs bancaires optionnels. Inverser cet ordre est le
+  piège classique : on passe six mois sur l'agrégation, on découvre qu'elle ne remonte pas le PEA, et il
+  n'y a toujours pas de produit.</p>
+
+  <div class="box box-warn">
+    <div class="box-t">Le piège à éviter absolument</div>
+    <p>La synchronisation bancaire est la fonctionnalité la plus <strong>demandée</strong> et la moins
+    <strong>différenciante</strong>. Elle est coûteuse (réglementaire, maintenance des connecteurs, support
+    utilisateur) et elle couvre au mieux 40 % du patrimoine d'un utilisateur type français, parce que les
+    enveloppes qui portent l'essentiel de l'encours — PEA, assurance-vie, PER — sont <strong>hors périmètre
+    DSP2</strong>. Un excellent import CSV + une saisie manuelle rapide couvrent 100 % du patrimoine dès la
+    première version.</p>
+  </div>
+
+  <h3>1.2 Périmètre v1.0</h3>
+  <div class="grid3">
+    <div class="card">
+      <h5>Dans la v1.0</h5>
+      <ul>
+        <li>Comptes multi-types, multi-devises</li>
+        <li>Transactions manuelles + import</li>
+        <li>Positions titres, PRU, lots</li>
+        <li>Cotations &amp; taux de change</li>
+        <li>Patrimoine net historisé</li>
+        <li>Allocation + Globe géographique</li>
+        <li>TWR &amp; TRI (XIRR)</li>
+        <li>Arbre de portefeuilles + enfants</li>
+        <li>Foyer, rôles, partage lecture</li>
+        <li>Immobilier + crédits amortissables</li>
+        <li>Crypto : clés lecture seule + on-chain</li>
+        <li>Export intégral JSON/CSV</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>En v1.1 – v1.3</h5>
+      <ul>
+        <li>Connecteur DSP2 (Enable Banking)</li>
+        <li>Budget &amp; catégorisation avancée</li>
+        <li>Objectifs, FIRE, Monte-Carlo</li>
+        <li>Rapport PDF de revue de portefeuille</li>
+        <li>Modules fiscaux par pays (plugins)</li>
+        <li>Dividendes prévisionnels</li>
+        <li>Application mobile (PWA d'abord)</li>
+        <li>API publique versionnée + webhooks</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h5>Hors périmètre (assumé)</h5>
+      <ul>
+        <li>Passage d'ordres / courtage</li>
+        <li>Initiation de paiement (DSP2 PIS)</li>
+        <li>Conseil en investissement</li>
+        <li>Déclaration fiscale automatisée</li>
+        <li>Version SaaS hébergée par le projet</li>
+        <li>Scraping bancaire dans le cœur</li>
+        <li>Marketplace de produits financiers</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="box box-dec">
+    <div class="box-t">Décision — pas de SaaS officiel avant la v1.0</div>
+    <p>Héberger une instance publique transforme le projet en établissement traitant des données financières
+    de tiers : obligations RGPD renforcées, responsabilité, support, coûts. Une <strong>instance de
+    démonstration avec des données factices</strong>, réinitialisée toutes les 24 h, suffit à convertir les
+    visiteurs. Le SaaS reste une option commerciale ultérieure, permise par l'AGPL pour le porteur du projet.</p>
+  </div>
+</section>

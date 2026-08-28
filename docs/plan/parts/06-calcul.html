@@ -1,0 +1,131 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <h2>Moteur de calcul &amp; performance</h2>
+    <div class="sec-kicker">Données</div>
+  </div>
+
+  <p class="lede">C'est ici que se joue la crédibilité du produit. Un utilisateur pardonne une interface
+  perfectible ; il ne pardonne pas un patrimoine faux de 3 000 €.</p>
+
+  <h3>6.1 Chaîne de valorisation</h3>
+  <p>Le calcul se fait en cinq passes, dans cet ordre, sur une plage de dates donnée :</p>
+  <table class="tight">
+    <thead><tr><th style="width:5%">#</th><th style="width:22%">Passe</th><th>Détail</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><b>Soldes espèces</b></td><td>Somme cumulée des <code>entries.amount</code> par compte et par jour. Une simple fonction fenêtre SQL : <code>sum(amount) OVER (PARTITION BY account_id ORDER BY booked_on)</code>.</td></tr>
+      <tr><td>2</td><td><b>Quantités détenues</b></td><td>Même principe sur <code>quantity</code>, par couple (compte, instrument), après application des opérations sur titres (splits, regroupements).</td></tr>
+      <tr><td>3</td><td><b>Prix du jour</b></td><td>Dernier cours connu à la date (<em>last observation carried forward</em>), avec plafond : au-delà de 7 jours calendaires sans cotation, la valeur est marquée <code>is_estimated</code>.</td></tr>
+      <tr><td>4</td><td><b>Conversion</b></td><td>Application du taux BCE du jour (ou du dernier jour ouvré). Le taux utilisé est <strong>enregistré</strong>, pas recalculé : l'historique doit rester stable.</td></tr>
+      <tr><td>5</td><td><b>Agrégation</b></td><td>Remontée le long de l'arbre <code>ltree</code>, pondérée par les quotes-parts si la consolidation est par propriétaire.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-warn">
+    <div class="box-t">Le piège du week-end et des jours fériés</div>
+    <p>Les marchés ferment, pas le patrimoine. Si l'on n'affiche que les jours cotés, la courbe fait des
+    marches d'escalier et les performances calendaires sont fausses. Règle : la série est
+    <strong>quotidienne, tous jours calendaires</strong>, avec report du dernier cours ; les points reportés
+    sont marqués et rendus visuellement plus pâles dans les graphiques.</p>
+  </div>
+
+  <h3>6.2 Lots, prix de revient et cessions</h3>
+  <p>Chaque achat crée un <strong>lot</strong> (quantité, prix unitaire, frais, date, devise). Chaque vente
+  consomme des lots selon une méthode configurable par compte :</p>
+  <table class="tight">
+    <thead><tr><th style="width:22%">Méthode</th><th style="width:26%">Quand l'utiliser</th><th>Remarque</th></tr></thead>
+    <tbody>
+      <tr><td><b>PMP / CUMP</b><br><span style="font-size:7.4pt;color:#64748B">prix moyen pondéré</span></td><td>Défaut pour la France : c'est la règle du CTO et du PEA.</td><td>Un seul prix de revient par instrument et par compte. Simple, et conforme à ce qu'attend un utilisateur français.</td></tr>
+      <tr><td><b>FIFO</b></td><td>Crypto dans plusieurs juridictions, comptes étrangers.</td><td>Nécessite de conserver les lots individuellement. La table <code>lot_closures</code> trace quel lot a soldé quelle vente.</td></tr>
+      <tr><td><b>Spécifique</b></td><td>Optimisation fiscale manuelle.</td><td>L'utilisateur choisit les lots à la vente. Rarement utile mais peu coûteux à offrir une fois les lots en place.</td></tr>
+    </tbody>
+  </table>
+  <p>Les frais d'acquisition entrent dans le prix de revient ; les frais de cession réduisent le produit de
+  vente. Les deux restent visibles séparément pour le rapport « coût total de détention ».</p>
+
+  <div class="box box-note">
+    <div class="box-t">Cas particulier français à modéliser dès le départ</div>
+    <p><strong>PEA</strong> : il n'y a pas de plus-value imposable ligne à ligne, seulement un gain global au
+    retrait. Le compte doit connaître sa <em>date d'ouverture</em> (règle des 5 ans) et le <em>cumul des
+    versements</em> (plafond). <strong>Assurance-vie</strong> : un rachat est ventilé entre capital et
+    intérêts au prorata — impossible à calculer sans historiser les versements. <strong>PER</strong> :
+    versements déductibles à tracer pour la sortie. Ces trois champs vivent dans
+    <code>accounts.attributes</code> et sont validés par un schéma Zod dédié au <code>subtype</code>.</p>
+  </div>
+
+  <h3>6.3 Mesures de performance</h3>
+  <p>Trois chiffres différents, trois questions différentes. Altitude les affiche côte à côte, chacun
+  nommé — jamais un « +12,4 % » anonyme.</p>
+  <table class="tight">
+    <thead><tr><th style="width:18%">Mesure</th><th style="width:26%">Répond à</th><th>Méthode retenue</th></tr></thead>
+    <tbody>
+      <tr><td><b>TWR</b><br><span style="font-size:7.4pt;color:#64748B">time-weighted</span></td><td>« Mes choix d'investissement sont-ils bons ? » — neutralise les apports.</td><td>Chaînage géométrique des rendements journaliers : <code>Π (1 + (Vₜ − Vₜ₋₁ − Fₜ) / (Vₜ₋₁ + Fₜ)) − 1</code>. C'est la mesure comparable à un indice.</td></tr>
+      <tr><td><b>TRI / MWR</b><br><span style="font-size:7.4pt;color:#64748B">money-weighted</span></td><td>« Combien mon argent m'a-t-il rapporté, à moi ? » — tient compte du calendrier des versements.</td><td>XIRR : recherche de racine par Newton-Raphson, repli sur bissection si divergence. Cas dégénérés (tous flux de même signe) explicitement gérés et signalés.</td></tr>
+      <tr><td><b>Dietz modifié</b></td><td>Approximation robuste sur une période courte sans valorisation quotidienne.</td><td>Utilisé pour les actifs illiquides valorisés ponctuellement (immobilier, private equity) où le TWR quotidien n'a pas de sens.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-dec">
+    <div class="box-t">Décision — tester le moteur contre un oracle externe</div>
+    <p>Portfolio Performance et les feuilles de calcul <code>XIRR()</code> d'Excel/LibreOffice servent
+    d'<strong>oracles</strong>. On construit une vingtaine de scénarios de référence (achat simple, versements
+    programmés, vente partielle, dividende avec retenue à la source, split, devise étrangère, apport le jour
+    d'une forte baisse) dont les résultats attendus sont figés dans des fichiers de test. Tolérance :
+    <strong>10⁻⁶</strong>. Ces tests sont le filet de sécurité qui autorise à refactorer le moteur sans peur.</p>
+  </div>
+
+  <h3>6.4 Exposition géographique — la donnée derrière le Globe</h3>
+  <p>L'intérêt du globe n'est pas décoratif : il révèle qu'un portefeuille « bien diversifié » est en réalité
+  exposé à 68 % aux États-Unis. Le calcul se fait par transparisation :</p>
+  <pre><span class="c">-- Poids par pays sur un sous-arbre de portefeuilles, à une date donnée</span>
+<span class="k">WITH</span> pos <span class="k">AS</span> (
+  <span class="k">SELECT</span> p.instrument_id,
+         sum(p.quantity * pr.close * fx.rate) <span class="k">AS</span> value_base
+    <span class="k">FROM</span> positions p
+    <span class="k">JOIN</span> accounts   a  <span class="k">ON</span> a.id = p.account_id
+    <span class="k">JOIN</span> portfolios pf <span class="k">ON</span> pf.id = a.portfolio_id
+    <span class="k">JOIN</span> instrument_prices pr <span class="k">ON</span> …
+    <span class="k">JOIN</span> fx_rates fx <span class="k">ON</span> …
+   <span class="k">WHERE</span> pf.path <span class="k">&lt;@</span> <span class="s">'foyer.investissements'</span>::ltree   <span class="c">-- ← sous-arbre entier</span>
+   <span class="k">GROUP BY</span> 1
+)
+<span class="k">SELECT</span> e.key <span class="k">AS</span> country,
+       sum(pos.value_base * e.weight) <span class="k">AS</span> exposure,
+       sum(pos.value_base * e.weight) / sum(sum(pos.value_base * e.weight)) <span class="k">OVER</span> () <span class="k">AS</span> pct
+  <span class="k">FROM</span> pos
+  <span class="k">JOIN</span> instrument_exposures e
+    <span class="k">ON</span> e.instrument_id = pos.instrument_id <span class="k">AND</span> e.dimension = <span class="s">'country'</span>
+ <span class="k">GROUP BY</span> 1 <span class="k">ORDER BY</span> 2 <span class="k">DESC</span>;</pre>
+
+  <h4>Règles de repli quand l'exposition est inconnue</h4>
+  <ul>
+    <li><b>Action individuelle</b> → pays du siège de l'émetteur, 100 %.</li>
+    <li><b>ETF / fonds sans données</b> → pays de domiciliation marqué comme <em>non transparisé</em>, et un bandeau propose à l'utilisateur de renseigner la répartition (formulaire simple, 5 lignes).</li>
+    <li><b>Immobilier</b> → pays du bien, géocodé une fois à la création.</li>
+    <li><b>Espèces</b> → pays de l'établissement teneur de compte.</li>
+    <li><b>Crypto</b> → catégorie « sans juridiction », affichée hors globe dans une carte dédiée. C'est plus honnête que de l'attribuer arbitrairement.</li>
+  </ul>
+  <p>La part non transparisée est <strong>toujours affichée</strong> comme telle : un globe qui prétend
+  couvrir 100 % alors qu'il en connaît 60 % est un mensonge visuel.</p>
+
+  <h3>6.5 Performance technique</h3>
+  <table class="tight">
+    <thead><tr><th style="width:30%">Situation</th><th style="width:22%">Objectif</th><th>Comment</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard, 20 comptes, 10 ans</td><td>&lt; 300 ms serveur</td><td>Lecture de <code>daily_balances</code> uniquement, jamais du journal. Index couvrant sur <code>(account_id, as_of)</code>.</td></tr>
+      <tr><td>Table de 50 000 transactions</td><td>&lt; 200 ms INP</td><td>Pagination par curseur (jamais <code>OFFSET</code>), virtualisation des lignes, tri poussé côté SQL.</td></tr>
+      <tr><td>Import de 20 000 lignes</td><td>&lt; 60 s</td><td>Job worker, insertion par lots de 1 000 via <code>COPY</code>, recalcul incrémental à la fin — pas ligne par ligne.</td></tr>
+      <tr><td>Recalcul complet 10 ans</td><td>&lt; 5 min</td><td>Recalcul par plage de dates en une passe SQL ; <code>maintenance_work_mem</code> relevé le temps du job.</td></tr>
+      <tr><td>Graphique 10 ans</td><td>&lt; 2 000 points</td><td>Sous-échantillonnage LTTB côté serveur, granularité adaptée à la période (jour / semaine / mois).</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-warn">
+    <div class="box-t">Invalidation : la source de bugs numéro un</div>
+    <p>Ajouter une transaction datée de 2019 doit invalider <code>daily_balances</code> de 2019 à aujourd'hui
+    pour les comptes touchés — et pour eux seuls. L'implémentation retenue : un déclencheur alimente une
+    table <code>recompute_queue(account_id, from_date)</code> ; le worker la consomme en fusionnant les
+    intervalles. Ne jamais recalculer en ligne dans la requête HTTP : sur un import massif, c'est une
+    minute d'attente et un verrou.</p>
+  </div>
+</section>

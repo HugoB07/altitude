@@ -1,0 +1,74 @@
+<section class="sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <h2>Décisions d'architecture (ADR)</h2>
+    <div class="sec-kicker">Archi</div>
+  </div>
+
+  <p class="lede">Format ADR condensé : contexte → décision → conséquence. À stocker dans
+  <code>docs/adr/NNNN-titre.md</code> et à faire évoluer par pull request, jamais en silence.</p>
+
+  <h3>ADR-001 — PostgreSQL comme unique dépendance de données</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd>Il faut une base transactionnelle, une file de jobs, un cache, un moteur de recherche léger et des séries temporelles. La tentation est d'empiler Postgres + Redis + ClickHouse.</dd>
+    <dt>Décision</dt><dd>PostgreSQL 17 assure les quatre rôles. Extensions activées : <code>pgcrypto</code>, <code>ltree</code>, <code>btree_gist</code>, <code>pg_trgm</code>, <code>unaccent</code>. Redis reste possible mais <strong>optionnel</strong>.</dd>
+    <dt>Conséquence</dt><dd>Le <code>docker-compose.yml</code> tient en 4 services. La sauvegarde est un <code>pg_dump</code> unique : plus de risque d'incohérence entre deux magasins. En contrepartie, la file de jobs plafonne autour de quelques milliers de tâches/minute — très au-delà des besoins d'un foyer.</dd>
+    <dt>Réexamen si</dt><dd>Une instance dépasse ~500 utilisateurs actifs ou 50 M de lignes de cotations.</dd>
+  </div>
+
+  <h3>ADR-002 — Grand livre en partie double, positions dérivées</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd>Un virement PEA → compte courant ne doit pas apparaître comme un revenu ; un achat de titre transforme du cash en quantité ; des frais et une retenue à la source accompagnent un dividende étranger.</dd>
+    <dt>Décision</dt><dd>Une <code>transaction</code> porte N <code>entries</code> (lignes) ; la somme des lignes est nulle <em>par devise</em>. Les positions et soldes sont <strong>dérivés</strong> du journal, jamais saisis directement.</dd>
+    <dt>Conséquence</dt><dd>Invariant testable par propriété. Coût : chaque écriture demande plus de travail côté UI — masqué par des « recettes » (achat, vente, dividende, virement) qui génèrent les lignes.</dd>
+  </div>
+
+  <h3>ADR-003 — Propriétaires distincts des utilisateurs</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd>Un enfant de 6 ans possède un livret mais n'a pas de compte applicatif. Une SCI possède un bien mais n'est pas une personne. Un compte joint appartient à deux personnes à 50/50.</dd>
+    <dt>Décision</dt><dd>Trois notions séparées : <code>users</code> (qui se connecte), <code>owners</code> (qui possède — personne physique, morale, enfant), <code>ownerships</code> (quote-part datée d'un compte par un propriétaire).</dd>
+    <dt>Conséquence</dt><dd>Le patrimoine peut être découpé par propriétaire, par foyer, par utilisateur ou par portefeuille indépendamment. Toute somme d'actifs doit préciser sa base de consolidation — c'est explicite dans l'API.</dd>
+  </div>
+
+  <h3>ADR-004 — Connecteurs bancaires : externes, optionnels, désactivés par défaut</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd>L'accès aux API bancaires DSP2 exige un agrément AISP. Un projet open source ne peut pas distribuer ses propres identifiants d'agrégateur.</dd>
+    <dt>Décision</dt><dd>Interface <code>Connector</code> stable, implémentations distribuées séparément, activées par variable d'environnement, avec identifiants fournis par l'hébergeur. Aucune clé dans le dépôt. Analyse complète en §7.</dd>
+    <dt>Conséquence</dt><dd>Le cœur reste neutre juridiquement et testable sans réseau. La configuration d'un connecteur est une étape explicite et documentée.</dd>
+  </div>
+
+  <h3>ADR-005 — Server Actions pour les mutations internes, Route Handlers pour l'API</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd>Next.js offre deux mécanismes serveur ; mélanger les deux sans règle produit une base illisible et des trous d'autorisation.</dd>
+    <dt>Décision</dt><dd>Frontière nette : <code>app/api/v1/**</code> (Route Handlers) = contrat public versionné, authentifié par jeton d'API, documenté OpenAPI. Server Actions = mutations déclenchées par l'UI, authentifiées par cookie de session. <strong>Les deux appellent la même couche <code>packages/core/services</code></strong> — aucune logique métier dans l'une ou l'autre.</dd>
+    <dt>Conséquence</dt><dd>La logique est testable sans HTTP. L'API publique ne dérive jamais de l'UI. Règle de revue : une Server Action de plus de 20 lignes est un bug de conception.</dd>
+  </div>
+
+  <h3>ADR-006 — Précision numérique : jamais de nombre flottant</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd><code>0.1 + 0.2 !== 0.3</code> en IEEE-754. Sur 10 000 transactions, la dérive est visible. Une quantité de crypto demande jusqu'à 18 décimales.</dd>
+    <dt>Décision</dt><dd>En base : <code>numeric(28,10)</code> pour les montants, <code>numeric(38,18)</code> pour les quantités, <code>numeric(24,12)</code> pour les prix et taux. En TypeScript : <code>decimal.js</code>. Aux frontières JSON : <strong>chaînes de caractères</strong>, jamais de <code>number</code>.</dd>
+    <dt>Conséquence</dt><dd>Un type <code>Money</code> maison encapsule montant + devise et interdit l'addition de devises différentes à la compilation. Les agrégats SQL restent exacts.</dd>
+  </div>
+
+  <h3>ADR-007 — Isolation multi-locataire : double barrière</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd>Sur une instance familiale, une requête qui oublie <code>WHERE household_id = ?</code> expose le patrimoine d'un autre foyer. C'est la classe de faille n°1 des applications multi-tenant.</dd>
+    <dt>Décision</dt><dd>(1) Toutes les requêtes passent par un <code>scopedDb(ctx)</code> qui injecte le filtre — accès direct au client Drizzle interdit par règle ESLint. (2) <strong>Row Level Security PostgreSQL</strong> en défense en profondeur, via <code>SET LOCAL app.current_household</code> au début de chaque transaction.</dd>
+    <dt>Conséquence</dt><dd>Une erreur applicative ne suffit pas à provoquer une fuite. Coût : les migrations doivent créer les politiques RLS, et le rôle de migration doit être distinct du rôle applicatif.</dd>
+  </div>
+
+  <h3>ADR-008 — Historique valorisé : instantanés quotidiens matérialisés</h3>
+  <div class="kv">
+    <dt>Contexte</dt><dd>Afficher 10 ans de courbe de patrimoine en rejouant le journal à chaque requête est impossible à tenir sous 200 ms.</dd>
+    <dt>Décision</dt><dd>Table <code>daily_balances</code> (compte × jour × devise) alimentée en incrémental par un job nocturne et invalidée depuis la date la plus ancienne touchée par une écriture. Les agrégats par portefeuille sont calculés à la volée depuis cette table.</dd>
+    <dt>Conséquence</dt><dd>Lecture rapide, reconstruction totale possible en une commande (<code>altitude recompute --from 2015-01-01</code>). Toute modification rétroactive déclenche un recalcul partiel — à surveiller sur les gros imports.</dd>
+  </div>
+
+  <div class="box box-note">
+    <div class="box-t">ADR à écrire au fil de l'eau</div>
+    <p>ADR-009 stratégie de cotations et fournisseurs · ADR-010 format d'export canonique · ADR-011 modèle de
+    plugins fiscaux · ADR-012 stratégie i18n et formats locaux · ADR-013 politique de rétention des données
+    brutes d'import · ADR-014 chiffrement des secrets de connecteurs.</p>
+  </div>
+</section>
