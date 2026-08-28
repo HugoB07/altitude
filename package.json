@@ -1,0 +1,35 @@
+{
+  "name": "altitude",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Open-source, self-hosted wealth tracking",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HugoB07/altitude.git"
+  },
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=22.11.0",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
+    "db:up": "docker compose -f docker/docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f docker/docker-compose.dev.yml down",
+    "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && pnpm db:up",
+    "plan": "cd docs/plan && node build-html.mjs && node build-pdf.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.1.2",
+    "typescript": "^5.9.0"
+  }
+}

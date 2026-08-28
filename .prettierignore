@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+.next/
+dist/
+.turbo/
+coverage/
+LICENSE
+docs/plan/altitude-plan.html
+docs/plan/parts/
