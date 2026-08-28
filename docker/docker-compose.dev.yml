@@ -19,7 +19,14 @@ services:
       # Deterministic collation, so ORDER BY behaves identically on every machine.
       POSTGRES_INITDB_ARGS: '--locale=C --encoding=UTF8'
     ports:
-      - '5432:5432'
+      # Loopback only: without the 127.0.0.1 prefix Docker publishes on every
+      # interface, exposing a database whose password is "altitude" to anyone
+      # on the same network — a hotel or coworking wifi included.
+      #
+      # Host port 55432, not 5432, so a PostgreSQL installed natively on the
+      # machine keeps 5432 and there is never any doubt about which database a
+      # client is talking to. Override with ALTITUDE_DB_PORT if it clashes.
+      - '127.0.0.1:${ALTITUDE_DB_PORT:-55432}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d:ro
