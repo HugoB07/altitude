@@ -28,3 +28,11 @@ export {
   type Resource,
   type Decision,
 } from './auth/policy';
+export {
+  postTransaction,
+  accountBalances,
+  netWorth,
+  type PostTransactionResult,
+  type AccountBalance,
+  TenantScopeError,
+} from './services/transactions';

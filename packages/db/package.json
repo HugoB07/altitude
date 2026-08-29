@@ -16,16 +16,16 @@
     "studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "catalog:",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
+    "@altitude/shared": "workspace:*",
     "@testcontainers/postgresql": "^12.1.0",
     "@types/node": "^26.4.0",
     "drizzle-kit": "^0.31.5",
     "testcontainers": "^12.1.0",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.11",
-    "@altitude/shared": "workspace:*"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
