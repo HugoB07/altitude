@@ -51,6 +51,11 @@ backups/
 docs/plan/altitude-plan.html
 docs/plan/*.pdf
 
+# ── Assistant tooling ──────────────────────────────────────────────────
+# Editor-agnostic project config belongs in the repository; a launch profile
+# for one particular assistant does not.
+.claude/
+
 # ── Tooling & OS ───────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

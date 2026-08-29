@@ -21,7 +21,7 @@
     "dev": "turbo run dev",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
-    "lint": "depcruise packages apps --config .dependency-cruiser.cjs",
+    "lint": "depcruise packages --config .dependency-cruiser.cjs && pnpm --filter @altitude/web exec depcruise src --config ../../.dependency-cruiser.cjs --ts-config tsconfig.json",
     "plan": "cd docs/plan && node build-html.mjs && node build-pdf.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run packages/shared packages/core --exclude \"**/post-transaction.test.ts\" --coverage",
