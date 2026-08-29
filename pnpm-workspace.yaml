@@ -3,6 +3,21 @@ packages:
   - 'packages/*'
   - 'tools/*'
 
+# One version per dependency, declared once.
+#
+# core and db each declared drizzle-orm and drifted to 0.44.7 and 0.45.2. Two
+# copies of the same library do not share types: passing an SQL object from one
+# to the other fails on a private property, with an error naming two paths under
+# node_modules and no obvious cause.
+#
+# Packages write `catalog:` instead of a range, so a bump happens here or not
+# at all.
+catalog:
+  drizzle-orm: ^0.45.2
+  typescript: ^6.0.3
+  vitest: ^4.1.11
+  fast-check: ^4.1.1
+
 # pnpm blocks dependency install scripts by default. That default is a
 # supply-chain protection worth keeping, so this list is an allowlist and each
 # entry needs a reason, exactly like a new dependency does (CONTRIBUTING.md).
