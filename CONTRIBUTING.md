@@ -4,11 +4,15 @@ Thanks for looking. This document says what is useful right now, what the conven
 are, and what will not be accepted — so nobody spends an evening on a pull request that
 was never going to land.
 
-## Current phase: design
+## Current phase: phase 0, foundations
 
-**There is no code yet.** The repository holds the development plan, the licence, and
-project groundwork. Code contributions cannot be reviewed because there is nothing to
-build on. That changes when phase 0 lands (see the roadmap in `README.md`).
+The domain core exists — `packages/shared` (money, dates, identifiers) and
+`packages/core` (the double-entry ledger) — with the toolchain and the development
+database around them. There is no user interface yet, and no persistence: the ledger
+lives in memory and is exercised by tests.
+
+Contributions to those two packages are welcome now. Everything above them is still
+being laid down, so check the roadmap in `README.md` before starting on anything else.
 
 ### What is useful today
 
@@ -24,7 +28,7 @@ build on. That changes when phase 0 lands (see the roadmap in `README.md`).
 - **Prior art we have missed.** If an existing project already solved something well,
   say so. Borrowing beats reinventing.
 
-### What is useful once phase 0 lands
+### What is useful once the importer lands
 
 - **Import presets** — the intended entry point for new contributors: a JSON file plus a
   test fixture, no TypeScript required. Format documented in `docs/plan/` §8.4.
@@ -136,20 +140,34 @@ are consequences of what Altitude is, and the reasoning for each is in `docs/pla
 
 ## Development setup
 
-Not applicable yet — there is nothing to run. When phase 0 lands, this section will
-describe the two commands needed to get a working instance, and the target is under ten
-minutes from clone to a signed-in page. If it takes longer than that, treat it as a bug
-in the documentation and say so.
-
-The one thing you can build today is the development plan itself:
+Requires Node 22 or later and Docker. pnpm arrives through corepack, so you do not
+install it yourself:
 
 ```bash
-cd docs/plan
-node build-html.mjs
-node build-pdf.mjs
+corepack enable
+pnpm install
+pnpm db:up          # PostgreSQL 17 on 127.0.0.1:55432
 ```
 
-Requires Node 22+ and a local Chrome. Details in `docs/plan/README.md`.
+Then the four checks CI runs, which should all pass on a clean clone:
+
+```bash
+pnpm lint           # architectural boundaries (dependency-cruiser)
+pnpm typecheck      # tsc --noEmit across every package
+pnpm test           # vitest, including the property-based tests
+pnpm format:check   # prettier
+```
+
+`pnpm test:coverage` adds the thresholds. They are deliberately strict on
+`packages/core`: a gap in its coverage is a gap in the ledger guarantee.
+
+There is no application to run yet — `pnpm dev` will start one when `apps/web` lands.
+
+The development plan builds separately, and needs a local Chrome:
+
+```bash
+cd docs/plan && node build-html.mjs && node build-pdf.mjs
+```
 
 ## Getting in touch
 

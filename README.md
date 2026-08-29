@@ -14,8 +14,9 @@ real estate and liabilities — on your server, in your database.
 
 ---
 
-> **⚠️ Status: design.** The technical plan is written, the code is not.
-> Nothing is usable yet. See the [roadmap](#roadmap).
+> **⚠️ Status: phase 0, foundations.** The double-entry ledger and its numeric
+> core exist and are tested; there is no interface and no persistence yet.
+> Nothing is usable as an application. See the [roadmap](#roadmap).
 
 ## Why
 
@@ -53,7 +54,7 @@ node build-html.mjs && node build-pdf.mjs
 
 | Phase | Scope                                               | Status      |
 | ----- | --------------------------------------------------- | ----------- |
-| 0     | Foundations — monorepo, Docker, auth, schema        | not started |
+| 0     | Foundations — monorepo, Docker, auth, schema        | in progress |
 | 1     | Ledger — accounts, transactions, net worth          | not started |
 | 2     | Import — CSV/XLSX/OFX, presets, deduplication       | not started |
 | 3     | Market data — quotes, FX, positions, TWR/MWR, globe | not started |
@@ -63,10 +64,10 @@ node build-html.mjs && node build-pdf.mjs
 
 ## Contributing
 
-There is no code yet, so code contributions cannot be reviewed. What _is_ useful today:
-critique of the plan, anonymised bank export samples, and ETF exposure data. Once phase 0
-lands, the easiest entry point will be adding an import preset for your bank — a JSON
-file and a test fixture, no TypeScript required.
+The domain core is open to contributions: `packages/shared` and `packages/core`. Also
+useful, and needing no TypeScript: critique of the plan, anonymised bank export samples,
+and ETF exposure data. Once the importer lands, the easiest entry point will be adding a
+preset for your bank — a JSON file and a test fixture.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the anonymisation checklist
 before attaching any export file.
