@@ -51,6 +51,11 @@ export const authAccounts = pgTable(
     /** Identifier at the provider, or the user id for the credential provider. */
     accountId: text('account_id').notNull(),
     providerId: text('provider_id').notNull(),
+    /**
+     * The OAuth issuer this credential came from. Null for the credential
+     * provider, which has no issuer — the household's own instance is it.
+     */
+    issuer: text('issuer'),
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),

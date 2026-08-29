@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { randomUUID } from 'node:crypto';
+
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { createClient, type Client } from '@altitude/db';
@@ -37,6 +39,14 @@ function build() {
       // Better Auth's default names collide with the domain: its `account` is
       // an OAuth credential, ours is a bank account. The mapping keeps both.
       schema: authSchema,
+      // Defaults to false, which is why a failed sign-up left a user row with
+      // no credential behind: the two inserts ran as separate statements, and a
+      // failure on the second stranded the first. The account is then unusable
+      // and unrecoverable — "user already exists" blocks trying again.
+      //
+      // PostgreSQL has transactions; the option exists for databases that do
+      // not, and this is not one.
+      transaction: true,
     }),
 
     secret: requireEnv('AUTH_SECRET', 'Generate with: openssl rand -base64 32'),
@@ -69,6 +79,13 @@ function build() {
     },
 
     advanced: {
+      database: {
+        // Better Auth mints its own opaque string ids. Every id column in this
+        // schema is `uuid`, and memberships.user_id is a foreign key onto one,
+        // so its default is rejected outright by Postgres — the whole schema
+        // would have to become text to accommodate it.
+        generateId: () => randomUUID(),
+      },
       // Self-hosted on a single origin: there is no cross-site flow to
       // accommodate, so the cookie stays strict.
       defaultCookieAttributes: {
