@@ -10,10 +10,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],
-      // The schema is declarations, exercised by the database tests rather than
-      // by unit tests; counting it would measure nothing and hide the packages
-      // where coverage is a real signal.
-      exclude: ['packages/db/src/**'],
+      // Excluded because the unit run does not execute them, not because they
+      // are untested: both are covered by the database suite (pnpm test:db).
+      // Counting code a run never reaches measures the run, not the code, and
+      // would dilute the packages where this number is a real signal.
+      //
+      //   packages/db/src      schema declarations
+      //   core/src/services    needs a live transaction handle
+      exclude: ['packages/db/src/**', 'packages/core/src/services/**'],
       // packages/core carries the ledger invariant and the valuation engine.
       // A gap in its coverage is a gap in the guarantee (plan §15.1).
       thresholds: { lines: 85, functions: 85, branches: 80, statements: 85 },
