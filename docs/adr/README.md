@@ -9,11 +9,12 @@ reasoning that led there stays readable.
 
 ## Accepted
 
-| #                                                | Decision                               | Date       |
-| ------------------------------------------------ | -------------------------------------- | ---------- |
-| [0001](0001-postgresql-as-the-only-datastore.md) | PostgreSQL as the only datastore       | 2026-08-28 |
-| [0002](0002-double-entry-ledger.md)              | Double-entry ledger, derived positions | 2026-08-28 |
-| [0009](0009-next-16-and-typescript-6.md)         | Next.js 16 and TypeScript 6            | 2026-08-29 |
+| #                                                | Decision                                         | Date       |
+| ------------------------------------------------ | ------------------------------------------------ | ---------- |
+| [0001](0001-postgresql-as-the-only-datastore.md) | PostgreSQL as the only datastore                 | 2026-08-28 |
+| [0002](0002-double-entry-ledger.md)              | Double-entry ledger, derived positions           | 2026-08-28 |
+| [0006](0006-no-floating-point-money.md)          | Numeric precision: never a floating-point number | 2026-08-29 |
+| [0009](0009-next-16-and-typescript-6.md)         | Next.js 16 and TypeScript 6                      | 2026-08-29 |
 
 ## Reserved
 
@@ -26,6 +27,5 @@ about to be built.
 | 0003 | Owners are distinct from users                                    | phase 4 (household)  |
 | 0004 | Bank connectors: external, optional, off by default               | phase 7 (connectors) |
 | 0005 | Server Actions for internal mutations, Route Handlers for the API | phase 0, day 4       |
-| 0006 | Numeric precision: never a floating-point number                  | phase 0, day 2       |
 | 0007 | Multi-tenant isolation: two barriers                              | phase 0, day 3       |
 | 0008 | Valued history: materialised daily snapshots                      | phase 1              |
