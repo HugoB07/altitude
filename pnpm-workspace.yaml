@@ -16,6 +16,9 @@ allowBuilds:
   ssh2: false
   # Postinstall only generates CLI helpers we never invoke.
   protobufjs: false
+  # Native resolver behind eslint-config-next: the postinstall fetches its
+  # platform binary, and linting cannot resolve an import without it.
+  unrs-resolver: true
 
 # drizzle-kit still depends on @esbuild-kit/esm-loader, which is deprecated —
 # it was merged into tsx, which drizzle-kit also depends on — and which pins

@@ -1,6 +1,6 @@
-export { Decimal, dec, ZERO, type DecimalInput } from './decimal.js';
-export { Money, currency, CurrencyMismatchError, type CurrencyCode } from './money.js';
-export { ledgerDate, compareDates, todayIn, type LedgerDate } from './ledger-date.js';
+export { Decimal, dec, ZERO, type DecimalInput } from './decimal';
+export { Money, currency, CurrencyMismatchError, type CurrencyCode } from './money';
+export { ledgerDate, compareDates, todayIn, type LedgerDate } from './ledger-date';
 export {
   isUuid,
   accountId,
@@ -20,7 +20,7 @@ export {
   type InstrumentId,
   type TransactionId,
   type CategoryId,
-} from './brand.js';
+} from './brand';
 
 // Deliberately NOT re-exported here: see './env.js'. Reading process.env makes a
 // module Node-only, and this barrel is imported by browser code for Money and

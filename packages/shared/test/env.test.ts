@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { MissingConfigurationError, envFlag, optionalEnv, requireEnv } from '../src/env.js';
+import { MissingConfigurationError, envFlag, optionalEnv, requireEnv } from '../src/env/index';
 
 const VAR = 'ALTITUDE_TEST_ONLY_VARIABLE';
 

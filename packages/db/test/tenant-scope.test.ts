@@ -5,13 +5,8 @@ import { join } from 'node:path';
 import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 import { householdId } from '@altitude/shared';
-import {
-  createClient,
-  withHousehold,
-  assertTenantScopingActive,
-  type Client,
-} from '../src/index.js';
-import { accounts } from '../src/schema/structure.js';
+import { createClient, withHousehold, assertTenantScopingActive, type Client } from '../src/index';
+import { accounts } from '../src/schema/structure';
 
 /**
  * The first barrier of ADR-0007, and proof that the second one is actually load

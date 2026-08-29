@@ -6,7 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./env": "./src/env.ts"
+    "./env": "./src/env/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
