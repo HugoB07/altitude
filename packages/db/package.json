@@ -1,0 +1,30 @@
+{
+  "name": "@altitude/db",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@altitude/shared": "workspace:*",
+    "drizzle-orm": "^0.44.6",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.7.1",
+    "drizzle-kit": "^0.31.5",
+    "testcontainers": "^11.7.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}
