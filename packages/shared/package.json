@@ -5,7 +5,8 @@
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./env": "./src/env.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -16,6 +17,7 @@
     "decimal.js": "^10.6.0"
   },
   "devDependencies": {
+    "@types/node": "^26.4.0",
     "fast-check": "^4.1.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"

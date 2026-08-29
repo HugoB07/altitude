@@ -21,3 +21,7 @@ export {
   type TransactionId,
   type CategoryId,
 } from './brand.js';
+
+// Deliberately NOT re-exported here: see './env.js'. Reading process.env makes a
+// module Node-only, and this barrel is imported by browser code for Money and
+// LedgerDate. Server configuration is reached through '@altitude/shared/env'.
