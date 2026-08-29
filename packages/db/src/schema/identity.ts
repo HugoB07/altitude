@@ -13,12 +13,30 @@ export const households = pgTable('households', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Someone who signs in. Distinct from an owner — see ADR-0003. */
+/**
+ * Someone who signs in. Distinct from an owner — see ADR-0003.
+ *
+ * Also Better Auth's `user` model. Mapping it onto this table rather than
+ * letting Better Auth create a second one keeps memberships.user_id and
+ * owners.user_id pointing at the same row a session refers to.
+ *
+ * No row-level security: a user exists before any household is known, and may
+ * belong to several. Tenancy begins once a session resolves to a membership.
+ */
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
+  /**
+   * Better Auth calls this field `name`; its config maps the two rather than
+   * the column being renamed. A rename would need an interactive resolution in
+   * drizzle-kit — it cannot tell a rename from a drop plus an add — and would
+   * put a destructive step in a migration for the sake of a label.
+   */
   displayName: text('display_name').notNull(),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const MEMBERSHIP_ROLES = ['owner', 'admin', 'contributor', 'viewer', 'child'] as const;

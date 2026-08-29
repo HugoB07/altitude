@@ -22,6 +22,20 @@
       "when": 1788032551266,
       "tag": "0002_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788034239580,
+      "tag": "0003_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788034342805,
+      "tag": "0004_user_scoped_policies",
+      "breakpoints": true
     }
   ]
 }

@@ -1,13 +1,14 @@
-export * as schema from './schema/index.js';
+export * as schema from './schema/index';
 export {
   createClient,
   withHousehold,
+  withUser,
   assertTenantScopingActive,
   type Client,
   type ClientOptions,
   type Database,
   type TenantContext,
-} from './client.js';
+} from './client';
 export {
   MEMBERSHIP_ROLES,
   OWNER_KINDS,
@@ -15,7 +16,7 @@ export {
   users,
   memberships,
   owners,
-} from './schema/identity.js';
+} from './schema/identity';
 export {
   ACCOUNT_KINDS,
   LIABILITY_KINDS,
@@ -24,5 +25,6 @@ export {
   accounts,
   ownerships,
   portfolios,
-} from './schema/structure.js';
-export { TRANSACTION_KINDS, TRANSACTION_SOURCES, entries, transactions } from './schema/ledger.js';
+} from './schema/structure';
+export { TRANSACTION_KINDS, TRANSACTION_SOURCES, entries, transactions } from './schema/ledger';
+export { findMemberships, type MembershipRow } from './queries/memberships';

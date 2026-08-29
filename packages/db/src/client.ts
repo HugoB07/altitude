@@ -2,7 +2,7 @@ import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import type { HouseholdId, UserId } from '@altitude/shared';
-import * as schema from './schema/index.js';
+import * as schema from './schema/index';
 
 export type Database = PostgresJsDatabase<typeof schema>;
 
@@ -100,6 +100,28 @@ export async function withHousehold<T>(
     if (ctx.userId !== undefined) {
       await tx.execute(sql`SELECT set_config('app.current_user', ${ctx.userId}, true)`);
     }
+    return work(tx);
+  });
+}
+
+/**
+ * Runs work identified by a user but not yet bound to a household.
+ *
+ * Only sign-in needs this: reading which households someone belongs to is the
+ * one question that cannot be asked from inside a household. Migration 0004
+ * adds the policies that make it answerable — a user sees their own membership
+ * rows and the households they name, and nothing else.
+ *
+ * Everything after the household is chosen uses `withHousehold`. If a query
+ * here starts reaching accounts or transactions, it is in the wrong function.
+ */
+export async function withUser<T>(
+  client: Client,
+  userId: UserId,
+  work: (tx: Database) => Promise<T>,
+): Promise<T> {
+  return client.unsafe.transaction(async (tx) => {
+    await tx.execute(sql`SELECT set_config('app.current_user', ${userId}, true)`);
     return work(tx);
   });
 }
