@@ -166,14 +166,22 @@ No environment variable has a fallback value in the code. A missing one raises
 `MissingConfigurationError` at startup and names itself, rather than quietly running with
 a default that would be wrong in production.
 
-Then the four checks CI runs, which should all pass on a clean clone:
+Then the checks CI runs, which should all pass on a clean clone:
 
 ```bash
-pnpm lint           # architectural boundaries (dependency-cruiser)
+pnpm format:check   # prettier
+pnpm lint           # boundaries (dependency-cruiser) and ESLint
+pnpm db:check       # migration collisions
 pnpm typecheck      # tsc --noEmit across every package
 pnpm test           # vitest, including the property-based tests
-pnpm format:check   # prettier
+pnpm build          # next build
 ```
+
+`pnpm lint` runs two different questions and reports them separately in CI:
+`lint:boundaries` asks whether the architecture moved, `lint:code` whether the
+code did. ESLint runs with `--max-warnings 0`, so a warning is a failure - an
+unused local is a bug in the making, and `tsconfig.base.json` already takes the
+same position.
 
 `pnpm test:coverage` adds the thresholds. They are deliberately strict on
 `packages/core`: a gap in its coverage is a gap in the ledger guarantee.

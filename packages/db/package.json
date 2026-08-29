@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "generate": "drizzle-kit generate",
+    "check": "drizzle-kit check",
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio"
   },

@@ -48,13 +48,32 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Ordered cheapest first, and failing fast: a formatting slip is reported
-      # in seconds instead of after the test suite. All four run locally with
-      # the same commands, so nothing here can only be reproduced in CI.
+      # in seconds instead of after the test suite. Every step runs locally with
+      # the same command, so nothing here can only be reproduced in CI.
       - name: Format
         run: pnpm format:check
 
+      # Split from the ESLint step below because the two answer different
+      # questions. A boundary violation means the architecture moved; a lint
+      # error means the code did. Reading which one broke off the step name is
+      # worth one extra line of YAML.
       - name: Architectural boundaries
-        run: pnpm lint
+        run: pnpm lint:boundaries
+
+      - name: Lint
+        run: pnpm lint:code
+
+      # Catches the one thing a merge can silently produce: two migrations
+      # generated from the same parent snapshot, on two branches, which apply in
+      # an order nobody chose. Verified by staging exactly that collision - it
+      # exits 1 and names both snapshots.
+      #
+      # It reads the migration folder and touches no database, so it belongs
+      # here rather than in the database step. Note what it does not do: it
+      # compares snapshots to each other, not the schema to the migrations, so
+      # a schema change nobody generated a migration for still passes.
+      - name: Migration consistency
+        run: pnpm db:check
 
       - name: Typecheck
         run: pnpm typecheck
