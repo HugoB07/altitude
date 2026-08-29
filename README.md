@@ -7,8 +7,9 @@
 A Finary alternative: bank accounts, brokerage, tax-advantaged wrappers, crypto,
 real estate and liabilities — on your server, in your database.
 
+[![CI](https://github.com/HugoB07/altitude/actions/workflows/ci.yml/badge.svg)](https://github.com/HugoB07/altitude/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-design-orange.svg)](docs/plan)
+[![Status](https://img.shields.io/badge/status-phase%200-orange.svg)](#roadmap)
 
 </div>
 

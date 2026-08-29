@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# A push to a branch that also has an open pull request would otherwise run this
+# workflow twice. The job below skips the pull_request event unless it comes from
+# a fork, where the push event never fires for us.
+#
+# Superseded runs are cancelled: on a branch, only the newest commit matters.
+# main is exempt, because a green tick there has to correspond to a real commit.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # corepack reads packageManager from package.json, so CI resolves the same
+      # pnpm as every developer. Pinning the version here as well would be a
+      # second source of truth waiting to disagree with the first.
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # --frozen-lockfile fails rather than silently resolving a different tree
+      # when the lockfile and package.json disagree. In CI that disagreement is
+      # a bug to surface, not a problem to solve.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Ordered cheapest first, and failing fast: a formatting slip is reported
+      # in seconds instead of after the test suite. All four run locally with
+      # the same commands, so nothing here can only be reproduced in CI.
+      - name: Format
+        run: pnpm format:check
+
+      - name: Architectural boundaries
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Tests and coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage
+        if: always() && hashFiles('coverage/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
+# Deliberately not here yet, each waiting on the code it would test:
+#
+#   test:db     Testcontainers against Postgres 17 — needs packages/db (phase 0, day 3)
+#   build       next build + worker build          — needs apps/web (phase 0, day 4)
+#   test:e2e    Playwright                         — needs a running application
+#   sbom        CycloneDX                          — worth generating per release, not per commit
+#   docker      buildx amd64/arm64 + cosign        — needs a Dockerfile (phase 6)
+#
+# Dependency auditing is covered by Dependabot alerts, already enabled on the
+# repository. Running `pnpm audit` here as well would block an unrelated commit
+# the morning an advisory is published, which trains people to ignore red ticks.
