@@ -46,9 +46,16 @@ export interface ClientOptions {
 
 export interface Client {
   /**
-   * The raw handle. Reaching household data through it skips the scoping in
-   * `withHousehold`, which is why an ESLint rule forbids importing it outside
-   * this package - the barrier is only a barrier if it cannot be walked around.
+   * The raw handle, unbound to any household.
+   *
+   * Reaching household data through it skips the first barrier of ADR-0007
+   * entirely. It exists for the tables that have no household of their own:
+   * Better Auth's, which are consulted before a household is known.
+   *
+   * `test/unsafe-handle.test.ts` fails on any read of `.unsafe` outside this
+   * package and that one file. A barrier is only a barrier if it cannot be
+   * walked around by accident, so the allow list is explicit and each entry
+   * carries its reason.
    */
   readonly unsafe: Database;
   readonly sql: postgres.Sql;

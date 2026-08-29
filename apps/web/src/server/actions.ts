@@ -21,10 +21,12 @@ import { ensureTenantIsolation } from './startup';
 /**
  * Server Actions: validate the form, call the service, revalidate.
  *
- * Nothing here implements anything (ADR-0005). Each one translates a form
- * submission into a service call, and the twenty-line limit in that ADR is the
- * review rule that keeps it that way. The permission check lives in the
- * service, so it cannot be skipped by adding another caller.
+ * Nothing here implements anything (ADR-0005). Each one reads its form,
+ * validates the fields, calls one service function, and turns the outcome into
+ * a redirect or a message. Parsing input is transport work and belongs here;
+ * anything that computes money, decides a permission or knows a ledger rule
+ * does not. The permission check lives in the service, so it cannot be skipped
+ * by adding another caller.
  */
 
 export interface ActionResult {
