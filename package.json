@@ -15,21 +15,26 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
-    "test:watch": "turbo run test:watch",
-    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
-    "db:up": "docker compose -f docker/docker-compose.dev.yml up -d",
     "db:down": "docker compose -f docker/docker-compose.dev.yml down",
     "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && pnpm db:up",
-    "plan": "cd docs/plan && node build-html.mjs && node build-pdf.mjs"
+    "db:up": "docker compose -f docker/docker-compose.dev.yml up -d",
+    "dev": "turbo run dev",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
+    "lint": "depcruise packages --config .dependency-cruiser.cjs",
+    "plan": "cd docs/plan && node build-html.mjs && node build-pdf.mjs",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.11",
+    "dependency-cruiser": "^18.2.0",
+    "fast-check": "^4.1.1",
     "prettier": "^3.3.3",
     "turbo": "^2.1.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
   }
 }
