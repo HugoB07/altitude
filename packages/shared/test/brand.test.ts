@@ -11,7 +11,7 @@ import {
   portfolioId,
   transactionId,
   userId,
-} from '../src/index.js';
+} from '../src/index';
 
 const VALID = '0f8fad5b-d9cb-469f-a165-70867728950e';
 

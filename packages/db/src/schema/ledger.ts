@@ -10,8 +10,8 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { households, users } from './identity.js';
-import { accounts } from './structure.js';
+import { households, users } from './identity';
+import { accounts } from './structure';
 
 export const TRANSACTION_KINDS = [
   'buy',

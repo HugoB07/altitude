@@ -1,4 +1,4 @@
-import type { Brand } from './brand.js';
+import type { Brand } from './brand';
 
 /**
  * A calendar date with no time and no timezone, as `YYYY-MM-DD`.

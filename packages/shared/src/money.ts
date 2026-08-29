@@ -1,4 +1,4 @@
-import { Decimal, dec, type DecimalInput } from './decimal.js';
+import { Decimal, dec, type DecimalInput } from './decimal';
 
 /**
  * A currency code: ISO 4217 for fiat, and the ticker for crypto and stablecoins,

@@ -4,8 +4,8 @@ import {
   InsufficientEntriesError,
   InvalidDateRangeError,
   UnbalancedTransactionError,
-} from './errors.js';
-import type { Entry, Transaction, TransactionInput } from './types.js';
+} from './errors';
+import type { Entry, Transaction, TransactionInput } from './types';
 
 /**
  * Sums the entries of a transaction, grouped by currency.

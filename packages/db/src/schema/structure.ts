@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { households, owners } from './identity.js';
+import { households, owners } from './identity';
 
 /**
  * Postgres `ltree`, which Drizzle has no built-in column type for.

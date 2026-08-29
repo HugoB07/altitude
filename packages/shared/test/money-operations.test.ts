@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Money } from '../src/index.js';
+import { Money } from '../src/index';
 
 describe('Money — sign predicates', () => {
   it('treats zero as neither positive nor negative', () => {

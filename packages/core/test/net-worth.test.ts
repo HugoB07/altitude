@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Money, accountId, ledgerDate, transactionId, type AccountId } from '@altitude/shared';
-import { createTransaction, type Transaction } from '../src/index.js';
+import { createTransaction, type Transaction } from '../src/index';
 
 /**
  * The verification the development plan sets for the end of week 1 (§18, day 5):

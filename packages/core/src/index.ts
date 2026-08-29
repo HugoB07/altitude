@@ -1,15 +1,11 @@
-export {
-  createTransaction,
-  reverseTransaction,
-  sumByCurrency,
-} from './ledger/create-transaction.js';
+export { createTransaction, reverseTransaction, sumByCurrency } from './ledger/create-transaction';
 export {
   LedgerError,
   UnbalancedTransactionError,
   InsufficientEntriesError,
   InconsistentHoldingError,
   InvalidDateRangeError,
-} from './ledger/errors.js';
+} from './ledger/errors';
 export {
   TRANSACTION_KINDS,
   type Transaction,
@@ -18,7 +14,7 @@ export {
   type TransactionSource,
   type Entry,
   type EntryInput,
-} from './ledger/types.js';
+} from './ledger/types';
 export {
   ROLES,
   ACTIONS,
@@ -31,4 +27,4 @@ export {
   type Actor,
   type Resource,
   type Decision,
-} from './auth/policy.js';
+} from './auth/policy';

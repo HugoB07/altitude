@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { compareDates, ledgerDate, todayIn } from '../src/index.js';
+import { compareDates, ledgerDate, todayIn } from '../src/index';
 
 describe('ledgerDate — why accounting dates are not instants', () => {
   it('accepts a well-formed calendar date', () => {

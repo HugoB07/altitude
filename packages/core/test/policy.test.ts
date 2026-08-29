@@ -9,7 +9,7 @@ import {
   type Action,
   type Actor,
   type Role,
-} from '../src/index.js';
+} from '../src/index';
 import { householdId, portfolioId, userId } from '@altitude/shared';
 
 const HOUSE = householdId('11111111-1111-4111-8111-111111111111');

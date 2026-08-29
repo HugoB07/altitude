@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { CurrencyMismatchError, Money, currency, dec } from '../src/index.js';
+import { CurrencyMismatchError, Money, currency, dec } from '../src/index';
 
 describe('Money — the reason ADR-0006 exists', () => {
   it('adds 0.1 and 0.2 to exactly 0.3', () => {
