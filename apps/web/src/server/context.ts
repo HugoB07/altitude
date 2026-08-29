@@ -29,6 +29,8 @@ export interface RequestContext {
   readonly actor: Actor;
   readonly email: string;
   readonly displayName: string;
+  /** The household's own name, for the chrome. Already joined by findMemberships. */
+  readonly householdName: string;
 }
 
 export class UnauthenticatedError extends Error {
@@ -98,6 +100,7 @@ export const getContext = cache(async (): Promise<RequestContext | null> => {
     },
     email: user.email,
     displayName: user.displayName,
+    householdName: membership.householdName,
   };
 });
 

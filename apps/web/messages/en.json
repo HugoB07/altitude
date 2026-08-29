@@ -29,11 +29,22 @@
     "netWorth": "Net worth",
     "netWorthHint": "Assets only. Internal transfers do not change this figure.",
     "accounts": "Accounts",
-    "notCounted": "not counted in net worth"
+    "greeting": "Hello, {name}",
+    "assets": "Assets",
+    "liabilities": "Liabilities",
+    "allocation": "Allocation",
+    "allocationEmpty": "Nothing to allocate yet.",
+    "share": "{percent}% of assets",
+    "assetAccounts": "Assets",
+    "liabilityAccounts": "Debt",
+    "equityNote": "Opening balance, excluded from net worth",
+    "emptyTitle": "No movement yet",
+    "emptyBody": "Record a first transaction and the numbers above start working.",
+    "accountCount": "{count, plural, =1 {# account} other {# accounts}}"
   },
   "quickAdd": {
     "title": "Move money",
-    "description": "Between two of your accounts. Net worth will not change — that is the point.",
+    "description": "Between two of your accounts. Net worth will not change - that is the point.",
     "from": "From",
     "to": "To",
     "amount": "Amount",
@@ -63,11 +74,25 @@
     "receivable": "receivable",
     "loan": "loan",
     "credit_card": "credit card",
-    "other_liability": "other liability"
+    "other_liability": "other liability",
+    "opening_balance": "opening balance"
   },
   "starterAccounts": {
     "current": "Current account",
     "savings": "Savings",
     "opening": "Opening balances"
+  },
+  "nav": {
+    "dashboard": "Overview",
+    "accounts": "Accounts",
+    "transactions": "Transactions",
+    "holdings": "Holdings",
+    "realEstate": "Property",
+    "settings": "Settings",
+    "soon": "soon",
+    "sectionMain": "Wealth",
+    "sectionManage": "Manage",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   }
 }

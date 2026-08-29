@@ -29,11 +29,22 @@
     "netWorth": "Patrimoine net",
     "netWorthHint": "Actifs uniquement. Un virement interne ne change pas ce montant.",
     "accounts": "Comptes",
-    "notCounted": "hors patrimoine net"
+    "greeting": "Bonjour, {name}",
+    "assets": "Actifs",
+    "liabilities": "Dettes",
+    "allocation": "Répartition",
+    "allocationEmpty": "Rien à répartir pour le moment.",
+    "share": "{percent} % des actifs",
+    "assetAccounts": "Actifs",
+    "liabilityAccounts": "Dettes",
+    "equityNote": "Solde d'ouverture, hors patrimoine net",
+    "emptyTitle": "Aucun mouvement",
+    "emptyBody": "Enregistrez une première transaction et les chiffres ci-dessus prennent vie.",
+    "accountCount": "{count, plural, =1 {# compte} other {# comptes}}"
   },
   "quickAdd": {
     "title": "Déplacer de l'argent",
-    "description": "Entre deux de vos comptes. Le patrimoine net ne bougera pas — c'est le principe.",
+    "description": "Entre deux de vos comptes. Le patrimoine net ne bougera pas - c'est le principe.",
     "from": "Depuis",
     "to": "Vers",
     "amount": "Montant",
@@ -63,11 +74,25 @@
     "receivable": "créance",
     "loan": "crédit",
     "credit_card": "carte de crédit",
-    "other_liability": "autre passif"
+    "other_liability": "autre passif",
+    "opening_balance": "solde d'ouverture"
   },
   "starterAccounts": {
     "current": "Compte courant",
     "savings": "Épargne",
     "opening": "Soldes d'ouverture"
+  },
+  "nav": {
+    "dashboard": "Vue d'ensemble",
+    "accounts": "Comptes",
+    "transactions": "Transactions",
+    "holdings": "Placements",
+    "realEstate": "Immobilier",
+    "settings": "Paramètres",
+    "soon": "bientôt",
+    "sectionMain": "Patrimoine",
+    "sectionManage": "Gestion",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu"
   }
 }

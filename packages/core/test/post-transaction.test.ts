@@ -49,7 +49,8 @@ const USER = userId('33333333-3333-4333-8333-333333333333');
 
 let current: AccountId;
 let savings: AccountId;
-let income: AccountId;
+let opening: AccountId;
+let mortgage: AccountId;
 
 const owner: Actor = { userId: USER, householdId: HOUSE, role: 'owner' };
 const viewer: Actor = { userId: USER, householdId: HOUSE, role: 'viewer' };
@@ -99,13 +100,23 @@ beforeAll(async () => {
         kind: 'savings',
         currency: 'EUR',
       },
-      // Where money entering the household comes from. Not an asset, so it is
-      // excluded from net worth below the same way the unit test excludes it.
+      // Where money entering the household comes from. Equity, not a liability:
+      // it is the counterpart that makes a first deposit balance, and net worth
+      // leaves it out by class rather than by anyone remembering to.
       {
         household_id: HOUSE,
         portfolio_id: portfolio!.id,
-        name: 'Income',
-        kind: 'other_liability',
+        name: 'Opening',
+        kind: 'opening_balance',
+        currency: 'EUR',
+      },
+      // Real debt, so that net worth is exercised against something it must
+      // subtract rather than only against things it adds.
+      {
+        household_id: HOUSE,
+        portfolio_id: portfolio!.id,
+        name: 'Mortgage',
+        kind: 'loan',
         currency: 'EUR',
       },
     ])} RETURNING id, name`;
@@ -113,7 +124,8 @@ beforeAll(async () => {
 
   current = accountId(made.find((a) => a.name === 'Current')!.id);
   savings = accountId(made.find((a) => a.name === 'Savings')!.id);
-  income = accountId(made.find((a) => a.name === 'Income')!.id);
+  opening = accountId(made.find((a) => a.name === 'Opening')!.id);
+  mortgage = accountId(made.find((a) => a.name === 'Mortgage')!.id);
 
   const uri = new URL(container.getConnectionUri());
   client = createClient({
@@ -138,7 +150,7 @@ describe('postTransaction - the week 1 number, through the database', () => {
         description: 'Salary',
         entries: [
           { accountId: current, amount: Money.of('1000', 'EUR') },
-          { accountId: income, amount: Money.of('-1000', 'EUR') },
+          { accountId: opening, amount: Money.of('-1000', 'EUR') },
         ],
       });
 
@@ -161,11 +173,12 @@ describe('postTransaction - the week 1 number, through the database', () => {
     const byName = Object.fromEntries(balances.map((b) => [b.name, b.balance.amount.toFixed()]));
     expect(byName['Current']).toBe('700');
     expect(byName['Savings']).toBe('300');
-    expect(byName['Income']).toBe('-1000');
+    expect(byName['Opening']).toBe('-1000');
 
-    // Net worth over the asset accounts only - the same shape as the unit test.
-    const assets = balances.filter((b) => b.name !== 'Income');
-    expect(netWorth(assets, 'EUR').amount.toFixed()).toBe('1000');
+    // Every balance, unfiltered. The caller does not choose what counts: the
+    // opening account is equity and drops out on its own, which is the whole
+    // reason the class exists.
+    expect(netWorth(balances, 'EUR').amount.toFixed()).toBe('1000');
   });
 
   it('sums exactly, with no float anywhere between the column and the result', async () => {
@@ -204,7 +217,75 @@ describe('postTransaction - the week 1 number, through the database', () => {
     const balances = await withHousehold(client, { householdId: HOUSE }, (tx) =>
       accountBalances(tx, owner),
     );
-    expect(balances).toHaveLength(3);
+    expect(balances).toHaveLength(4);
+    // The mortgage has had no transaction yet. An account that vanished until
+    // its first one would look like a bug to whoever had just created it.
+    expect(balances.find((b) => b.name === 'Mortgage')?.balance.amount.toFixed()).toBe('0');
+  });
+
+  /**
+   * The regression for the bug this class was added to fix.
+   *
+   * Drawing down a mortgage moves 150,000 into the current account and owes
+   * 150,000, so net worth does not move. Before `classification` existed the
+   * dashboard summed asset accounts only - because the opening balance account
+   * was typed as a liability and had to be hidden somehow - and this household
+   * would have reported 151,000. Being suddenly richer by the size of the loan
+   * is a wrong answer nobody reports.
+   */
+  it('does not make a household richer for borrowing', async () => {
+    const before = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      accountBalances(tx, owner),
+    );
+
+    await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      postTransaction(tx, owner, {
+        id: transactionId('aaaaaaaa-0000-4000-8000-00000000000a'),
+        bookedOn: ledgerDate('2026-03-04'),
+        kind: 'transfer',
+        description: 'Mortgage drawdown',
+        entries: [
+          { accountId: current, amount: Money.of('150000', 'EUR') },
+          { accountId: mortgage, amount: Money.of('-150000', 'EUR') },
+        ],
+      }),
+    );
+
+    const after = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      accountBalances(tx, owner),
+    );
+
+    // Both the value and the fact it did not move. Equality alone would pass
+    // against a netWorth that counted equity too, since that returns zero on
+    // either side of the drawdown.
+    expect(netWorth(before, 'EUR').amount.toFixed()).toBe('1000');
+    expect(netWorth(after, 'EUR').amount.toFixed()).toBe('1000');
+    expect(netWorth(after, 'EUR').equals(netWorth(before, 'EUR'))).toBe(true);
+
+    const byName = Object.fromEntries(after.map((b) => [b.name, b]));
+    expect(byName['Mortgage']!.classification).toBe('liability');
+    expect(byName['Opening']!.classification).toBe('equity');
+    expect(byName['Current']!.classification).toBe('asset');
+
+    // Repaying it moves net worth up by exactly what was repaid, which is the
+    // other half of the same claim.
+    await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      postTransaction(tx, owner, {
+        id: transactionId('aaaaaaaa-0000-4000-8000-00000000000b'),
+        bookedOn: ledgerDate('2026-03-05'),
+        kind: 'transfer',
+        description: 'Repayment',
+        entries: [
+          { accountId: current, amount: Money.of('-500', 'EUR') },
+          { accountId: mortgage, amount: Money.of('500', 'EUR') },
+        ],
+      }),
+    );
+
+    const repaid = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      accountBalances(tx, owner),
+    );
+    expect(netWorth(repaid, 'EUR').equals(netWorth(before, 'EUR'))).toBe(true);
   });
 });
 

@@ -75,9 +75,39 @@ export const ACCOUNT_KINDS = [
   'loan',
   'credit_card',
   'other_liability',
+  'opening_balance',
 ] as const;
 
+/**
+ * Three classes, not two.
+ *
+ * The first version of this table carried a single `is_liability` boolean, which
+ * forced a third kind of account to pretend to be one of the two. The opening
+ * balance account - the counterpart every first deposit needs - was typed as a
+ * liability purely to keep it out of net worth, and the dashboard then had to
+ * exclude every liability to hide it. Real debt would have been excluded too,
+ * silently overstating net worth by the size of the mortgage.
+ *
+ * Equity is the accounting answer and it is not a workaround: an opening balance
+ * is neither something owned nor something owed, it is the balancing figure that
+ * makes the first transaction sum to zero (ADR-0002).
+ */
 export const LIABILITY_KINDS = ['loan', 'credit_card', 'other_liability'] as const;
+
+export const EQUITY_KINDS = ['opening_balance'] as const;
+
+export const ASSET_KINDS = ACCOUNT_KINDS.filter(
+  (kind): kind is Exclude<AccountKind, LiabilityKind | EquityKind> =>
+    !LIABILITY_KINDS.includes(kind as LiabilityKind) && !EQUITY_KINDS.includes(kind as EquityKind),
+);
+
+export type AccountKind = (typeof ACCOUNT_KINDS)[number];
+export type LiabilityKind = (typeof LIABILITY_KINDS)[number];
+export type EquityKind = (typeof EQUITY_KINDS)[number];
+
+/** What an account contributes to net worth: added, subtracted, or neither. */
+export const ACCOUNT_CLASSES = ['asset', 'liability', 'equity'] as const;
+export type AccountClass = (typeof ACCOUNT_CLASSES)[number];
 
 export const accounts = pgTable(
   'accounts',
@@ -99,12 +129,22 @@ export const accounts = pgTable(
     externalRefLast4: text('external_ref_last4'),
     attributes: jsonb('attributes').notNull().default({}),
     /**
-     * Generated, not set by the application: a liability that stops counting as
-     * one because an insert forgot the flag is a net-worth bug that hides.
+     * Generated from `kind`, never set by the application.
+     *
+     * A classification an insert can forget is a net-worth bug that hides: the
+     * row looks right, the total does not, and nothing points at the account
+     * that caused it. Deriving it means the two cannot disagree.
      */
-    isLiability: boolean('is_liability')
+    classification: text('classification')
+      .$type<AccountClass>()
       .notNull()
-      .generatedAlwaysAs(sql`kind IN ('loan', 'credit_card', 'other_liability')`),
+      .generatedAlwaysAs(
+        sql`CASE
+          WHEN kind IN ('loan', 'credit_card', 'other_liability') THEN 'liability'
+          WHEN kind IN ('opening_balance') THEN 'equity'
+          ELSE 'asset'
+        END`,
+      ),
     openedOn: date('opened_on'),
     closedOn: date('closed_on'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

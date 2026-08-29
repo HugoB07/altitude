@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { entries as entriesTable, transactions as transactionsTable } from '@altitude/db';
-import type { Database } from '@altitude/db';
+import type { AccountClass, Database } from '@altitude/db';
 import { Money, type AccountId, type TransactionId } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
 import { createTransaction } from '../ledger/create-transaction';
@@ -122,7 +122,8 @@ export interface AccountBalance {
   readonly name: string;
   readonly kind: string;
   readonly currency: string;
-  readonly isLiability: boolean;
+  /** Derived from `kind` in the database, so it cannot disagree with it. */
+  readonly classification: AccountClass;
   readonly balance: Money;
 }
 
@@ -153,18 +154,18 @@ export async function accountBalances(
     name: string;
     kind: string;
     currency: string;
-    is_liability: boolean;
+    classification: AccountClass;
     balance: string;
   }>(sql`
     SELECT a.id,
            a.name,
            a.kind,
            a.currency,
-           a.is_liability,
+           a.classification,
            COALESCE(sum(e.amount), 0)::text AS balance
       FROM accounts a
       LEFT JOIN entries e ON e.account_id = a.id
-     GROUP BY a.id, a.name, a.kind, a.currency, a.is_liability
+     GROUP BY a.id, a.name, a.kind, a.currency, a.classification
      ORDER BY a.name
   `);
 
@@ -173,23 +174,30 @@ export async function accountBalances(
     name: row.name,
     kind: row.kind,
     currency: row.currency,
-    isLiability: row.is_liability,
+    classification: row.classification,
     balance: Money.of(row.balance, row.currency),
   }));
 }
 
 /**
- * Net worth: the sum of every balance.
+ * Net worth: what is owned, less what is owed.
  *
- * Liabilities are accounts whose balances are negative, so the sum is the whole
- * calculation. There is no separate subtraction to get wrong, and no flag an
- * insert can forget - `is_liability` is a generated column.
+ * A liability's balance is already negative, so assets and liabilities are
+ * added rather than subtracted. There is no separate subtraction to get the
+ * wrong way round, and no flag an insert can forget - `classification` is
+ * generated from `kind`.
+ *
+ * Equity accounts are excluded, and that exclusion is the whole point of the
+ * class existing. An opening balance is the counterpart that makes the first
+ * deposit sum to zero (ADR-0002); counting it would make every household worth
+ * exactly nothing, and hiding it by calling it a liability - which is what this
+ * code did before - excluded real debt along with it.
  *
  * Single currency for now. Combining several needs a dated rate per account,
  * which is phase 3.
  */
 export function netWorth(balances: readonly AccountBalance[], currency: string): Money {
   return balances
-    .filter((b) => b.currency === currency)
+    .filter((b) => b.currency === currency && b.classification !== 'equity')
     .reduce((total, b) => total.plus(b.balance), Money.zero(currency));
 }

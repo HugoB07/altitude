@@ -48,8 +48,9 @@ export interface CreatedHousehold {
  * `opening` is the counterpart every deposit needs: money entering the
  * household has to come from somewhere, or the transaction does not balance
  * (ADR-0002). Users of double-entry systems know this account; users of this
- * one should not have to, so it is created for them and kept out of net worth
- * by being a liability.
+ * one should not have to, so it is created for them and classified as equity,
+ * which is what keeps it out of net worth. It was a liability once, and that
+ * made net worth exclude every liability in order to hide it.
  *
  * Two asset accounts because one is not enough to make an internal transfer,
  * and an internal transfer is the thing a new user should try first - it is
@@ -58,7 +59,7 @@ export interface CreatedHousehold {
 const STARTER_ACCOUNTS = [
   { key: 'current', kind: 'cash' },
   { key: 'savings', kind: 'savings' },
-  { key: 'opening', kind: 'other_liability' },
+  { key: 'opening', kind: 'opening_balance' },
 ] as const satisfies readonly { key: StarterAccount; kind: string }[];
 
 export async function createHousehold(

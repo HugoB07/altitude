@@ -18,13 +18,20 @@ export {
   owners,
 } from './schema/identity';
 export {
+  ACCOUNT_CLASSES,
   ACCOUNT_KINDS,
+  ASSET_KINDS,
+  EQUITY_KINDS,
   LIABILITY_KINDS,
   OWNERSHIP_RIGHTS,
   PORTFOLIO_KINDS,
   accounts,
   ownerships,
   portfolios,
+  type AccountClass,
+  type AccountKind,
+  type EquityKind,
+  type LiabilityKind,
 } from './schema/structure';
 export { TRANSACTION_KINDS, TRANSACTION_SOURCES, entries, transactions } from './schema/ledger';
 export { findMemberships, type MembershipRow } from './queries/memberships';

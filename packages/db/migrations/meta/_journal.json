@@ -43,6 +43,20 @@
       "when": 1788037156656,
       "tag": "0005_auth_issuer",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788042631669,
+      "tag": "0006_add_account_classification",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788042640988,
+      "tag": "0007_drop_is_liability",
+      "breakpoints": true
     }
   ]
 }
