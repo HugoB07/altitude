@@ -1,5 +1,22 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'drizzle-kit';
 import { requireEnv } from '@altitude/shared/env';
+
+// drizzle-kit reads no env file of its own, so without this every command would
+// need the variable exported by hand. Node's own loader, so no dotenv
+// dependency — and fileURLToPath rather than URL.pathname, which yields
+// "/C:/..." on Windows.
+//
+// .env.local before .env, matching Next's precedence: the local file is the
+// gitignored one holding real values.
+for (const file of ['../../.env.local', '../../.env']) {
+  const path = fileURLToPath(new URL(file, import.meta.url));
+  if (existsSync(path)) {
+    process.loadEnvFile(path);
+    break;
+  }
+}
 
 export default defineConfig({
   dialect: 'postgresql',

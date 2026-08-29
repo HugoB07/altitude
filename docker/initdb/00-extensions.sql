@@ -28,5 +28,19 @@ END
 $$;
 
 GRANT CONNECT ON DATABASE altitude TO altitude_app, altitude_migrate;
-GRANT USAGE, CREATE ON SCHEMA public TO altitude_migrate;
+
+-- CREATE on the database, not merely on schema public: drizzle-kit keeps its
+-- ledger of applied migrations in a schema of its own and creates it on first
+-- run. Without this the migrator fails while creating that schema, and reports
+-- it as "undefined" — an error with no message, on a fresh database, which is
+-- an unpleasant way to spend an evening.
+GRANT CREATE ON DATABASE altitude TO altitude_migrate;
 GRANT USAGE ON SCHEMA public TO altitude_app;
+
+-- altitude_migrate owns the schema, so every table a migration creates belongs
+-- to it and later migrations can ALTER them. Bootstrapping as the superuser
+-- instead leaves the tables owned by a role the migration role cannot touch:
+-- the first ALTER TABLE fails with "must be owner of table", and only on the
+-- migration that needs it — long after the setup looked correct.
+ALTER SCHEMA public OWNER TO altitude_migrate;
+GRANT USAGE, CREATE ON SCHEMA public TO altitude_migrate;
