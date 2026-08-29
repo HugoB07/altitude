@@ -19,3 +19,16 @@ export {
   type Entry,
   type EntryInput,
 } from './ledger/types.js';
+export {
+  ROLES,
+  ACTIONS,
+  can,
+  assertCan,
+  atLeast,
+  ForbiddenError,
+  type Role,
+  type Action,
+  type Actor,
+  type Resource,
+  type Decision,
+} from './auth/policy.js';
