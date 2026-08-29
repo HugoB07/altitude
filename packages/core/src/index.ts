@@ -36,3 +36,4 @@ export {
   type AccountBalance,
   TenantScopeError,
 } from './services/transactions';
+export { createHousehold, type NewHousehold, type CreatedHousehold } from './services/household';

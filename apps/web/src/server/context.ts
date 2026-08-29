@@ -8,14 +8,23 @@ import { householdId as toHouseholdId, userId as toUserId } from '@altitude/shar
 import { getAuth, getAuthDbClient } from './auth';
 
 /**
- * Who is making this request, and which household for.
+ * Two questions, deliberately kept apart.
  *
- * The single place a session becomes an `Actor`. Everything that reads or
- * writes household data starts here: `getContext()` to learn who is asking,
- * `assertCan()` to decide whether they may, `scoped()` to run the work bound to
- * their tenant. Skipping any of the three is the bug this shape exists to make
- * visible in review.
+ * "Who is signed in?" and "which household are they acting for?" have different
+ * answers and different remedies — one sends you to sign-in, the other to
+ * setup. Collapsing them into a single nullable result makes creating a first
+ * household impossible, because that flow needs a user who has no household
+ * yet and one check cannot tell the two apart.
  */
+
+/** A signed-in person, before any household is involved. */
+export interface SessionUser {
+  readonly userId: ReturnType<typeof toUserId>;
+  readonly email: string;
+  readonly displayName: string;
+}
+
+/** A signed-in person acting for a household. */
 export interface RequestContext {
   readonly actor: Actor;
   readonly email: string;
@@ -33,49 +42,74 @@ export class UnauthenticatedError extends Error {
 export class NoHouseholdError extends Error {
   readonly code = 'NO_HOUSEHOLD';
   constructor() {
-    super('This account is not a member of any household.');
+    super('This account is not a member of any household yet.');
     this.name = 'NoHouseholdError';
   }
 }
 
 /**
- * Resolves the current session to an actor, or null when signed out.
+ * The session, resolved once per render.
  *
- * Wrapped in React's `cache` so the several components of one render share a
- * single resolution rather than each querying memberships. The cache is
- * per-request: it cannot carry one user's context into another's.
+ * React's `cache` means the several components of one page share a single
+ * resolution rather than each verifying the cookie. It is per-request, so it
+ * cannot carry one user's session into another's.
  */
-export const getContext = cache(async (): Promise<RequestContext | null> => {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (session === null) return null;
-
-  const userId = toUserId(session.user.id);
-
-  // The household on the session when there is one, otherwise the membership
-  // that exists. A user with several and none chosen is asked to pick, rather
-  // than being dropped into whichever the database returned first.
-  const active = (session.session as { activeHouseholdId?: string | null }).activeHouseholdId;
-
-  const rows = await findMemberships(getAuthDbClient(), userId, active ?? undefined);
-  const membership = rows[0];
-  if (membership === undefined) return null;
-
   return {
-    actor: {
-      userId,
-      householdId: toHouseholdId(membership.householdId),
-      role: membership.role as Role,
-    },
+    userId: toUserId(session.user.id),
     email: session.user.email,
     displayName: session.user.name,
   };
 });
 
-/** `getContext`, refusing rather than returning null. For anything past the login wall. */
+export async function requireSessionUser(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (user === null) throw new UnauthenticatedError();
+  return user;
+}
+
+/**
+ * The session resolved to a household and a role.
+ *
+ * Null means signed in but not yet in a household — the state the setup page
+ * exists to resolve.
+ */
+export const getContext = cache(async (): Promise<RequestContext | null> => {
+  const user = await getSessionUser();
+  if (user === null) return null;
+
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  // A user may belong to several households; the active one lives on the
+  // session so two browsers can sit in two households at once.
+  const active = (session?.session as { activeHouseholdId?: string | null } | undefined)
+    ?.activeHouseholdId;
+
+  const rows = await findMemberships(getAuthDbClient(), user.userId, active ?? undefined);
+  const membership = rows[0];
+  if (membership === undefined) return null;
+
+  return {
+    actor: {
+      userId: user.userId,
+      householdId: toHouseholdId(membership.householdId),
+      role: membership.role as Role,
+    },
+    email: user.email,
+    displayName: user.displayName,
+  };
+});
+
+/**
+ * `getContext`, refusing rather than returning null — and saying which of the
+ * two problems it is, because callers respond to them differently.
+ */
 export async function requireContext(): Promise<RequestContext> {
   const ctx = await getContext();
-  if (ctx === null) throw new UnauthenticatedError();
-  return ctx;
+  if (ctx !== null) return ctx;
+  if ((await getSessionUser()) === null) throw new UnauthenticatedError();
+  throw new NoHouseholdError();
 }
 
 /**
