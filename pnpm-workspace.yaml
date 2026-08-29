@@ -2,3 +2,17 @@ packages:
   - 'apps/*'
   - 'packages/*'
   - 'tools/*'
+
+# pnpm blocks dependency install scripts by default. That default is a
+# supply-chain protection worth keeping, so this list is an allowlist and each
+# entry needs a reason, exactly like a new dependency does (CONTRIBUTING.md).
+allowBuilds:
+  # Fetches its platform-specific binary in a postinstall. Without it neither
+  # drizzle-kit nor vitest can start.
+  esbuild: true
+  # Optional native acceleration for testcontainers' SSH transport. Everything
+  # works without them, so they stay blocked.
+  cpu-features: false
+  ssh2: false
+  # Postinstall only generates CLI helpers we never invoke.
+  protobufjs: false
