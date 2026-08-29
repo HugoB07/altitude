@@ -1,5 +1,14 @@
 export * as schema from './schema/index.js';
 export {
+  createClient,
+  withHousehold,
+  assertTenantScopingActive,
+  type Client,
+  type ClientOptions,
+  type Database,
+  type TenantContext,
+} from './client.js';
+export {
   MEMBERSHIP_ROLES,
   OWNER_KINDS,
   households,

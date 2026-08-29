@@ -15,6 +15,13 @@
       "when": 1788031158864,
       "tag": "0001_ledger_invariant",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788032551266,
+      "tag": "0002_force_rls",
+      "breakpoints": true
     }
   ]
 }
