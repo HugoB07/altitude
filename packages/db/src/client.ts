@@ -21,12 +21,28 @@ export interface TenantContext {
 export interface ClientOptions {
   readonly url: string;
   readonly max?: number;
-  /**
-   * Set only by migrations and maintenance, which legitimately reach across
-   * households. Everything else leaves it false and is bound to one tenant.
-   */
-  readonly bypassTenantScope?: boolean;
 }
+
+/**
+ * Which database role to connect as.
+ *
+ * `altitude_app` — the web application and the worker, both of them. It is
+ * subject to row-level security, which is the whole of the second barrier. A
+ * background job that spans households iterates them and calls `withHousehold`
+ * once per household: slower than one unscoped query, and it means a bug in the
+ * worker cannot leak across households either. Tables with no household of
+ * their own — instrument prices, FX rates — carry no policy, so this role reads
+ * and writes them freely without needing an exemption.
+ *
+ * `altitude_migrate` — migrations, backups and maintenance only. It holds
+ * BYPASSRLS, so it sees every household by design. Nothing that serves a request
+ * may connect as it, and `assertTenantScopingActive` refuses to start if
+ * something does.
+ *
+ * There is deliberately no option on this client to switch between them. The
+ * choice is made once, in the connection string, by whoever deploys — not per
+ * call site, where "just this once" would eventually mean everywhere.
+ */
 
 export interface Client {
   /**
