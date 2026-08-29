@@ -16,3 +16,17 @@ allowBuilds:
   ssh2: false
   # Postinstall only generates CLI helpers we never invoke.
   protobufjs: false
+
+# drizzle-kit still depends on @esbuild-kit/esm-loader, which is deprecated —
+# it was merged into tsx, which drizzle-kit also depends on — and which pins
+# esbuild 0.18. That version carries GHSA-67mh-4wv8-2f99: its development
+# server answers requests from any origin.
+#
+# Nothing here runs an esbuild dev server, and drizzle-kit is a devDependency
+# that never ships, so the advisory is not reachable in this project. It is
+# still fixed rather than ignored: a permanently red audit is an audit nobody
+# reads, and there is no upstream release to wait for — 0.31.10 is current.
+#
+# Scoped to the offending path so drizzle-kit's own esbuild is left alone.
+overrides:
+  '@esbuild-kit/core-utils>esbuild': '^0.25.12'
