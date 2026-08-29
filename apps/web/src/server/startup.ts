@@ -9,7 +9,7 @@ import { getAuthDbClient } from './auth';
  * `assertTenantScopingActive` has existed since day 4 and nothing called it,
  * which made it a guard that guarded nothing. It matters most for the case the
  * SQL cannot cover on its own: a superuser ignores row-level security entirely,
- * and FORCE ROW LEVEL SECURITY does not reach them — so migration 0002 buys
+ * and FORCE ROW LEVEL SECURITY does not reach them - so migration 0002 buys
  * nothing if DATABASE_URL points at the role a Postgres image creates from
  * POSTGRES_USER.
  *

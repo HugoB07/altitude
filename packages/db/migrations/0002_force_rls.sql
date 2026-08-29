@@ -3,7 +3,7 @@
 -- ENABLE ROW LEVEL SECURITY, added in 0001, does not apply to the role that
 -- owns the tables. PostgreSQL exempts owners by default. That exemption turns
 -- the second barrier of ADR-0007 into decoration the moment DATABASE_URL points
--- at the owning role — which is the obvious thing to configure, and is exactly
+-- at the owning role - which is the obvious thing to configure, and is exactly
 -- what docker-compose.dev.yml hands out.
 --
 -- The failure mode is the dangerous kind: nothing errors, pg_class still reports
@@ -100,7 +100,7 @@ CREATE POLICY household_update ON entries
 
 -- Grants in 0001 covered the tables that existed then. Default privileges cover
 -- the ones later migrations will create, so adding a table cannot silently
--- leave the application role unable to read it — a failure that would surface
+-- leave the application role unable to read it - a failure that would surface
 -- as a permission error in production long after the migration looked fine.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO altitude_app;

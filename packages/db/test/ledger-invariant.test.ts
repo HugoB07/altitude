@@ -7,7 +7,7 @@ import { join } from 'node:path';
 /**
  * The invariant lives in two places: packages/core enforces it in TypeScript,
  * and the migrations enforce it in SQL. This suite checks the SQL half against
- * a real PostgreSQL 17 — not a mock, because the behaviour under test is
+ * a real PostgreSQL 17 - not a mock, because the behaviour under test is
  * precisely the parts a mock would not have: deferred constraint triggers,
  * exclusion constraints, ltree, and row-level security.
  *
@@ -154,7 +154,7 @@ describe('the balance invariant, enforced by the database', () => {
     ).rejects.toThrow(/does not balance/);
   });
 
-  it('reports the exact residual — numeric, not float', async () => {
+  it('reports the exact residual - numeric, not float', async () => {
     await expect(
       post('aaaaaaaa-0000-4000-8000-000000000003', [
         { account: CURRENT, amount: '-300' },
@@ -178,7 +178,7 @@ describe('the balance invariant, enforced by the database', () => {
     ).rejects.toThrow(/at least two are required/);
   });
 
-  it('allows entries to be inserted one at a time — the point of deferral', async () => {
+  it('allows entries to be inserted one at a time - the point of deferral', async () => {
     // Each insert is momentarily unbalanced. An immediate trigger would reject
     // the first one and make the whole design unusable.
     const id = 'aaaaaaaa-0000-4000-8000-000000000006';
@@ -358,7 +358,7 @@ describe('row-level security', () => {
     }
   });
 
-  it('returns nothing when the tenant was never set — it fails closed', async () => {
+  it('returns nothing when the tenant was never set - it fails closed', async () => {
     const app = postgres(container.getConnectionUri(), {
       max: 1,
       onnotice: () => {},

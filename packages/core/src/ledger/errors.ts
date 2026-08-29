@@ -4,7 +4,7 @@ export abstract class LedgerError extends Error {
   abstract readonly code: string;
 }
 
-/** One currency's lines did not sum to zero — the invariant of ADR-0002. */
+/** One currency's lines did not sum to zero - the invariant of ADR-0002. */
 export class UnbalancedTransactionError extends LedgerError {
   readonly code = 'LEDGER_UNBALANCED';
   readonly transactionId: TransactionId;

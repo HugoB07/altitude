@@ -9,30 +9,30 @@
   <pre>/                          <span class="c">→ public landing page (Magic UI: hero, globe, bento, marquee)</span>
 /login  /setup             <span class="c">→ auth · first-run wizard</span>
 /app
-├─ /                       <span class="c">Dashboard — net worth, allocation, globe, recent movements</span>
-├─ /wealth                 <span class="c">Portfolio + account tree (list or treemap view)</span>
-│   └─ /accounts/[id]      <span class="c">  positions · transactions · performance · documents</span>
-├─ /transactions           <span class="c">Global table: filters, bulk actions, reconciliation</span>
-├─ /import                 <span class="c">Import centre: upload, mapping, duplicates, history</span>
-├─ /analysis
-│   ├─ /allocation         <span class="c">  asset class · sector · currency · liquidity</span>
-│   ├─ /geography          <span class="c">  ⚑ the Globe + country exposure table</span>
-│   ├─ /performance        <span class="c">  TWR vs MWR vs benchmark, contribution by holding</span>
-│   ├─ /income             <span class="c">  dividends, coupons, rents · forward calendar</span>
-│   └─ /fees               <span class="c">  cumulative fees, weighted TER, 20-year impact</span>
-├─ /property               <span class="c">Properties, leases, loans, yield</span>
-├─ /budget                 <span class="c">Categories, budgets, recurrences (v1.1)</span>
-├─ /goals                  <span class="c">Goals, FIRE simulator, Monte Carlo (v1.1)</span>
-├─ /household              <span class="c">Owners, members, roles, shares</span>
-└─ /settings               <span class="c">Currency, providers, connectors, backup, export, API keys</span></pre>
+├- /                       <span class="c">Dashboard - net worth, allocation, globe, recent movements</span>
+├- /wealth                 <span class="c">Portfolio + account tree (list or treemap view)</span>
+│   └- /accounts/[id]      <span class="c">  positions · transactions · performance · documents</span>
+├- /transactions           <span class="c">Global table: filters, bulk actions, reconciliation</span>
+├- /import                 <span class="c">Import centre: upload, mapping, duplicates, history</span>
+├- /analysis
+│   ├- /allocation         <span class="c">  asset class · sector · currency · liquidity</span>
+│   ├- /geography          <span class="c">  ⚑ the Globe + country exposure table</span>
+│   ├- /performance        <span class="c">  TWR vs MWR vs benchmark, contribution by holding</span>
+│   ├- /income             <span class="c">  dividends, coupons, rents · forward calendar</span>
+│   └- /fees               <span class="c">  cumulative fees, weighted TER, 20-year impact</span>
+├- /property               <span class="c">Properties, leases, loans, yield</span>
+├- /budget                 <span class="c">Categories, budgets, recurrences (v1.1)</span>
+├- /goals                  <span class="c">Goals, FIRE simulator, Monte Carlo (v1.1)</span>
+├- /household              <span class="c">Owners, members, roles, shares</span>
+└- /settings               <span class="c">Currency, providers, connectors, backup, export, API keys</span></pre>
 
-  <h3>12.2 The Globe — specification</h3>
+  <h3>12.2 The Globe - specification</h3>
   <div class="grid2">
     <div class="card">
       <h5>Data</h5>
       <ul>
         <li>One server query returns <code>[{ iso2, lat, lng, value, pct, label }]</code>, capped at <b>60 countries</b>; the rest is grouped as "other".</li>
-        <li>Marker radius ∝ √(weight) — so perceived area stays proportional to value.</li>
+        <li>Marker radius ∝ √(weight) - so perceived area stays proportional to value.</li>
         <li>Colour by region (North America, Europe, Asia-Pacific, emerging), consistent with the other allocation charts.</li>
         <li>A ring around the globe shows the share that could <b>not be looked through</b>.</li>
         <li>Country centroids: an embedded dataset (~4 kB), no network call.</li>
@@ -55,7 +55,7 @@
   <pre><span class="c">/* Semantic, never literal: "gain" rather than "green" */</span>
 --gain: <span class="n">oklch(0.62 0.15 155)</span>;    --loss: <span class="n">oklch(0.58 0.19 25)</span>;
 --neutral: <span class="n">oklch(0.55 0.02 260)</span>; --estimated: <span class="n">oklch(0.72 0.04 260)</span>;
-<span class="c">/* Asset classes — a stable palette, reused by EVERY chart */</span>
+<span class="c">/* Asset classes - a stable palette, reused by EVERY chart */</span>
 --ac-equity --ac-bond --ac-cash --ac-crypto --ac-realestate --ac-alt</pre>
   <ul>
     <li>An asset keeps <strong>the same colour</strong> in the pie chart, the stacked area, the treemap and the globe. Without that rule, users must re-read the legend on every chart.</li>
@@ -69,7 +69,7 @@
   charts stay readable. Essential for a screenshot, a demo or a train journey. The state persists per
   device (local storage) and is <em>not</em> synchronised.</p>
 
-  <h3>12.5 Accessibility — verifiable commitments</h3>
+  <h3>12.5 Accessibility - verifiable commitments</h3>
   <table class="tight">
     <thead><tr><th style="width:26%">Commitment</th><th>Verification</th></tr></thead>
     <tbody>
@@ -107,7 +107,7 @@
     </tbody>
   </table>
 
-  <h3>13.2 Privacy — the project's commitments</h3>
+  <h3>13.2 Privacy - the project's commitments</h3>
   <div class="box box-go">
     <div class="box-t">Privacy contract</div>
     <ul style="margin-bottom:0">
@@ -115,7 +115,7 @@
       <li><b>Zero third-party assets.</b> Fonts, icons and scripts are served by the instance. An instance cut off from the internet must render perfectly.</li>
       <li><b>Enumerable outbound traffic.</b> An "Outbound traffic" screen lists every destination contacted, why, and lets you disable it.</li>
       <li><b>Offline mode.</b> <code>ALTITUDE_OFFLINE=true</code> cuts every external call: prices become manual, everything else keeps working.</li>
-      <li><b>Real erasure.</b> Deleting a household purges rows, files and application backups — not merely a <code>deleted_at</code> flag.</li>
+      <li><b>Real erasure.</b> Deleting a household purges rows, files and application backups - not merely a <code>deleted_at</code> flag.</li>
     </ul>
   </div>
 

@@ -6,7 +6,7 @@ import { createTransaction, type Transaction } from '../src/index';
  * The verification the development plan sets for the end of week 1 (§18, day 5):
  *
  *   "Record a EUR 1,000 deposit and a EUR 300 transfer to a second account, and
- *    see a net worth of EUR 1,000 — not EUR 1,300. If that number is right, the
+ *    see a net worth of EUR 1,000 - not EUR 1,300. If that number is right, the
  *    model is sound and everything else is assembly."
  *
  * This is the single claim the whole product rests on, so it is a test rather
@@ -42,7 +42,7 @@ function balanceOf(transactions: readonly Transaction[], account: AccountId): Mo
     .reduce((total, e) => total.plus(e.amount as Money<'EUR'>), Money.zero('EUR'));
 }
 
-describe('net worth — the week 1 verification', () => {
+describe('net worth - the week 1 verification', () => {
   const deposit = createTransaction({
     id: transactionId('0f8fad5b-d9cb-469f-a165-70867728950e'),
     bookedOn: ledgerDate('2026-03-01'),
@@ -69,7 +69,7 @@ describe('net worth — the week 1 verification', () => {
     expect(netWorth([deposit]).amount.toFixed()).toBe('1000');
   });
 
-  it('is unchanged by an internal transfer — 1000, not 1300', () => {
+  it('is unchanged by an internal transfer - 1000, not 1300', () => {
     expect(netWorth([deposit, transfer]).amount.toFixed()).toBe('1000');
   });
 

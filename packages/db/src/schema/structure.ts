@@ -18,7 +18,7 @@ import { households, owners } from './identity';
  * Postgres `ltree`, which Drizzle has no built-in column type for.
  *
  * A materialised path rather than a parent pointer, so a whole subtree comes
- * back in one query — `path <@ 'home.investments'` — instead of a recursive CTE
+ * back in one query - `path <@ 'home.investments'` - instead of a recursive CTE
  * per lookup. Every allocation and net-worth figure is scoped to a subtree, so
  * this is the hot path (plan §6.4).
  */
@@ -56,8 +56,8 @@ export const portfolios = pgTable(
  * Every asset and every liability, in one table.
  *
  * `kind` drives how the valuation engine treats the account; `attributes` holds
- * whatever that kind needs — a PEA's opening date and cumulative contributions,
- * a property's address, a loan's rate — validated by a Zod schema keyed on
+ * whatever that kind needs - a PEA's opening date and cumulative contributions,
+ * a property's address, a loan's rate - validated by a Zod schema keyed on
  * `subtype` rather than by a column per product (plan §5.3).
  */
 export const ACCOUNT_KINDS = [

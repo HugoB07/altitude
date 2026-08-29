@@ -6,8 +6,8 @@
 -- policies, that query returns nothing and nobody can ever reach a household.
 --
 -- The answer is not to exempt anything. PostgreSQL combines permissive policies
--- with OR, so adding a user-keyed policy opens exactly one extra path — a user
--- may see their own membership rows, and the households those rows point at —
+-- with OR, so adding a user-keyed policy opens exactly one extra path - a user
+-- may see their own membership rows, and the households those rows point at -
 -- while leaving every household filter in place for everything else.
 
 CREATE OR REPLACE FUNCTION current_app_user() RETURNS uuid AS $$
@@ -25,7 +25,7 @@ CREATE POLICY own_memberships ON memberships
 -- And the households those memberships point at, so the picker can show names
 -- rather than identifiers.
 --
--- The EXISTS reads memberships, which is itself under RLS — and that is fine
+-- The EXISTS reads memberships, which is itself under RLS - and that is fine
 -- rather than recursive: the policy above already lets the user see their own
 -- rows, and memberships' policies never reference households back.
 CREATE POLICY own_households ON households

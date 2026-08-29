@@ -46,7 +46,7 @@
       <rect x="214" y="38" width="176" height="24" rx="3" fill="#fff" stroke="#CBD5E1"/>
       <text x="302" y="53" text-anchor="middle" font-size="7.5" fill="#0B1220">transactions (date, kind, source)</text>
       <rect x="214" y="68" width="176" height="30" rx="3" fill="#0B1220"/>
-      <text x="302" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="#86EFAC">entries — Σ = 0 per currency</text>
+      <text x="302" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="#86EFAC">entries - Σ = 0 per currency</text>
       <text x="302" y="92" text-anchor="middle" font-size="6.5" fill="#94A3B8">account · amount · currency · qty · instrument</text>
       <rect x="214" y="104" width="84" height="22" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="256" y="118" text-anchor="middle" font-size="7.5" fill="#0B1220">lots</text>
       <rect x="306" y="104" width="84" height="22" rx="3" fill="#fff" stroke="#CBD5E1"/><text x="348" y="118" text-anchor="middle" font-size="7.5" fill="#0B1220">lot_closures</text>
@@ -93,11 +93,11 @@
       <text x="72" y="290" font-size="7.5" fill="#475569">an account belongs to a portfolio and to one or more owners; a transaction carries lines</text>
       <text x="10" y="303" font-size="7.5" fill="#475569">that touch accounts; a line carrying a quantity references an instrument; positions and balances are recomputable.</text>
     </svg>
-    <figcaption>Figure 2 — Data model. The dark tables are the invariant core; everything else can evolve without a painful migration.</figcaption>
+    <figcaption>Figure 2 - Data model. The dark tables are the invariant core; everything else can evolve without a painful migration.</figcaption>
   </figure>
 
-  <h3>5.3 Core tables — annotated DDL</h3>
-  <pre><span class="c">-- ─── Structure: portfolio tree ─────────────────────────────────────────</span>
+  <h3>5.3 Core tables - annotated DDL</h3>
+  <pre><span class="c">-- --- Structure: portfolio tree -----------------------------------------</span>
 <span class="k">CREATE TABLE</span> portfolios (
   id            uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   household_id  uuid <span class="k">NOT NULL REFERENCES</span> households(id) <span class="k">ON DELETE CASCADE</span>,
@@ -113,7 +113,7 @@
 <span class="k">CREATE INDEX</span> ON portfolios <span class="k">USING</span> gist (path);
 <span class="k">CREATE UNIQUE INDEX</span> ON portfolios (household_id, path);
 
-<span class="c">-- ─── Accounts: one table for every asset and liability ─────────────────</span>
+<span class="c">-- --- Accounts: one table for every asset and liability -----------------</span>
 <span class="k">CREATE TABLE</span> accounts (
   id            uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   household_id  uuid <span class="k">NOT NULL REFERENCES</span> households(id) <span class="k">ON DELETE CASCADE</span>,
@@ -139,7 +139,7 @@
   created_at    timestamptz <span class="k">NOT NULL DEFAULT</span> now()
 );
 
-<span class="c">-- ─── Ledger ────────────────────────────────────────────────────────────</span>
+<span class="c">-- --- Ledger ------------------------------------------------------------</span>
 <span class="k">CREATE TABLE</span> transactions (
   id            uuid <span class="k">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
   household_id  uuid <span class="k">NOT NULL</span>,
@@ -201,7 +201,7 @@
   <span class="k">FOR EACH ROW EXECUTE FUNCTION</span> assert_balanced();</pre>
 
   <div class="box box-dec">
-    <div class="box-t">Decision — the trigger is <code>DEFERRABLE INITIALLY DEFERRED</code></div>
+    <div class="box-t">Decision - the trigger is <code>DEFERRABLE INITIALLY DEFERRED</code></div>
     <p>The check runs only at <code>COMMIT</code>, so a transaction's lines can be inserted one at a time.
     Without deferral the first line would always fail, being alone and therefore unbalanced. This is the
     detail that makes the invariant usable in practice.</p>

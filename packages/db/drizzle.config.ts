@@ -5,7 +5,7 @@ import { requireEnv } from '@altitude/shared/env';
 
 // drizzle-kit reads no env file of its own, so without this every command would
 // need the variable exported by hand. Node's own loader, so no dotenv
-// dependency — and fileURLToPath rather than URL.pathname, which yields
+// dependency - and fileURLToPath rather than URL.pathname, which yields
 // "/C:/..." on Windows.
 //
 // .env.local before .env, matching Next's precedence: the local file is the
@@ -26,7 +26,7 @@ export default defineConfig({
     // A getter, not a value: only the commands that actually connect read it.
     // `generate` and `check` diff against the snapshot in meta/ and never open a
     // connection, so requiring the variable eagerly would stop them working
-    // offline — which is half the point of keeping the snapshot.
+    // offline - which is half the point of keeping the snapshot.
     //
     // MIGRATE_DATABASE_URL rather than DATABASE_URL, because migrations create
     // tables and policies. The application role cannot do either: it holds only
@@ -34,7 +34,7 @@ export default defineConfig({
     // privileged role from being reachable by the application by accident.
     //
     // No fallback. A default would silently point migrations at whatever the
-    // literal named — a developer's laptop, most likely — and succeed.
+    // literal named - a developer's laptop, most likely - and succeed.
     get url(): string {
       return requireEnv(
         'MIGRATE_DATABASE_URL',
@@ -42,8 +42,8 @@ export default defineConfig({
       );
     },
   },
-  // Everything drizzle-kit cannot express — the balance trigger, RLS policies,
-  // the ltree GiST index, the ownership overlap constraint — lives in
+  // Everything drizzle-kit cannot express - the balance trigger, RLS policies,
+  // the ltree GiST index, the ownership overlap constraint - lives in
   // hand-written migrations alongside the generated ones.
   verbose: true,
   strict: true,

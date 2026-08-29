@@ -12,7 +12,7 @@
  * surfaces hours later as missing data, with no line pointing at the cause.
  *
  * Worse for a secret: the fallback is the literal, in the repository, in the
- * history, forever — and it keeps working, so nobody notices it is being used.
+ * history, forever - and it keeps working, so nobody notices it is being used.
  *
  * Missing configuration is a startup failure. It is loud, immediate, and names
  * what is missing.
@@ -39,7 +39,7 @@ export class MissingConfigurationError extends Error {
  * Blank counts as absent: `DATABASE_URL=` in an env file is a variable someone
  * meant to fill in, not a deliberate empty string.
  *
- * @param hint added to the message — say what the value is for, not what it looks
+ * @param hint added to the message - say what the value is for, not what it looks
  *   like, and never include an example containing credentials.
  */
 export function requireEnv(name: string, hint?: string): string {
@@ -52,7 +52,7 @@ export function requireEnv(name: string, hint?: string): string {
 
 /**
  * Reads an optional variable. Only for settings with a genuine, non-secret
- * default — a base currency, a port, a feature flag.
+ * default - a base currency, a port, a feature flag.
  *
  * Never for a credential, a connection string, or a key. If the absence of a
  * value should change where the process connects or what it can decrypt, it is

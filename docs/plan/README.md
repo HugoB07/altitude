@@ -1,4 +1,4 @@
-# Development plan — sources
+# Development plan - sources
 
 Altitude's design document (56 A4 pages, 20 sections), authored as HTML and rendered
 to PDF through headless Chrome.
@@ -10,8 +10,8 @@ to PDF through headless Chrome.
 | `parts/*.html`       | Tracked sources. `00-head.html` carries the CSS, the cover and the table of contents; the rest are the numbered sections. |
 | `build-html.mjs`     | Concatenates `parts/` into a single HTML file, in natural numeric order.                                                  |
 | `build-pdf.mjs`      | Renders that HTML to PDF through headless Chrome driven over CDP. No npm dependencies.                                    |
-| `altitude-plan.html` | Generated concatenation — **not tracked**.                                                                                |
-| `*.pdf`              | Generated output — **not tracked**.                                                                                       |
+| `altitude-plan.html` | Generated concatenation - **not tracked**.                                                                                |
+| `*.pdf`              | Generated output - **not tracked**.                                                                                       |
 
 Only the sources are versioned. Both generated files are rebuilt on demand, so they
 stay out of git history rather than landing as a 3 MB binary blob on every edit.
@@ -25,7 +25,7 @@ node build-pdf.mjs
 ```
 
 `build-html.mjs` writes `altitude-plan.html`, sorting `parts/` with a natural numeric
-comparison — so `10-` correctly follows `2-`, which a plain shell glob would get wrong.
+comparison - so `10-` correctly follows `2-`, which a plain shell glob would get wrong.
 
 `build-pdf.mjs` takes an optional input and output path, defaulting to
 `altitude-plan.html` and `Altitude-Dev-Plan.pdf`. It looks for Chrome at
@@ -43,7 +43,7 @@ document still renders correctly using the fallback stacks.
 
 ## Editing
 
-Edit the relevant file in `parts/`, never `altitude-plan.html` — it is overwritten on
+Edit the relevant file in `parts/`, never `altitude-plan.html` - it is overwritten on
 every build. All CSS lives in `parts/00-head.html`.
 
 Adding a section means adding a numbered file to `parts/`; no build change is needed.

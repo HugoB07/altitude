@@ -2,11 +2,11 @@
 --
 -- packages/core already refuses an unbalanced transaction. This does it again,
 -- in the database, and that duplication is deliberate: the application is one
--- of several ways rows can arrive — a migration, a repair script, psql, a
+-- of several ways rows can arrive - a migration, a repair script, psql, a
 -- future importer written by someone who has not read ADR-0002. An invariant
 -- enforced only by the code that happens to be in front of it is not enforced.
 
--- ── Balance: every currency sums to zero ────────────────────────────────
+-- -- Balance: every currency sums to zero --------------------------------
 CREATE OR REPLACE FUNCTION assert_transaction_balanced() RETURNS trigger AS $$
 DECLARE
   offending record;
@@ -80,7 +80,7 @@ ALTER TABLE transactions ADD CONSTRAINT transactions_value_after_booking
   CHECK (value_on IS NULL OR value_on >= booked_on);
 --> statement-breakpoint
 
--- ── Structure ───────────────────────────────────────────────────────────
+-- -- Structure -----------------------------------------------------------
 -- GiST over the ltree path: this is what makes `path <@ 'home.investments'`
 -- an index scan rather than a sequential one. Every allocation and net-worth
 -- figure is scoped to a subtree, so it is the hot path.
@@ -110,7 +110,7 @@ ALTER TABLE ownerships ADD CONSTRAINT ownerships_share_range
   CHECK (share > 0 AND share <= 1);
 --> statement-breakpoint
 
--- ── Row-level security (ADR-0007) ───────────────────────────────────────
+-- -- Row-level security (ADR-0007) ---------------------------------------
 -- The second of two barriers. The application already scopes every query by
 -- household; this makes a query that forgets to do so return nothing instead
 -- of another household's net worth.

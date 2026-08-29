@@ -14,7 +14,7 @@ export const households = pgTable('households', {
 });
 
 /**
- * Someone who signs in. Distinct from an owner — see ADR-0003.
+ * Someone who signs in. Distinct from an owner - see ADR-0003.
  *
  * Also Better Auth's `user` model. Mapping it onto this table rather than
  * letting Better Auth create a second one keeps memberships.user_id and
@@ -29,7 +29,7 @@ export const users = pgTable('users', {
   /**
    * Better Auth calls this field `name`; its config maps the two rather than
    * the column being renamed. A rename would need an interactive resolution in
-   * drizzle-kit — it cannot tell a rename from a drop plus an add — and would
+   * drizzle-kit - it cannot tell a rename from a drop plus an add - and would
    * put a destructive step in a migration for the sake of a label.
    */
   displayName: text('display_name').notNull(),
@@ -77,7 +77,7 @@ export const owners = pgTable(
     displayName: text('display_name').notNull(),
     /** Drives the visibility switch at majority (plan §10.2). */
     birthDate: date('birth_date'),
-    /** Null when the owner never signs in — a child, or a company. */
+    /** Null when the owner never signs in - a child, or a company. */
     userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     /** Company number, legal form, marital regime. Validated by Zod, not by SQL. */
     attributes: jsonb('attributes').notNull().default({}),

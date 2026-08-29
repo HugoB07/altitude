@@ -14,7 +14,7 @@ export interface MembershipRow {
  *
  * Runs under `withUser`, not `withHousehold`: this is the one question that
  * cannot be asked from inside a household. The policies added in migration 0004
- * let a user see their own membership rows and the households they name — the
+ * let a user see their own membership rows and the households they name - the
  * filter is the user's own id, taken from a verified session, never from a
  * request parameter.
  */

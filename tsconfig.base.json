@@ -8,7 +8,7 @@
     "moduleResolution": "Bundler",
     "moduleDetection": "force",
 
-    // Strictness. These are not negotiable — see docs/adr/ and the development
+    // Strictness. These are not negotiable - see docs/adr/ and the development
     // plan §4.2. A wealth tracker cannot afford silent undefined or implicit any.
     "strict": true,
     "noUncheckedIndexedAccess": true,

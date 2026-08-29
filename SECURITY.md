@@ -1,7 +1,7 @@
 # Security Policy
 
 Altitude holds a complete map of a household's wealth: account balances, positions,
-property, debt, and — once connectors exist — tokens granting read access to real bank
+property, debt, and - once connectors exist - tokens granting read access to real bank
 accounts. We treat security reports accordingly.
 
 ## Project status
@@ -11,8 +11,8 @@ This policy is published now so that it is already in place when the first line 
 
 | Version                   | Supported                            |
 | ------------------------- | ------------------------------------ |
-| `main` (pre-release)      | Best effort — no stability guarantee |
-| _no released version yet_ | —                                    |
+| `main` (pre-release)      | Best effort - no stability guarantee |
+| _no released version yet_ | -                                    |
 
 Once 1.0 ships, the latest minor version receives security fixes, and the previous minor
 version receives them for 90 days after its successor's release.
@@ -38,7 +38,7 @@ with a clearer trail.
 - Your assessment of severity, and whether the issue is already public anywhere.
 
 **Never include real financial data in a report.** If a reproduction needs a bank export,
-anonymise it first — see the anonymisation checklist in `CONTRIBUTING.md`.
+anonymise it first - see the anonymisation checklist in `CONTRIBUTING.md`.
 
 ### What to expect
 
@@ -51,7 +51,7 @@ anonymise it first — see the anonymisation checklist in `CONTRIBUTING.md`.
 
 This is a volunteer project with no funded security team, and these are targets rather
 than contractual commitments. If a deadline is going to slip, we will say so rather than
-go quiet. There is **no bug bounty** — we cannot pay, and we would rather be honest about
+go quiet. There is **no bug bounty** - we cannot pay, and we would rather be honest about
 that up front than imply otherwise.
 
 Reporters are credited in the release notes and in the advisory unless they prefer to
@@ -61,7 +61,7 @@ stay anonymous.
 
 ### In scope
 
-- Cross-household data access — one household reading or modifying another's data. This
+- Cross-household data access - one household reading or modifying another's data. This
   is the most serious class of bug in this codebase.
 - Authentication and session flaws: bypass, fixation, privilege escalation between roles
   (owner, admin, contributor, viewer, child).
@@ -81,7 +81,7 @@ stay anonymous.
 - **Deployment mistakes.** An instance published to the internet with no TLS, with
   registration left open, or with a weak password is a misconfiguration, not a
   vulnerability. We do want to hear about cases where our defaults or documentation
-  _lead_ people into that mistake — that is a real bug, and we will treat it as one.
+  _lead_ people into that mistake - that is a real bug, and we will treat it as one.
 - Anything requiring an already-compromised host, database, or administrator account.
 - Missing hardening headers with no demonstrated impact.
 - Self-XSS, or attacks requiring the victim to paste code into their own console.
@@ -90,7 +90,7 @@ stay anonymous.
   the vendor; tell us if Altitude needs to work around it.
 - Social engineering, physical access, and attacks against contributors.
 - Automated scanner output with no analysis attached. A dependency flagged as vulnerable
-  in a code path we do not execute is not a finding on its own — show the reachable path.
+  in a code path we do not execute is not a finding on its own - show the reachable path.
 
 ## Safe harbour
 
@@ -105,7 +105,7 @@ welcome; unauthorised testing against a third party's instance never is.
 
 ## Design commitments that are security requirements
 
-These are not aspirations — a regression in any of them is a bug, and several are
+These are not aspirations - a regression in any of them is a bug, and several are
 enforced by tests. The reasoning is in the development plan (`docs/plan/`, §7 and §13).
 
 - **Two isolation barriers.** Every query is scoped in the application layer _and_ by
@@ -124,7 +124,7 @@ enforced by tests. The reasoning is in the development plan (`docs/plan/`, §7 a
 ## Dependencies
 
 - Versions are locked; updates land through Renovate with a quarantine delay.
-- Any new dependency needs human review — `packages/core` is kept deliberately thin.
+- Any new dependency needs human review - `packages/core` is kept deliberately thin.
 - Advisories are checked in CI, and an SBOM (CycloneDX) is published with each release.
 
 If you find a vulnerability in a dependency that Altitude actually reaches, report it

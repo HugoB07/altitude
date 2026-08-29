@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* shadcn's init wrote `var(--font-sans)` here — a self-reference, which
+  /* shadcn's init wrote `var(--font-sans)` here - a self-reference, which
      resolves to nothing and drops the page to the browser's default serif.
      The variable layout.tsx actually defines is --font-geist-sans. */
   --font-sans: var(--font-geist-sans);

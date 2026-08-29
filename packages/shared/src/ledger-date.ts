@@ -7,7 +7,7 @@ import type { Brand } from './brand';
  * 1 March in Paris and in Tokyo alike. Storing one as a `Date` invites the classic
  * off-by-one-day bug: `new Date('2026-03-01')` is midnight UTC, which formats as
  * 28 February for anyone west of Greenwich, and the transaction silently moves to
- * the previous month — taking the monthly report with it.
+ * the previous month - taking the monthly report with it.
  *
  * The database column is `date`, not `timestamptz`, for the same reason (plan §4.2).
  */

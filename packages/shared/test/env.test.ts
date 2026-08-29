@@ -72,7 +72,7 @@ describe('envFlag', () => {
  * A rule nobody can enforce by remembering.
  *
  * `process.env.SOMETHING ?? 'literal'` turns a missing variable into a silent
- * connection to whatever the literal names — and for a credential, puts the
+ * connection to whatever the literal names - and for a credential, puts the
  * credential in the repository permanently, still working, so nobody notices.
  *
  * This walks the source and fails on the pattern. It belongs in a lint rule and
@@ -99,7 +99,7 @@ describe('no environment variable has a hardcoded fallback', () => {
    * Comments are not code.
    *
    * Without this, documenting the forbidden pattern trips the check that
-   * forbids it — which is how a guard trains people to weaken it. env.ts shows
+   * forbids it - which is how a guard trains people to weaken it. env.ts shows
    * the bad shape on purpose, and must be allowed to.
    */
   function stripComments(source: string): string {
@@ -118,6 +118,6 @@ describe('no environment variable has a hardcoded fallback', () => {
       if (pattern.test(stripComments(contents))) offenders.push(relative(ROOT, file));
     }
 
-    expect(offenders, 'use requireEnv() — a missing variable must fail loudly').toEqual([]);
+    expect(offenders, 'use requireEnv() - a missing variable must fail loudly').toEqual([]);
   });
 });

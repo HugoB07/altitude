@@ -32,7 +32,7 @@ function tx(entries: readonly EntryInput[], overrides: Record<string, unknown> =
   return createTransaction({ id: TX, bookedOn: on, kind: 'transfer', entries, ...overrides });
 }
 
-describe('createTransaction — the balance invariant', () => {
+describe('createTransaction - the balance invariant', () => {
   it('accepts a balanced two-sided transfer', () => {
     const result = tx([
       { accountId: CURRENT, amount: Money.of('-300', 'EUR') },
@@ -91,7 +91,7 @@ describe('createTransaction — the balance invariant', () => {
   });
 });
 
-describe('createTransaction — the four cases a flat model breaks on', () => {
+describe('createTransaction - the four cases a flat model breaks on', () => {
   it('1. an internal transfer nets to zero across the household', () => {
     const result = tx([
       { accountId: CURRENT, amount: Money.of('-300', 'EUR') },
@@ -149,7 +149,7 @@ describe('createTransaction — the four cases a flat model breaks on', () => {
   });
 });
 
-describe('createTransaction — holding consistency', () => {
+describe('createTransaction - holding consistency', () => {
   it('rejects a quantity without an instrument', () => {
     expect(() =>
       tx([
@@ -178,7 +178,7 @@ describe('createTransaction — holding consistency', () => {
   });
 });
 
-describe('createTransaction — dates', () => {
+describe('createTransaction - dates', () => {
   it('defaults the value date to the booking date', () => {
     const result = tx([
       { accountId: CURRENT, amount: Money.of('-1', 'EUR') },
@@ -231,7 +231,7 @@ describe('reverseTransaction', () => {
     expect(holding?.quantity?.toFixed()).toBe('-10');
   });
 
-  it('leaves the original untouched — the ledger is append-only', () => {
+  it('leaves the original untouched - the ledger is append-only', () => {
     const original = tx([
       { accountId: CURRENT, amount: Money.of('-300', 'EUR') },
       { accountId: BROKERAGE, amount: Money.of('300', 'EUR') },
@@ -241,7 +241,7 @@ describe('reverseTransaction', () => {
   });
 });
 
-// ── Property-based tests ─────────────────────────────────────────────────
+// -- Property-based tests -------------------------------------------------
 
 const accounts: readonly AccountId[] = [CURRENT, BROKERAGE, SALARY];
 
@@ -262,7 +262,7 @@ const balancedEntries = fc
     return entries;
   });
 
-describe('createTransaction — properties', () => {
+describe('createTransaction - properties', () => {
   it('accepts any set of entries that sums to zero', () => {
     fc.assert(
       fc.property(balancedEntries, (entries) => {

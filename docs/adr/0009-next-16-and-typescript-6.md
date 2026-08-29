@@ -1,4 +1,4 @@
-# ADR-0009 — Next.js 16 and TypeScript 6
+# ADR-0009 - Next.js 16 and TypeScript 6
 
 - **Status:** accepted
 - **Date:** 2026-08-29
@@ -11,7 +11,7 @@ things had moved:
 
 - **Next.js 16.3.3** had shipped, so starting on 15 would mean a major upgrade with real
   code already written.
-- **TypeScript 7.0.2** — the native Go compiler — was `latest` on npm, alongside 6.0.3
+- **TypeScript 7.0.2** - the native Go compiler - was `latest` on npm, alongside 6.0.3
   (the last JavaScript-based compiler) and 5.9.3.
 
 TypeScript 7 is genuinely faster, and the temptation was to take it. Rather than guess,
@@ -45,7 +45,7 @@ TypeScript 7 correctly reported `noUncheckedIndexedAccess`, assignability and
 TypeScript 7 is roughly 2.8× faster here, and the gap grows with codebase size. It is
 still the wrong trade today: taking it would mean dropping type-aware linting, which is
 step 2 of the CI pipeline (plan §15.2) and the thing that catches floating promises and
-implicit `any` — precisely the defects a financial calculation engine cannot carry.
+implicit `any` - precisely the defects a financial calculation engine cannot carry.
 
 TypeScript 6 is the newest version the entire toolchain accepts, and it keeps the eventual
 6 → 7 step shorter than 5.9 → 7 would have been.
@@ -75,5 +75,5 @@ does. It is felt in CI and in editor responsiveness.
 ## Revisit if
 
 `typescript-eslint` announces TypeScript 7 support. That is the single condition. When it
-lands, re-run the probe and move to 7 — the measured speed gain is worth taking as soon
+lands, re-run the probe and move to 7 - the measured speed gain is worth taking as soon
 as it costs nothing.

@@ -9,7 +9,7 @@
   <strong>under five minutes</strong>, with two commands.</p>
 
   <h3>14.1 Reference compose file</h3>
-  <pre><span class="c"># docker-compose.yml — the only thing to download</span>
+  <pre><span class="c"># docker-compose.yml - the only thing to download</span>
 services:
   <span class="k">db</span>:
     image: postgres:17-alpine
@@ -56,19 +56,19 @@ secrets:
   auth_secret:    { file: ./secrets/auth_secret }</pre>
 
   <div class="box box-dec">
-    <div class="box-t">Decision — file-based secrets, never environment variables</div>
+    <div class="box-t">Decision - file-based secrets, never environment variables</div>
     <p>Environment variables leak: <code>docker inspect</code>, process listings, crash logs. Docker secrets
     are mounted as files and read at startup. A <code>./scripts/init-secrets.sh</code> script generates them
-    with proper entropy — the single manual step of the installation, and it is scripted.</p>
+    with proper entropy - the single manual step of the installation, and it is scripted.</p>
   </div>
 
   <h3>14.2 Configuration variables</h3>
   <table class="tight">
     <thead><tr><th style="width:32%">Variable</th><th style="width:14%">Default</th><th>Purpose</th></tr></thead>
     <tbody>
-      <tr><td><code>DATABASE_URL</code></td><td>—</td><td>Required. The password comes from the secret, not from the URL.</td></tr>
-      <tr><td><code>ALTITUDE_BASE_URL</code></td><td>—</td><td>Required. Used for OAuth callbacks and email links.</td></tr>
-      <tr><td><code>ALTITUDE_ENCRYPTION_KEY</code></td><td>—</td><td>Required. 32 bytes. <strong>Losing it makes connector secrets unrecoverable</strong> — warned at install and repeated in backups.</td></tr>
+      <tr><td><code>DATABASE_URL</code></td><td>-</td><td>Required. The password comes from the secret, not from the URL.</td></tr>
+      <tr><td><code>ALTITUDE_BASE_URL</code></td><td>-</td><td>Required. Used for OAuth callbacks and email links.</td></tr>
+      <tr><td><code>ALTITUDE_ENCRYPTION_KEY</code></td><td>-</td><td>Required. 32 bytes. <strong>Losing it makes connector secrets unrecoverable</strong> - warned at install and repeated in backups.</td></tr>
       <tr><td><code>ALTITUDE_BASE_CURRENCY</code></td><td><code>EUR</code></td><td>Default consolidation currency, changeable per household afterwards.</td></tr>
       <tr><td><code>ALTITUDE_OFFLINE</code></td><td><code>false</code></td><td>Cuts every outbound network call.</td></tr>
       <tr><td><code>ALTITUDE_PRICE_PROVIDERS</code></td><td>empty</td><td>Ordered list with fallback. Empty means prices are entered manually.</td></tr>
@@ -96,7 +96,7 @@ altitude recompute --from=2015-01-01</pre>
 
   <h3>14.4 Upgrades</h3>
   <ul>
-    <li>Migrations run at startup from the <code>app</code> container, under a Postgres advisory lock — two replicas never migrate concurrently.</li>
+    <li>Migrations run at startup from the <code>app</code> container, under a Postgres advisory lock - two replicas never migrate concurrently.</li>
     <li><strong>Forward-only</strong> migrations, written to remain compatible with the previous version (add a nullable column, backfill, then add the constraint in a later release). No automatic rollback: a verified backup is the fallback strategy.</li>
     <li>Semantic versioning. Any breaking change is announced one minor version ahead and listed in <code>UPGRADING.md</code>.</li>
     <li>Image tags: <code>1.2.3</code>, <code>1.2</code>, <code>1</code>, <code>latest</code>. Documentation recommends pinning the minor version.</li>
@@ -109,11 +109,11 @@ altitude recompute --from=2015-01-01</pre>
     <tbody>
       <tr><td>Household, &lt; 20k transactions</td><td>1 GB</td><td>1 vCPU</td><td>Runs on a Raspberry Pi 4 or a NAS. Native arm64 image.</td></tr>
       <tr><td>Household, &gt; 10 years of history</td><td>2 GB</td><td>2 vCPU</td><td>The main load is snapshot recomputation.</td></tr>
-      <tr><td>Small group, 10–50 households</td><td>4 GB</td><td>4 vCPU</td><td>Split worker and app across two hosts, add a read replica if needed.</td></tr>
+      <tr><td>Small group, 10-50 households</td><td>4 GB</td><td>4 vCPU</td><td>Split worker and app across two hosts, add a read replica if needed.</td></tr>
     </tbody>
   </table>
   <p>Indicative volumes: 100,000 transactions ≈ 250 MB including indexes; quotes dominate storage (10 years
-  × 500 instruments ≈ 1.8M rows ≈ 200 MB) — hence the partitioning and the BRIN index.</p>
+  × 500 instruments ≈ 1.8M rows ≈ 200 MB) - hence the partitioning and the BRIN index.</p>
 </section>
 
 <section class="sec">
@@ -139,13 +139,13 @@ altitude recompute --from=2015-01-01</pre>
   </table>
 
   <div class="box box-dec">
-    <div class="box-t">Decision — the ledger's property tests are written first</div>
+    <div class="box-t">Decision - the ledger's property tests are written first</div>
     <p>Before the first line of interface. They formalise the model and pin it down. Two days of investment
     that save a month of hunting rounding and imbalance bugs six months later.</p>
   </div>
 
   <h3>15.2 Continuous integration</h3>
-  <pre><span class="c"># .github/workflows/ci.yml — steps, in order</span>
+  <pre><span class="c"># .github/workflows/ci.yml - steps, in order</span>
 1. install        pnpm, store cache
 2. lint           ESLint + Prettier + dependency-cruiser (core must not depend on Next)
 3. typecheck      tsc --noEmit across every package
@@ -182,14 +182,14 @@ altitude recompute --from=2015-01-01</pre>
 
   <h3>16.1 Licence</h3>
   <div class="box box-dec">
-    <div class="box-t">Decision — AGPL-3.0-or-later</div>
+    <div class="box-t">Decision - AGPL-3.0-or-later</div>
     <p>The AGPL requires anyone operating a modified version <em>as a network service</em> to publish its
     source. That is exactly the protection needed against a commercial competitor rebuilding community work
     without giving anything back. Direct precedents: Firefly III, Ghostfolio, Sure. Accepted cost: some
-    companies ban the AGPL internally — an adoption price paid for the durability of the commons.</p>
+    companies ban the AGPL internally - an adoption price paid for the durability of the commons.</p>
     <p style="margin-bottom:0">Contributions under <strong>DCO</strong> (<code>Signed-off-by</code>) rather
     than a CLA: less friction, and no transfer of rights to a single entity. If commercial dual licensing
-    later becomes desirable it will require a CLA — better to settle that question early.</p>
+    later becomes desirable it will require a CLA - better to settle that question early.</p>
   </div>
 
   <h3>16.2 Repository layout</h3>
@@ -209,14 +209,14 @@ altitude recompute --from=2015-01-01</pre>
   <h3>16.3 Bootstrapping a community</h3>
   <ul>
     <li><b>Public demo</b> with fabricated data, reset every 24 hours. It is the primary converter: nobody installs a wealth tracker without seeing it run.</li>
-    <li><b>Fifteen "good first issue" tickets</b> prepared before announcing, mostly import presets and ETF exposure datasets — useful, well-scoped, low-risk.</li>
+    <li><b>Fifteen "good first issue" tickets</b> prepared before announcing, mostly import presets and ETF exposure datasets - useful, well-scoped, low-risk.</li>
     <li><b>Public roadmap</b> (GitHub Projects), with open discussions for feature requests.</li>
     <li><b>Announcement</b> once the demo stands up: r/selfhosted, personal-finance communities, Hacker News, Awesome-Selfhosted, self-hosting forums. You get one first impression: do not announce before import and the dashboard are solid.</li>
     <li><b>Bilingual from day one</b>: English and French documentation. The self-hosting market is anglophone; the wealth-tracking need targeted here is francophone.</li>
     <li><b>Funding</b>: GitHub Sponsors / Liberapay to cover the demo and the domain. No promise of a "pro" edition until v1.0 ships.</li>
   </ul>
 
-  <h3>16.4 Extensibility — the four public extension points</h3>
+  <h3>16.4 Extensibility - the four public extension points</h3>
   <table class="tight">
     <thead><tr><th style="width:24%">Extension</th><th style="width:20%">Form</th><th>Example</th></tr></thead>
     <tbody>

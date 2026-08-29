@@ -13,7 +13,7 @@ import { accounts } from '../src/schema/structure';
  * bearing.
  *
  * Migration 0002 exists because ENABLE ROW LEVEL SECURITY does not apply to the
- * role owning the tables — and that role is exactly what docker-compose hands
+ * role owning the tables - and that role is exactly what docker-compose hands
  * out as DATABASE_URL. The failure was invisible from every angle an
  * application could check: policies listed, relrowsecurity true, and every row
  * returned anyway. These tests pin the fix down.
@@ -148,7 +148,7 @@ describe('withHousehold binds a unit of work to one tenant', () => {
 });
 
 describe('FORCE ROW LEVEL SECURITY closes the owner exemption', () => {
-  it('does not save a superuser — which is why the startup check exists', async () => {
+  it('does not save a superuser - which is why the startup check exists', async () => {
     // FORCE reaches a non-superuser table owner. It does not reach a superuser,
     // and the role a Postgres image creates from POSTGRES_USER is one. So this
     // connection sees every household despite RLS being enabled and forced.

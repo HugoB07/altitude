@@ -26,21 +26,21 @@ export interface ClientOptions {
 /**
  * Which database role to connect as.
  *
- * `altitude_app` — the web application and the worker, both of them. It is
+ * `altitude_app` - the web application and the worker, both of them. It is
  * subject to row-level security, which is the whole of the second barrier. A
  * background job that spans households iterates them and calls `withHousehold`
  * once per household: slower than one unscoped query, and it means a bug in the
  * worker cannot leak across households either. Tables with no household of
- * their own — instrument prices, FX rates — carry no policy, so this role reads
+ * their own - instrument prices, FX rates - carry no policy, so this role reads
  * and writes them freely without needing an exemption.
  *
- * `altitude_migrate` — migrations, backups and maintenance only. It holds
+ * `altitude_migrate` - migrations, backups and maintenance only. It holds
  * BYPASSRLS, so it sees every household by design. Nothing that serves a request
  * may connect as it, and `assertTenantScopingActive` refuses to start if
  * something does.
  *
  * There is deliberately no option on this client to switch between them. The
- * choice is made once, in the connection string, by whoever deploys — not per
+ * choice is made once, in the connection string, by whoever deploys - not per
  * call site, where "just this once" would eventually mean everywhere.
  */
 
@@ -48,7 +48,7 @@ export interface Client {
   /**
    * The raw handle. Reaching household data through it skips the scoping in
    * `withHousehold`, which is why an ESLint rule forbids importing it outside
-   * this package — the barrier is only a barrier if it cannot be walked around.
+   * this package - the barrier is only a barrier if it cannot be walked around.
    */
   readonly unsafe: Database;
   readonly sql: postgres.Sql;
@@ -109,7 +109,7 @@ export async function withHousehold<T>(
  *
  * Only sign-in needs this: reading which households someone belongs to is the
  * one question that cannot be asked from inside a household. Migration 0004
- * adds the policies that make it answerable — a user sees their own membership
+ * adds the policies that make it answerable - a user sees their own membership
  * rows and the households they name, and nothing else.
  *
  * Everything after the household is chosen uses `withHousehold`. If a query
@@ -130,7 +130,7 @@ export async function withUser<T>(
  * Reports whether the connection is actually subject to row-level security.
  *
  * A role with BYPASSRLS, or one that owns the tables while FORCE is off, sees
- * every household regardless of policies — and nothing about that is visible
+ * every household regardless of policies - and nothing about that is visible
  * from the application side. `altitude doctor` and the startup check call this
  * so a misconfigured DATABASE_URL fails loudly at boot rather than quietly at
  * the first cross-tenant read.
@@ -142,12 +142,12 @@ export async function assertTenantScopingActive(client: Client): Promise<void> {
 
   // Checked before BYPASSRLS because it is the likelier mistake and the more
   // complete bypass. A superuser ignores row-level security entirely, and
-  // FORCE ROW LEVEL SECURITY does not reach them either — so migration 0002,
+  // FORCE ROW LEVEL SECURITY does not reach them either - so migration 0002,
   // which closes the owner exemption, buys nothing here.
   //
   // This is not a hypothetical misconfiguration: the role a Postgres image
-  // creates from POSTGRES_USER is a superuser, so the obvious DATABASE_URL —
-  // the one docker-compose hands out — lands in exactly this case.
+  // creates from POSTGRES_USER is a superuser, so the obvious DATABASE_URL -
+  // the one docker-compose hands out - lands in exactly this case.
   if (row?.superuser === true) {
     throw new Error(
       `Refusing to start: the database role "${row.name}" is a superuser, so row-level ` +

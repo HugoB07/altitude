@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { CurrencyMismatchError, Money, currency, dec } from '../src/index';
 
-describe('Money — the reason ADR-0006 exists', () => {
+describe('Money - the reason ADR-0006 exists', () => {
   it('adds 0.1 and 0.2 to exactly 0.3', () => {
     const total = Money.of('0.1', 'EUR').plus(Money.of('0.2', 'EUR'));
     expect(total.amount.toFixed()).toBe('0.3');
@@ -31,7 +31,7 @@ describe('Money — the reason ADR-0006 exists', () => {
   });
 });
 
-describe('Money — currency safety', () => {
+describe('Money - currency safety', () => {
   it('refuses to add different currencies', () => {
     const eur = Money.of('10', 'EUR');
     const usd = Money.of('10', 'USD') as unknown as Money<'EUR'>;
@@ -60,7 +60,7 @@ describe('Money — currency safety', () => {
   });
 });
 
-describe('Money — boundaries', () => {
+describe('Money - boundaries', () => {
   it('refuses a number, at runtime as well as at compile time', () => {
     // The cast reproduces what arrives from JSON or an untyped import.
     expect(() => dec(0.1 as unknown as string)).toThrow(TypeError);
@@ -87,7 +87,7 @@ describe('Money — boundaries', () => {
   });
 });
 
-// ── Property-based tests ─────────────────────────────────────────────────
+// -- Property-based tests -------------------------------------------------
 // Written alongside the code, not after it: they define what Money means
 // rather than describing what it happens to do (plan §15.1).
 
@@ -100,7 +100,7 @@ const amount = fc
 
 const eur = amount.map((value) => Money.of(value, 'EUR'));
 
-describe('Money — properties', () => {
+describe('Money - properties', () => {
   it('addition is commutative', () => {
     fc.assert(
       fc.property(eur, eur, (a, b) => {
@@ -109,7 +109,7 @@ describe('Money — properties', () => {
     );
   });
 
-  it('addition is associative — the property floats break', () => {
+  it('addition is associative - the property floats break', () => {
     fc.assert(
       fc.property(eur, eur, eur, (a, b, c) => {
         expect(

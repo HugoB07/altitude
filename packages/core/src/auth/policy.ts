@@ -112,7 +112,7 @@ const SCOPED_ROLES: ReadonlySet<Role> = new Set<Role>(['contributor', 'viewer', 
 /**
  * The single authorisation decision in the system.
  *
- * Returns a decision rather than a boolean so the denial can say why — the
+ * Returns a decision rather than a boolean so the denial can say why - the
  * difference between "you are a viewer" and "that portfolio is not yours"
  * matters to whoever hits it, and reconstructing it at the call site means
  * duplicating this logic there.
@@ -135,7 +135,7 @@ export function can(actor: Actor, action: Action, resource: Resource): Decision 
       return deny(`role "${actor.role}" is limited to specific portfolios`);
     }
     if (!actor.portfolioScope.includes(resource.portfolioId)) {
-      return deny('portfolio is outside this member’s scope');
+      return deny("portfolio is outside this member's scope");
     }
   }
 

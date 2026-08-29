@@ -1,4 +1,4 @@
-# ADR-0006 — Numeric precision: never a floating-point number
+# ADR-0006 - Numeric precision: never a floating-point number
 
 - **Status:** accepted
 - **Date:** 2026-08-29
@@ -20,7 +20,7 @@ against bank statements, computes cost basis across thousands of lots, and enfor
 ledger invariant that entries sum to _exactly_ zero (ADR-0002). Under floating point that
 invariant is unenforceable: a transaction that should balance would fail by 1e-17.
 
-Crypto makes it worse. A `number` holds about 15–17 significant decimal digits; a wei
+Crypto makes it worse. A `number` holds about 15-17 significant decimal digits; a wei
 amount needs 18 decimal places on top of an integer part.
 
 ## Decision
@@ -29,11 +29,11 @@ amount needs 18 decimal places on top of an integer part.
 
 | Layer                         | Representation                                         |
 | ----------------------------- | ------------------------------------------------------ |
-| PostgreSQL — amounts          | `numeric(28,10)`                                       |
-| PostgreSQL — quantities       | `numeric(38,18)`                                       |
-| PostgreSQL — prices, FX rates | `numeric(24,12)`                                       |
+| PostgreSQL - amounts          | `numeric(28,10)`                                       |
+| PostgreSQL - quantities       | `numeric(38,18)`                                       |
+| PostgreSQL - prices, FX rates | `numeric(24,12)`                                       |
 | TypeScript                    | `Decimal` from `decimal.js`, wrapped in a `Money` type |
-| JSON, HTTP, forms             | **strings** — never `number`                           |
+| JSON, HTTP, forms             | **strings** - never `number`                           |
 
 Three supporting rules:
 
@@ -69,7 +69,7 @@ exact equality rather than approximate.
 **Harder.** Arithmetic is method calls, not operators: `a.plus(b)` rather than `a + b`.
 Every value crossing a boundary needs a conscious conversion. Contributors will
 instinctively reach for `number`, so an ESLint rule and code review have to catch it.
-`Decimal` allocates more than a `number` — irrelevant at this scale, and measured before
+`Decimal` allocates more than a `number` - irrelevant at this scale, and measured before
 it becomes a concern rather than assumed.
 
 **Accepted.** Some arithmetic reads more verbosely than it would with operators. That is
@@ -78,5 +78,5 @@ the price of numbers that are right.
 ## Revisit if
 
 The TC39 decimal proposal reaches Stage 4 and ships in Node's baseline. At that point the
-`Money` wrapper stays and only its internals change — which is the reason for wrapping
+`Money` wrapper stays and only its internals change - which is the reason for wrapping
 `Decimal` rather than passing it around directly.

@@ -49,7 +49,7 @@ export const transactions = pgTable(
     description: text('description'),
     counterparty: text('counterparty'),
     source: text('source').notNull().default('manual'),
-    /** Provider identifier — the idempotency key for imports and sync. */
+    /** Provider identifier - the idempotency key for imports and sync. */
     externalId: text('external_id'),
     /** sha256 over account, date, amount and normalised label (plan §8.5). */
     dedupeHash: text('dedupe_hash'),
@@ -73,7 +73,7 @@ export const transactions = pgTable(
  *
  * `amount` is signed from the account's point of view. The sum across a
  * transaction is zero per currency, enforced by a deferred constraint trigger
- * defined in SQL rather than here — see migrations (ADR-0002).
+ * defined in SQL rather than here - see migrations (ADR-0002).
  */
 export const entries = pgTable(
   'entries',

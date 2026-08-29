@@ -78,10 +78,10 @@ jobs:
           retention-days: 14
 # Deliberately not here yet, each waiting on the code it would test:
 #
-#   build       next build + worker build          — needs apps/web (phase 0, day 4)
-#   test:e2e    Playwright                         — needs a running application
-#   sbom        CycloneDX                          — worth generating per release, not per commit
-#   docker      buildx amd64/arm64 + cosign        — needs a Dockerfile (phase 6)
+#   build       next build + worker build          - needs apps/web (phase 0, day 4)
+#   test:e2e    Playwright                         - needs a running application
+#   sbom        CycloneDX                          - worth generating per release, not per commit
+#   docker      buildx amd64/arm64 + cosign        - needs a Dockerfile (phase 6)
 #
 # Dependency auditing is covered by Dependabot alerts, already enabled on the
 # repository. Running `pnpm audit` here as well would block an unrelated commit

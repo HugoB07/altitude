@@ -8,7 +8,7 @@ import { getAuth } from '@/server/auth';
 //
 // The handler is built per request rather than at module scope. `next build`
 // imports this file to collect route metadata, and a build must not need a
-// database or a production secret to produce static output — nor fail with a
+// database or a production secret to produce static output - nor fail with a
 // bundler stack trace instead of a sentence naming the missing variable.
 export async function GET(request: Request): Promise<Response> {
   return toNextJsHandler(getAuth()).GET(request);

@@ -47,25 +47,25 @@
     <p><strong>PEA</strong>: there is no line-by-line taxable gain, only an overall gain on withdrawal. The
     account must know its <em>opening date</em> (the five-year rule) and <em>cumulative contributions</em>
     (the cap). <strong>Assurance-vie</strong>: a partial withdrawal is split pro rata between capital and
-    gains — impossible to compute without a history of premiums. <strong>PER</strong>: deductible
+    gains - impossible to compute without a history of premiums. <strong>PER</strong>: deductible
     contributions must be tracked for the payout phase. These three fields live in
     <code>accounts.attributes</code> and are validated by a Zod schema keyed on <code>subtype</code>.</p>
   </div>
 
   <h3>6.3 Performance measures</h3>
   <p>Three different numbers answering three different questions. Altitude shows them side by side, each
-  named — never an anonymous "+12.4%".</p>
+  named - never an anonymous "+12.4%".</p>
   <table class="tight">
     <thead><tr><th style="width:18%">Measure</th><th style="width:26%">Answers</th><th>Method used</th></tr></thead>
     <tbody>
-      <tr><td><b>TWR</b><br><span style="font-size:7.4pt;color:#64748B">time-weighted</span></td><td>"Are my investment choices good?" — neutralises contributions.</td><td>Geometric chaining of daily returns: <code>Π (1 + (Vₜ − Vₜ₋₁ − Fₜ) / (Vₜ₋₁ + Fₜ)) − 1</code>. This is the measure comparable to an index.</td></tr>
-      <tr><td><b>MWR / IRR</b><br><span style="font-size:7.4pt;color:#64748B">money-weighted</span></td><td>"What did my money actually earn me?" — accounts for contribution timing.</td><td>XIRR: root-finding by Newton-Raphson, falling back to bisection on divergence. Degenerate cases (all flows same sign) are handled and flagged explicitly.</td></tr>
+      <tr><td><b>TWR</b><br><span style="font-size:7.4pt;color:#64748B">time-weighted</span></td><td>"Are my investment choices good?" - neutralises contributions.</td><td>Geometric chaining of daily returns: <code>Π (1 + (Vₜ − Vₜ₋₁ − Fₜ) / (Vₜ₋₁ + Fₜ)) − 1</code>. This is the measure comparable to an index.</td></tr>
+      <tr><td><b>MWR / IRR</b><br><span style="font-size:7.4pt;color:#64748B">money-weighted</span></td><td>"What did my money actually earn me?" - accounts for contribution timing.</td><td>XIRR: root-finding by Newton-Raphson, falling back to bisection on divergence. Degenerate cases (all flows same sign) are handled and flagged explicitly.</td></tr>
       <tr><td><b>Modified Dietz</b></td><td>A robust approximation over a short period without daily valuation.</td><td>Used for illiquid assets valued occasionally (real estate, private equity) where a daily TWR is meaningless.</td></tr>
     </tbody>
   </table>
 
   <div class="box box-dec">
-    <div class="box-t">Decision — test the engine against an external oracle</div>
+    <div class="box-t">Decision - test the engine against an external oracle</div>
     <p>Portfolio Performance and the <code>XIRR()</code> function in Excel/LibreOffice act as
     <strong>oracles</strong>. Build roughly twenty reference scenarios (simple purchase, regular
     contributions, partial sale, dividend with withholding tax, split, foreign currency, a contribution on a
@@ -73,7 +73,7 @@
     <strong>10⁻⁶</strong>. These tests are the safety net that lets you refactor the engine without fear.</p>
   </div>
 
-  <h3>6.4 Geographic exposure — the data behind the Globe</h3>
+  <h3>6.4 Geographic exposure - the data behind the Globe</h3>
   <p>The globe is not decorative: it reveals that a "well-diversified" portfolio is in fact 68% exposed to
   the United States. The figure comes from look-through:</p>
   <pre><span class="c">-- Country weights across a portfolio subtree, at a given date</span>
@@ -113,7 +113,7 @@
     <tbody>
       <tr><td>Dashboard, 20 accounts, 10 years</td><td>&lt; 300 ms server</td><td>Read <code>daily_balances</code> only, never the ledger. Covering index on <code>(account_id, as_of)</code>.</td></tr>
       <tr><td>Table of 50,000 transactions</td><td>&lt; 200 ms INP</td><td>Cursor pagination (never <code>OFFSET</code>), row virtualisation, sorting pushed down to SQL.</td></tr>
-      <tr><td>Import of 20,000 rows</td><td>&lt; 60 s</td><td>Worker job, batched inserts of 1,000 via <code>COPY</code>, one incremental recompute at the end — not per row.</td></tr>
+      <tr><td>Import of 20,000 rows</td><td>&lt; 60 s</td><td>Worker job, batched inserts of 1,000 via <code>COPY</code>, one incremental recompute at the end - not per row.</td></tr>
       <tr><td>Full 10-year recompute</td><td>&lt; 5 min</td><td>Date-range recompute in a single SQL pass; <code>maintenance_work_mem</code> raised for the duration of the job.</td></tr>
       <tr><td>10-year chart</td><td>&lt; 2,000 points</td><td>Server-side LTTB downsampling, granularity matched to the period (day / week / month).</td></tr>
     </tbody>
@@ -122,7 +122,7 @@
   <div class="box box-warn">
     <div class="box-t">Invalidation: bug source number one</div>
     <p>Adding a transaction dated 2019 must invalidate <code>daily_balances</code> from 2019 to today for the
-    accounts touched — and for those only. The implementation: a trigger feeds a
+    accounts touched - and for those only. The implementation: a trigger feeds a
     <code>recompute_queue(account_id, from_date)</code> table, and the worker consumes it merging
     overlapping intervals. Never recompute inline inside an HTTP request: on a bulk import that is a
     minute of waiting and a held lock.</p>

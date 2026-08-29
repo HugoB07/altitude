@@ -15,7 +15,7 @@ import { users } from './identity';
  * row a session refers to.
  *
  * None of these carry row-level security. They are consulted before a household
- * is known — at sign-in there is no tenant yet — and a user may belong to
+ * is known - at sign-in there is no tenant yet - and a user may belong to
  * several households. Tenancy starts once a session resolves to a membership.
  */
 
@@ -53,7 +53,7 @@ export const authAccounts = pgTable(
     providerId: text('provider_id').notNull(),
     /**
      * The OAuth issuer this credential came from. Null for the credential
-     * provider, which has no issuer — the household's own instance is it.
+     * provider, which has no issuer - the household's own instance is it.
      */
     issuer: text('issuer'),
     userId: uuid('user_id')

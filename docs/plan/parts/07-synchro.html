@@ -13,21 +13,21 @@
   <p>In Europe, programmatic access to accounts is governed by <strong>PSD2</strong>. Three structural
   facts:</p>
   <ul>
-    <li>Reading account data on a user's behalf is a regulated service — an <strong>Account Information
+    <li>Reading account data on a user's behalf is a regulated service - an <strong>Account Information
     Service (AIS)</strong>. Providing it requires an <strong>AISP</strong> licence from a national authority
     (the ACPR in France), or status as an agent of a licensed institution.</li>
     <li>Technically, banks expose a dedicated interface protected by <strong>eIDAS</strong> certificates
     (QWAC / QSealC) issued only to <em>licensed</em> entities. An open-source project cannot obtain them,
     and could not distribute them anyway.</li>
     <li>User consent is <strong>dated and time-limited</strong>. Strong customer authentication (SCA) is
-    required on first access and renewed periodically — historically every 90 days, extended to up to 180
+    required on first access and renewed periodically - historically every 90 days, extended to up to 180
     days by the 2022 amendment to the regulatory technical standards, depending on the bank and the
     aggregator.</li>
   </ul>
   <p>The direct consequence: <strong>Altitude will never connect to banks directly</strong>. The only
   compliant route runs through a licensed aggregator, where the operator opens their own account.</p>
 
-  <h3>7.2 What PSD2 does not cover — the point that changes everything</h3>
+  <h3>7.2 What PSD2 does not cover - the point that changes everything</h3>
   <p>PSD2 applies to <strong>payment accounts</strong>. Translated into a concrete French net worth:</p>
 
   <table class="tight">
@@ -36,8 +36,8 @@
       <tr><td>Current account</td><td><span class="tag t-yes">Yes</span></td><td>Balance and transactions, generally 12 to 24 months of history depending on the bank.</td></tr>
       <tr><td>Regulated savings (livret A, LDDS, LEP)</td><td><span class="tag t-part">Varies</span></td><td>Institution-dependent: often exposed because they are accessible online, but with no guarantee and a shorter history.</td></tr>
       <tr><td>Brokerage account (CTO)</td><td><span class="tag t-no">No</span></td><td>Out of scope. At best a cash balance. No positions, no quantities, no cost basis.</td></tr>
-      <tr><td><b>PEA</b></td><td><span class="tag t-no">No</span></td><td>Out of scope — and frequently the single largest line in a French portfolio.</td></tr>
-      <tr><td><b>Assurance-vie</b></td><td><span class="tag t-no">No</span></td><td>Out of scope, and insurers are under no API obligation. Some aggregators do retrieve it — by scraping, not through PSD2.</td></tr>
+      <tr><td><b>PEA</b></td><td><span class="tag t-no">No</span></td><td>Out of scope - and frequently the single largest line in a French portfolio.</td></tr>
+      <tr><td><b>Assurance-vie</b></td><td><span class="tag t-no">No</span></td><td>Out of scope, and insurers are under no API obligation. Some aggregators do retrieve it - by scraping, not through PSD2.</td></tr>
       <tr><td><b>PER, PERCO, employee savings</b></td><td><span class="tag t-no">No</span></td><td>Out of scope. Retrievable only by scraping or manual import.</td></tr>
       <tr><td>Mortgage</td><td><span class="tag t-no">No</span></td><td>A loan is not a payment account. Outstanding principal is not exposed.</td></tr>
       <tr><td>Crypto, property, private equity</td><td><span class="tag t-no">No</span></td><td>Entirely outside PSD2.</td></tr>
@@ -48,7 +48,7 @@
     <div class="box-t">The central finding</div>
     <p>For a typical French user whose wealth is spread across a primary residence, a PEA, an
     assurance-vie, savings accounts and a current account, PSD2 synchronisation returns <strong>the current
-    account and perhaps the savings accounts</strong> — typically <strong>10 to 25% of the balance</strong>,
+    account and perhaps the savings accounts</strong> - typically <strong>10 to 25% of the balance</strong>,
     and the least interesting part to analyse. Building the product around that brick means optimising the
     least important quarter first.</p>
   </div>
@@ -60,29 +60,29 @@
       <th style="width:11%">Coverage</th><th style="width:11%">Cost</th><th>Altitude's verdict</th></tr></thead>
     <tbody>
       <tr>
-        <td><b>A — AISP aggregator</b><br><span style="font-size:7.4pt;color:#64748B">Enable Banking, Powens, Bridge…</span></td>
+        <td><b>A - AISP aggregator</b><br><span style="font-size:7.4pt;color:#64748B">Enable Banking, Powens, Bridge…</span></td>
         <td><span class="tag t-yes">Compliant</span></td><td>Good</td><td>Payment accounts</td><td>Free to high</td>
         <td><b>Chosen for v2</b>, optional, credentials supplied by the operator.</td>
       </tr>
       <tr>
-        <td><b>B — Direct bank APIs</b></td>
-        <td><span class="tag t-no">Not possible</span></td><td>—</td><td>—</td><td>Very high</td>
+        <td><b>B - Direct bank APIs</b></td>
+        <td><span class="tag t-no">Not possible</span></td><td>-</td><td>-</td><td>Very high</td>
         <td><b>Rejected.</b> Requires an AISP licence, eIDAS certificates and a per-bank integration.</td>
       </tr>
       <tr>
-        <td><b>C — Scraping</b><br><span style="font-size:7.4pt;color:#64748B">woob, Playwright</span></td>
+        <td><b>C - Scraping</b><br><span style="font-size:7.4pt;color:#64748B">woob, Playwright</span></td>
         <td><span class="tag t-no">Breaches ToS</span></td><td>Poor</td><td>Broad in theory</td><td>Endless maintenance</td>
         <td><b>Rejected from core.</b> A plugin interface stays open, without official support.</td>
       </tr>
       <tr>
-        <td><b>D — Files &amp; official APIs</b><br><span style="font-size:7.4pt;color:#64748B">CSV, OFX, CAMT, IBKR Flex, exchange APIs</span></td>
+        <td><b>D - Files &amp; official APIs</b><br><span style="font-size:7.4pt;color:#64748B">CSV, OFX, CAMT, IBKR Flex, exchange APIs</span></td>
         <td><span class="tag t-yes">Full</span></td><td>Excellent</td><td><b>100%</b></td><td>None</td>
         <td><b>The v1 foundation.</b> The only route that reaches the PEA, assurance-vie and PER.</td>
       </tr>
     </tbody>
   </table>
 
-  <h3>7.4 Route A in detail — the market in 2026</h3>
+  <h3>7.4 Route A in detail - the market in 2026</h3>
   <table class="tight">
     <thead><tr><th style="width:17%">Aggregator</th><th style="width:15%">Developer access</th><th style="width:16%">Coverage</th><th>Fit for a self-hosted project</th></tr></thead>
     <tbody>
@@ -115,7 +115,7 @@
     </ol>
   </div>
 
-  <h3>7.5 Route C — why scraping stays out of core</h3>
+  <h3>7.5 Route C - why scraping stays out of core</h3>
   <p>Kresus showed it is possible in France through <code>woob</code>. That does not make it a good
   foundation:</p>
   <div class="grid2">
@@ -139,7 +139,7 @@
     </div>
   </div>
 
-  <h3>7.6 Route D — what is safe, lawful and automatable at the same time</h3>
+  <h3>7.6 Route D - what is safe, lawful and automatable at the same time</h3>
   <p>There is a whole category of <em>official</em> sources, often overlooked, that delivers real automation
   with no legal exposure:</p>
   <table class="tight">
@@ -148,26 +148,26 @@
       <tr><td><b>Interactive Brokers</b></td><td>Flex Query (XML) + token</td><td><span class="tag t-yes">Official</span></td><td>Automatable report: positions, trades, dividends, fees. The best possible broker integration, fully supported by IBKR.</td></tr>
       <tr><td><b>Crypto exchanges</b><br><span style="font-size:7.4pt;color:#64748B">Kraken, Binance, Coinbase…</span></td><td><b>Read-only</b> API key</td><td><span class="tag t-yes">Official</span></td><td>Keys created by the user, with no withdrawal or trading rights. IP restriction recommended. Altitude refuses any key that exposes write permissions.</td></tr>
       <tr><td><b>On-chain wallets</b></td><td>Public address + RPC/indexer</td><td><span class="tag t-yes">Public</span></td><td>No secret involved: you are reading public data. Bitcoin xpub support, EVM addresses, Solana. Zero risk.</td></tr>
-      <tr><td><b>Banks — file export</b></td><td>CSV / OFX / QIF / CAMT.053</td><td><span class="tag t-yes">Official</span></td><td>Every French bank offers an export. Manual, but reliable and with no history limit.</td></tr>
+      <tr><td><b>Banks - file export</b></td><td>CSV / OFX / QIF / CAMT.053</td><td><span class="tag t-yes">Official</span></td><td>Every French bank offers an export. Manual, but reliable and with no history limit.</td></tr>
       <tr><td><b>Brokers</b><br><span style="font-size:7.4pt;color:#64748B">Degiro, Trade Republic, Bourse Direct, Saxo</span></td><td>CSV export / PDF statement</td><td><span class="tag t-yes">Official</span></td><td>Dedicated import presets. Undocumented broker APIs stay out of core, like scraping.</td></tr>
-      <tr><td><b>Quotes</b></td><td>Market data APIs</td><td><span class="tag t-part">Per their terms</span></td><td>Multi-provider interface with fallback. FX: the <b>ECB</b> — official, free, no API key — is the default.</td></tr>
+      <tr><td><b>Quotes</b></td><td>Market data APIs</td><td><span class="tag t-part">Per their terms</span></td><td>Multi-provider interface with fallback. FX: the <b>ECB</b> - official, free, no API key - is the default.</td></tr>
     </tbody>
   </table>
 
   <h3>7.7 Verdict and chosen architecture</h3>
   <div class="box box-go">
-    <div class="box-t">Decision — bank sync: no in v1, optional in v2</div>
-    <p><b>v1.0</b> — no bank connection at all. Manual entry, file import, read-only crypto keys, on-chain
+    <div class="box-t">Decision - bank sync: no in v1, optional in v2</div>
+    <p><b>v1.0</b> - no bank connection at all. Manual entry, file import, read-only crypto keys, on-chain
     addresses and IBKR Flex. This scope covers <strong>100% of net worth</strong>, is legally
     unimpeachable, and depends on no third party.</p>
-    <p><b>v2.0</b> — PSD2 connector as an <strong>optional plugin</strong>, off by default,
+    <p><b>v2.0</b> - PSD2 connector as an <strong>optional plugin</strong>, off by default,
     <code>ALTITUDE_CONNECTORS=enablebanking</code>. Reference implementation: <strong>Enable Banking</strong>,
     because it is the only self-service route today. The operator creates their own account and supplies
     their own credentials. The repository contains <strong>no keys</strong>.</p>
-    <p><b>Never</b> — payment initiation, scraping in core, storage of bank credentials.</p>
+    <p><b>Never</b> - payment initiation, scraping in core, storage of bank credentials.</p>
   </div>
 
-  <pre><span class="c">// packages/connectors/src/types.ts — the interface every connector implements</span>
+  <pre><span class="c">// packages/connectors/src/types.ts - the interface every connector implements</span>
 <span class="k">export interface</span> Connector {
   <span class="k">readonly</span> id: <span class="s">string</span>;                 <span class="c">// 'enablebanking' | 'ibkr-flex' | 'kraken' …</span>
   <span class="k">readonly</span> capabilities: {
@@ -180,7 +180,7 @@
   <span class="c">// Step 1: the user is redirected to their bank (credentials never reach us)</span>
   beginLink(ctx: Ctx, params: LinkParams): Promise&lt;{ redirectUrl: <span class="k">string</span>; state: <span class="k">string</span> }&gt;;
   completeLink(ctx: Ctx, callback: <span class="k">unknown</span>): Promise&lt;ConnectionHandle&gt;;
-  <span class="c">// Step 2: sync — returns CANONICAL transactions, never ledger entries</span>
+  <span class="c">// Step 2: sync - returns CANONICAL transactions, never ledger entries</span>
   fetchAccounts(h: ConnectionHandle): Promise&lt;RawAccount[]&gt;;
   fetchTransactions(h: ConnectionHandle, since: Date): Promise&lt;RawTransaction[]&gt;;
   <span class="c">// Step 3: consent lifecycle</span>
@@ -188,7 +188,7 @@
   revoke(h: ConnectionHandle): Promise&lt;<span class="k">void</span>&gt;;
 }</pre>
   <p>An important architectural point: a connector produces <strong>canonical raw transactions</strong>,
-  which then flow through <em>exactly the same pipeline</em> as a CSV import — normalisation,
+  which then flow through <em>exactly the same pipeline</em> as a CSV import - normalisation,
   deduplication, categorisation, double-entry posting (§8.2). No code is written twice, and a sync is
   undoable just like an import.</p>
 
@@ -208,9 +208,9 @@
 
   <div class="footnote">
     Sources consulted for this section:
-    <a href="https://developer.gocardless.com/bank-account-data/overview">developer.gocardless.com — Bank Account Data</a> ·
-    <a href="https://www.openbankingtracker.com/guides/free-open-banking-apis">openbankingtracker.com — Free &amp; Indie Open Banking APIs (2026)</a> ·
-    <a href="https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-final-report-amendment-its-technical-standards">EBA — final report on the amendment to the RTS on the SCA exemption for account access</a> ·
+    <a href="https://developer.gocardless.com/bank-account-data/overview">developer.gocardless.com - Bank Account Data</a> ·
+    <a href="https://www.openbankingtracker.com/guides/free-open-banking-apis">openbankingtracker.com - Free &amp; Indie Open Banking APIs (2026)</a> ·
+    <a href="https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-final-report-amendment-its-technical-standards">EBA - final report on the amendment to the RTS on the SCA exemption for account access</a> ·
     <a href="https://www.powens.com/fr/produits/transactions/">powens.com</a> ·
     <a href="https://www.bridgeapi.io/solutions/rapprochement-bancaire-automatise-en-continu/service-agregation-de-compte">bridgeapi.io</a>.
     Commercial terms change quickly: re-verify before implementing.

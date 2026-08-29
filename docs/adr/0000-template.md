@@ -1,4 +1,4 @@
-# ADR-0000 — Template
+# ADR-0000 - Template
 
 - **Status:** proposed | accepted | superseded by [ADR-XXXX](XXXX-title.md)
 - **Date:** YYYY-MM-DD
@@ -25,7 +25,7 @@ not reopen in six months.
 ## Consequences
 
 What becomes easier, what becomes harder, and what we now have to live with. Include the
-costs — an ADR listing only benefits is a sales pitch, not a decision record.
+costs - an ADR listing only benefits is a sales pitch, not a decision record.
 
 ## Revisit if
 

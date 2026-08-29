@@ -1,7 +1,7 @@
 <section class="sec">
   <div class="sec-head">
     <div class="sec-num">01</div>
-    <h2>Executive summary — the 12 decisions</h2>
+    <h2>Executive summary - the 12 decisions</h2>
     <div class="sec-kicker">Decisions</div>
   </div>
 
@@ -11,16 +11,16 @@
   <table class="tight">
     <thead><tr><th style="width:6%">#</th><th style="width:22%">Topic</th><th style="width:34%">Decision</th><th style="width:38%">Why / alternative rejected</th></tr></thead>
     <tbody>
-      <tr><td><b>1</b></td><td>Database</td><td><b>PostgreSQL 17</b> — one datastore, job queue and application cache included</td><td>Exact arithmetic (<code>numeric</code>), window functions, JSONB, <code>ltree</code>, RLS, mature backup ecosystem. Rejected: SQLite (concurrency, no RLS), MongoDB (no natural multi-document transactions for a ledger).</td></tr>
-      <tr><td><b>2</b></td><td>Accounting model</td><td><b>Double-entry</b>: every transaction is N lines summing to zero per currency</td><td>The only structure that keeps internal transfers, fees, taxes and multi-currency coherent without double counting. Rejected: a flat <code>transactions(amount)</code> table — unmanageable from the second account onwards.</td></tr>
-      <tr><td><b>3</b></td><td>Bank sync</td><td><b>Not in v1.</b> PSD2 connector <b>optional</b> in v2, off by default, credentials supplied by the operator</td><td>PSD2 does <em>not</em> cover PEA, assurance-vie or PER, and access requires an AISP licence. Full analysis in §7. Rejected: scraping (woob) in core — fragile, contrary to bank terms of service.</td></tr>
+      <tr><td><b>1</b></td><td>Database</td><td><b>PostgreSQL 17</b> - one datastore, job queue and application cache included</td><td>Exact arithmetic (<code>numeric</code>), window functions, JSONB, <code>ltree</code>, RLS, mature backup ecosystem. Rejected: SQLite (concurrency, no RLS), MongoDB (no natural multi-document transactions for a ledger).</td></tr>
+      <tr><td><b>2</b></td><td>Accounting model</td><td><b>Double-entry</b>: every transaction is N lines summing to zero per currency</td><td>The only structure that keeps internal transfers, fees, taxes and multi-currency coherent without double counting. Rejected: a flat <code>transactions(amount)</code> table - unmanageable from the second account onwards.</td></tr>
+      <tr><td><b>3</b></td><td>Bank sync</td><td><b>Not in v1.</b> PSD2 connector <b>optional</b> in v2, off by default, credentials supplied by the operator</td><td>PSD2 does <em>not</em> cover PEA, assurance-vie or PER, and access requires an AISP licence. Full analysis in §7. Rejected: scraping (woob) in core - fragile, contrary to bank terms of service.</td></tr>
       <tr><td><b>4</b></td><td>v1 ingestion</td><td><b>Manual entry + file import</b> (CSV, XLSX, OFX, QIF, CAMT.053) with per-bank presets</td><td>Fully lawful, offline, reliable, and covers the assets PSD2 ignores. This is the foundation, not the fallback.</td></tr>
       <tr><td><b>5</b></td><td>Framework</td><td><b>Next.js 16 App Router</b>, React 19, RSC by default</td><td>Route Handlers for the versioned public API, Server Actions for internal form mutations. Explicit split in §4.4.</td></tr>
       <tr><td><b>6</b></td><td>ORM</td><td><b>Drizzle ORM</b> + drizzle-kit</td><td>SQL-first, which matters when 60% of the value sits in windowed aggregates. Readable SQL migrations. Rejected: Prisma (binary engine, weaker ergonomics for raw <code>WINDOW</code> queries).</td></tr>
       <tr><td><b>7</b></td><td>Background jobs</td><td><b>pg-boss</b> (queue inside Postgres)</td><td>No extra infrastructure: one app container, one worker, one database. Rejected: BullMQ + Redis (good, but forces Redis on every self-hoster).</td></tr>
-      <tr><td><b>8</b></td><td>Authentication</td><td><b>Better Auth</b> (DB sessions, TOTP 2FA, passkeys, organisations)</td><td>Built for self-hosting, no SaaS dependency. Its organisation plugin models the household. Rejected: Auth.js (weaker on 2FA/multi-tenancy), Clerk/WorkOS (SaaS — disqualifying here).</td></tr>
+      <tr><td><b>8</b></td><td>Authentication</td><td><b>Better Auth</b> (DB sessions, TOTP 2FA, passkeys, organisations)</td><td>Built for self-hosting, no SaaS dependency. Its organisation plugin models the household. Rejected: Auth.js (weaker on 2FA/multi-tenancy), Clerk/WorkOS (SaaS - disqualifying here).</td></tr>
       <tr><td><b>9</b></td><td>Money in memory</td><td><b>No <code>float</code>, anywhere.</b> <code>numeric</code> in the database, <code>decimal.js</code> in TypeScript, strings at the boundaries</td><td>One cent of rounding drift destroys trust in a wealth tracker. Drizzle already returns <code>numeric</code> as <code>string</code>: we build on that.</td></tr>
-      <tr><td><b>10</b></td><td>Hierarchy</td><td><b>Portfolio tree</b> via <code>ltree</code>, with owners kept distinct from users</td><td>Enables child portfolios, holding companies, undivided estates and thematic buckets — without conflating "who owns" with "who can see".</td></tr>
+      <tr><td><b>10</b></td><td>Hierarchy</td><td><b>Portfolio tree</b> via <code>ltree</code>, with owners kept distinct from users</td><td>Enables child portfolios, holding companies, undivided estates and thematic buckets - without conflating "who owns" with "who can see".</td></tr>
       <tr><td><b>11</b></td><td>Licence</td><td><b>AGPL-3.0</b> + DCO</td><td>Prevents a closed SaaS rebuild of community work; established precedent (Firefly III, Ghostfolio). Rejected: MIT (wider adoption, but exposes the project to free-riding by a commercial competitor).</td></tr>
       <tr><td><b>12</b></td><td>Deployment</td><td><b>Docker Compose</b> reference: <code>app</code>, <code>worker</code>, <code>postgres</code>, <code>caddy</code></td><td>One <code>docker compose up -d</code> must be enough. Multi-arch amd64/arm64 image for NAS boxes and Raspberry Pis.</td></tr>
     </tbody>
@@ -28,7 +28,7 @@
 
   <h3>1.1 The critical path in one sentence</h3>
   <p>A correct double-entry ledger, fed first by hand and then by file import, valued by a multi-currency
-  pricing engine, sliced by a multi-owner portfolio tree — and <em>only then</em> wired to optional bank
+  pricing engine, sliced by a multi-owner portfolio tree - and <em>only then</em> wired to optional bank
   connectors. Inverting that order is the classic trap: you spend six months on aggregation, discover it
   does not return the PEA, and still have no product.</p>
 
@@ -37,7 +37,7 @@
     <p>Bank synchronisation is the most <strong>requested</strong> feature and the least
     <strong>differentiating</strong>. It is expensive (regulatory exposure, connector maintenance, support
     load) and it covers at best 40% of a typical French user's wealth, because the wrappers holding most of
-    the balance — PEA, assurance-vie, PER — are <strong>outside PSD2 scope</strong>. Excellent CSV import
+    the balance - PEA, assurance-vie, PER - are <strong>outside PSD2 scope</strong>. Excellent CSV import
     plus fast manual entry covers 100% of net worth from the first release.</p>
   </div>
 
@@ -61,7 +61,7 @@
       </ul>
     </div>
     <div class="card">
-      <h5>In v1.1 – v1.3</h5>
+      <h5>In v1.1 - v1.3</h5>
       <ul>
         <li>PSD2 connector (Enable Banking)</li>
         <li>Budgeting &amp; advanced categorisation</li>
@@ -88,7 +88,7 @@
   </div>
 
   <div class="box box-dec">
-    <div class="box-t">Decision — no official SaaS before v1.0</div>
+    <div class="box-t">Decision - no official SaaS before v1.0</div>
     <p>Running a public instance turns the project into an entity processing third parties' financial data:
     heightened GDPR obligations, liability, support, cost. A <strong>demo instance with fabricated
     data</strong>, reset every 24 hours, is enough to convert visitors. SaaS remains a later commercial

@@ -39,7 +39,7 @@ export class CurrencyMismatchError extends Error {
  * An exact monetary amount and its currency.
  *
  * The `C` parameter carries the currency into the type system. Where currencies
- * are known statically — `Money<'EUR'>` and `Money<'USD'>` — mixing them is a
+ * are known statically - `Money<'EUR'>` and `Money<'USD'>` - mixing them is a
  * compile error. Where they are dynamic, as with a value read from the database,
  * `C` widens to `string` and the check happens at runtime instead.
  *
@@ -88,7 +88,7 @@ export class Money<C extends CurrencyCode = CurrencyCode> {
     return new Money(this.amount.minus(other.amount), this.currency);
   }
 
-  /** Scales by a dimensionless factor — a quantity or a ratio, never a Money. */
+  /** Scales by a dimensionless factor - a quantity or a ratio, never a Money. */
   times(factor: DecimalInput): Money<C> {
     return new Money(this.amount.times(dec(factor)), this.currency);
   }

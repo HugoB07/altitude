@@ -91,7 +91,7 @@ const { data } = await send('Page.printToPDF', {
   displayHeaderFooter: true,
   headerTemplate: `<div style="${style}"></div>`,
   footerTemplate: `<div style="${style}display:flex;justify-content:space-between;align-items:center;">
-      <span style="letter-spacing:.12em;text-transform:uppercase;">Altitude — Development Plan v1.0</span>
+      <span style="letter-spacing:.12em;text-transform:uppercase;">Altitude - Development Plan v1.0</span>
       <span style="color:#0284C7;font-weight:700;"><span class="pageNumber"></span> / <span class="totalPages"></span></span>
     </div>`,
 });

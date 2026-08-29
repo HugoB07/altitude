@@ -19,13 +19,13 @@ import type { Transaction, TransactionInput } from '../ledger/types';
  * Verifies the actor belongs to the household this transaction is bound to.
  *
  * `assertCan` compares the actor's household to the resource's, which for a
- * whole-household query means comparing it to itself — it checks the role and
+ * whole-household query means comparing it to itself - it checks the role and
  * nothing about tenancy. The tenancy that matters here is the connection's:
  * `withHousehold` set it, and an actor from a different household reaching this
  * point means a caller scoped to one and authorised against another.
  *
  * Row-level security would still return the right rows, so nothing would look
- * wrong — the caller would simply be acting for a household it did not intend.
+ * wrong - the caller would simply be acting for a household it did not intend.
  * That is a bug worth failing on rather than serving.
  */
 async function assertActorMatchesTenant(tx: Database, actor: Actor): Promise<void> {
@@ -62,13 +62,13 @@ export interface PostTransactionResult {
 /**
  * Validates a transaction, checks the actor may post it, and writes it.
  *
- * Authorise, then validate, then persist — in that order, everywhere.
+ * Authorise, then validate, then persist - in that order, everywhere.
  *
  * Authorisation first because a refusal must not depend on whether the input
  * was well formed: otherwise the error tells someone who may not act here what
  * the system thinks of their data.
  *
- * Validation is `createTransaction` from the domain — the same function the
+ * Validation is `createTransaction` from the domain - the same function the
  * unit tests exercise, so the rule enforced here is the rule those tests
  * describe. The database enforces it again (ADR-0002). Neither is redundant:
  * each covers a path the other does not.
@@ -135,7 +135,7 @@ export interface AccountBalance {
  * database and the screen.
  *
  * The query names no household. Row-level security does that filtering, which
- * means this cannot select the wrong one — there is no parameter to get wrong.
+ * means this cannot select the wrong one - there is no parameter to get wrong.
  *
  * The join is left, and the sum coalesced: an account with no entries appears
  * at zero. One that vanished until its first transaction would look like a bug
@@ -183,7 +183,7 @@ export async function accountBalances(
  *
  * Liabilities are accounts whose balances are negative, so the sum is the whole
  * calculation. There is no separate subtraction to get wrong, and no flag an
- * insert can forget — `is_liability` is a generated column.
+ * insert can forget - `is_liability` is a generated column.
  *
  * Single currency for now. Combining several needs a dated rate per account,
  * which is phase 3.

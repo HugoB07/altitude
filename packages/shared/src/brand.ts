@@ -4,7 +4,7 @@ declare const brand: unique symbol;
  * A nominal type over a structural one.
  *
  * `AccountId` and `PortfolioId` are both strings at runtime, so without branding
- * the compiler will happily let you pass one where the other is expected — and
+ * the compiler will happily let you pass one where the other is expected - and
  * that mistake surfaces as data attached to the wrong entity, which is exactly
  * the class of bug that is hardest to notice in a ledger.
  */
@@ -24,7 +24,7 @@ export type CategoryId = Brand<string, 'CategoryId'>;
  *
  * Deliberately not enforcing the RFC 4122 version and variant nibbles. Postgres's
  * own `uuid` type accepts any well-formed UUID, and being stricter than the column
- * would reject values the database is happy to store — the nil UUID, ids minted by
+ * would reject values the database is happy to store - the nil UUID, ids minted by
  * an external provider, or rows migrated from another system. Our own ids come
  * from `gen_random_uuid()` and are v4 regardless.
  */

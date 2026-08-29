@@ -26,7 +26,7 @@
       <text x="89" y="109" text-anchor="middle" font-size="8" fill="#475569">PWA · offline shell</text>
 
       <rect x="196" y="20" width="196" height="152" rx="7" fill="#E0F2FE" stroke="#7DD3FC"/>
-      <text x="294" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#075985">Next.js 16 — App Router</text>
+      <text x="294" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#075985">Next.js 16 - App Router</text>
       <rect x="208" y="50" width="172" height="26" rx="4" fill="#fff" stroke="#BAE6FD"/>
       <text x="294" y="67" text-anchor="middle" font-size="8" fill="#0B1220">Server Components · pages</text>
       <rect x="208" y="80" width="82" height="26" rx="4" fill="#fff" stroke="#BAE6FD"/>
@@ -64,13 +64,13 @@
       <text x="503" y="306" text-anchor="middle" font-size="8" fill="#475569">raw imports · documents</text>
 
       <rect x="612" y="20" width="136" height="294" rx="7" fill="#FFFBEB" stroke="#FCD34D" stroke-dasharray="4 3"/>
-      <text x="680" y="40" text-anchor="middle" font-size="9.5" font-weight="700" fill="#B45309">Outbound — opt-in</text>
+      <text x="680" y="40" text-anchor="middle" font-size="9.5" font-weight="700" fill="#B45309">Outbound - opt-in</text>
       <text x="680" y="54" text-anchor="middle" font-size="7" fill="#92400E">all can be disabled</text>
       <rect x="622" y="64" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
       <text x="680" y="80" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">Quotes</text>
       <text x="680" y="93" text-anchor="middle" font-size="7" fill="#475569">stocks · ETFs · funds</text>
       <rect x="622" y="112" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
-      <text x="680" y="128" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">FX — ECB</text>
+      <text x="680" y="128" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">FX - ECB</text>
       <text x="680" y="141" text-anchor="middle" font-size="7" fill="#475569">free, no API key</text>
       <rect x="622" y="160" width="116" height="42" rx="4" fill="#fff" stroke="#FDE68A"/>
       <text x="680" y="176" text-anchor="middle" font-size="8" font-weight="600" fill="#0B1220">Crypto</text>
@@ -89,7 +89,7 @@
       <line x1="392" y1="228" x2="608" y2="180" stroke="#B45309" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#ar)"/>
       <text x="196" y="14" font-size="7.5" fill="#64748B">HTTPS · session cookie</text>
     </svg>
-    <figcaption>Figure 1 — Target architecture. One application image run in two roles (web and worker), one database, and outbound dependencies that are all optional.</figcaption>
+    <figcaption>Figure 1 - Target architecture. One application image run in two roles (web and worker), one database, and outbound dependencies that are all optional.</figcaption>
   </figure>
 
   <h3>4.2 Frontend</h3>
@@ -106,9 +106,9 @@
       <tr><td>Tables</td><td><b>TanStack Table v8</b></td><td>Sorting, filtering, resizable columns, virtualisation via TanStack Virtual beyond 500 rows.</td></tr>
       <tr><td>Client data</td><td><b>TanStack Query v5</b></td><td>Only for interactive work (filters, refresh). First paint comes from RSC: no spinner on open.</td></tr>
       <tr><td>URL state</td><td><b>nuqs</b></td><td>Period, currency and selected portfolio live in the URL → shareable, and the back button works.</td></tr>
-      <tr><td>Forms</td><td><b>react-hook-form + Zod</b></td><td>The <em>same</em> Zod schema validates on the client and on the server — a single source of truth.</td></tr>
+      <tr><td>Forms</td><td><b>react-hook-form + Zod</b></td><td>The <em>same</em> Zod schema validates on the client and on the server - a single source of truth.</td></tr>
       <tr><td>i18n</td><td><b>next-intl</b></td><td>English and French at launch. Formatting through <code>Intl.NumberFormat</code>: correct separators and symbols per locale.</td></tr>
-      <tr><td>Dates</td><td><b>date-fns</b> + <code>@date-fns/tz</code></td><td>Everything stored in UTC; accounting dates are bare <code>DATE</code> values with no timezone — the classic off-by-one-day trap.</td></tr>
+      <tr><td>Dates</td><td><b>date-fns</b> + <code>@date-fns/tz</code></td><td>Everything stored in UTC; accounting dates are bare <code>DATE</code> values with no timezone - the classic off-by-one-day trap.</td></tr>
     </tbody>
   </table>
 
@@ -119,11 +119,11 @@
     <thead><tr><th style="width:22%">Component</th><th style="width:26%">Where</th><th>Functional role</th></tr></thead>
     <tbody>
       <tr><td><b>Globe</b> <span class="tag t-p0">key</span></td><td>Dashboard · Allocation page</td><td>Geographic exposure after ETF look-through. Marker size scaled by weight; hover shows country, amount and percentage. A table fallback is mandatory.</td></tr>
-      <tr><td><b>Number Ticker</b></td><td>Net worth, KPI cards</td><td>Counter animation on load only — never during a live update.</td></tr>
+      <tr><td><b>Number Ticker</b></td><td>Net worth, KPI cards</td><td>Counter animation on load only - never during a live update.</td></tr>
       <tr><td><b>Bento Grid</b></td><td>Dashboard, public landing page</td><td>Grid of heterogeneous cards: net worth, allocation, globe, recent movements, goals.</td></tr>
       <tr><td><b>Animated Beam</b></td><td>Onboarding, Connectors page</td><td>Visualises the bank → aggregator → instance flow: teaches where the data actually goes.</td></tr>
       <tr><td><b>Border Beam / Magic Card</b></td><td>Account cards</td><td>Subtle emphasis on a selected account or an alert.</td></tr>
-      <tr><td><b>Animated List</b></td><td>Activity feed, import progress</td><td>Rows arriving as they are processed during an import — makes the wait legible.</td></tr>
+      <tr><td><b>Animated List</b></td><td>Activity feed, import progress</td><td>Rows arriving as they are processed during an import - makes the wait legible.</td></tr>
       <tr><td><b>Marquee</b></td><td>Public landing page</td><td>Scrolling list of banks and brokers supported by the importer.</td></tr>
       <tr><td><b>Blur Fade</b></td><td>Section transitions</td><td>Soft entrance, disabled under <code>prefers-reduced-motion</code>.</td></tr>
       <tr><td><b>Animated Circular Progress</b></td><td>Goals, FIRE progress</td><td>Progress towards a savings target.</td></tr>
@@ -139,11 +139,11 @@
     dashboard. Performance budget: <strong>INP &lt; 200 ms</strong> on the Transactions page with 50,000 rows.</p>
   </div>
 
-  <h3>4.4 Backend — what goes where</h3>
+  <h3>4.4 Backend - what goes where</h3>
   <table class="tight">
     <thead><tr><th style="width:24%">Need</th><th style="width:24%">Mechanism</th><th>Rule</th></tr></thead>
     <tbody>
-      <tr><td>Render a page</td><td>Server Component</td><td>Calls <code>core/services</code> directly. Never <code>fetch</code> your own API — that is a pointless network round trip.</td></tr>
+      <tr><td>Render a page</td><td>Server Component</td><td>Calls <code>core/services</code> directly. Never <code>fetch</code> your own API - that is a pointless network round trip.</td></tr>
       <tr><td>Create / edit from the UI</td><td>Server Action</td><td>Zod validation → <code>assertCan(ctx, 'transaction:create', accountId)</code> → service call → <code>revalidateTag</code>. Twenty lines maximum.</td></tr>
       <tr><td>API for scripts, mobile, agents</td><td>Route Handler <code>app/api/v1/**</code></td><td>Bearer API token, scopes (<code>read:accounts</code>, <code>write:transactions</code>), rate limiting, OpenAPI generated from the Zod schemas.</td></tr>
       <tr><td>Aggregator callback</td><td>Route Handler <code>app/api/webhooks/**</code></td><td>Signature verification, raw logging before processing, idempotency keyed on the event id.</td></tr>
@@ -155,26 +155,26 @@
   <h3>4.5 Monorepo</h3>
   <pre><span class="c"># pnpm workspaces + Turborepo</span>
 altitude/
-├─ apps/
-│  ├─ <span class="k">web</span>/                 <span class="c"># Next.js 16 — UI + Route Handlers + Server Actions</span>
-│  ├─ <span class="k">worker</span>/              <span class="c"># Node — pg-boss, cron, no dependency on Next</span>
-│  └─ <span class="k">docs</span>/                <span class="c"># Fumadocs — public documentation</span>
-├─ packages/
-│  ├─ <span class="k">db</span>/                  <span class="c"># Drizzle schema, SQL migrations, seeds, RLS</span>
-│  ├─ <span class="k">core</span>/                <span class="c"># pure domain: ledger, valuation, performance, authorisation</span>
-│  ├─ <span class="k">importers</span>/           <span class="c"># CSV/XLSX/OFX/QIF/CAMT + presets + fixtures</span>
-│  ├─ <span class="k">connectors</span>/          <span class="c"># Connector interface + optional implementations</span>
-│  ├─ <span class="k">market-data</span>/         <span class="c"># quote and FX providers, cache, fallback</span>
-│  ├─ <span class="k">ui</span>/                  <span class="c"># shadcn + Magic UI + charts + design tokens</span>
-│  └─ <span class="k">shared</span>/              <span class="c"># types, Zod, Money/Decimal, errors, constants</span>
-├─ tools/
-│  ├─ <span class="k">cli</span>/                 <span class="c"># altitude backup|restore|recompute|import|doctor</span>
-│  └─ <span class="k">fixtures</span>/            <span class="c"># demo data generator</span>
-├─ docker/                   <span class="c"># Dockerfile, compose, entrypoint, healthcheck</span>
-└─ docs/adr/                 <span class="c"># architecture decision records</span></pre>
+├- apps/
+│  ├- <span class="k">web</span>/                 <span class="c"># Next.js 16 - UI + Route Handlers + Server Actions</span>
+│  ├- <span class="k">worker</span>/              <span class="c"># Node - pg-boss, cron, no dependency on Next</span>
+│  └- <span class="k">docs</span>/                <span class="c"># Fumadocs - public documentation</span>
+├- packages/
+│  ├- <span class="k">db</span>/                  <span class="c"># Drizzle schema, SQL migrations, seeds, RLS</span>
+│  ├- <span class="k">core</span>/                <span class="c"># pure domain: ledger, valuation, performance, authorisation</span>
+│  ├- <span class="k">importers</span>/           <span class="c"># CSV/XLSX/OFX/QIF/CAMT + presets + fixtures</span>
+│  ├- <span class="k">connectors</span>/          <span class="c"># Connector interface + optional implementations</span>
+│  ├- <span class="k">market-data</span>/         <span class="c"># quote and FX providers, cache, fallback</span>
+│  ├- <span class="k">ui</span>/                  <span class="c"># shadcn + Magic UI + charts + design tokens</span>
+│  └- <span class="k">shared</span>/              <span class="c"># types, Zod, Money/Decimal, errors, constants</span>
+├- tools/
+│  ├- <span class="k">cli</span>/                 <span class="c"># altitude backup|restore|recompute|import|doctor</span>
+│  └- <span class="k">fixtures</span>/            <span class="c"># demo data generator</span>
+├- docker/                   <span class="c"># Dockerfile, compose, entrypoint, healthcheck</span>
+└- docs/adr/                 <span class="c"># architecture decision records</span></pre>
 
   <div class="box box-dec">
-    <div class="box-t">Decision — <code>packages/core</code> depends on neither Next, nor React, nor HTTP</div>
+    <div class="box-t">Decision - <code>packages/core</code> depends on neither Next, nor React, nor HTTP</div>
     <p>This is the rule that keeps the project testable and durable: the domain is tested in milliseconds
     with Vitest, without a browser or a server. It is machine-checkable with <code>dependency-cruiser</code>
     in CI. If Next.js changes paradigm tomorrow, you rewrite <code>apps/web</code>, not the business logic.</p>

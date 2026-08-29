@@ -6,7 +6,7 @@
   </div>
 
   <p class="lede">Durations estimated for <strong>one full-time developer</strong>. Double them for an
-  evenings-and-weekends project. Every phase ends on a <em>verifiable</em> exit criterion — not on a feeling
+  evenings-and-weekends project. Every phase ends on a <em>verifiable</em> exit criterion - not on a feeling
   of progress.</p>
 
   <table class="tight">
@@ -63,7 +63,7 @@
       </tr>
       <tr style="background:#E0F2FE">
         <td colspan="5" style="text-align:center;font-weight:700;color:#075985;padding:6pt">
-          ▲ v1.0 — roughly 22 weeks · public announcement
+          ▲ v1.0 - roughly 22 weeks · public announcement
         </td>
       </tr>
       <tr>
@@ -114,7 +114,7 @@
 
   <p class="lede">Enough to start on Monday morning. Nothing here is speculative: every line is executable.</p>
 
-  <h3>Day 1 — skeleton</h3>
+  <h3>Day 1 - skeleton</h3>
   <pre>pnpm dlx create-turbo@latest altitude
 cd altitude &amp;&amp; git init &amp;&amp; git commit -m <span class="s">"chore: init"</span>
 pnpm dlx create-next-app@latest apps/web --ts --tailwind --app --src-dir --import-alias <span class="s">"@/*"</span>
@@ -123,20 +123,20 @@ pnpm add -F @altitude/db drizzle-orm postgres &amp;&amp; pnpm add -F @altitude/d
 pnpm add -F @altitude/shared decimal.js zod
 mkdir -p docs/adr packages/{db,core,shared,ui,importers} apps/worker docker</pre>
   <ul>
-    <li>Write <code>docs/adr/0001-postgres.md</code> and <code>0002-double-entry.md</code> — pin the two most structural decisions before writing any code.</li>
+    <li>Write <code>docs/adr/0001-postgres.md</code> and <code>0002-double-entry.md</code> - pin the two most structural decisions before writing any code.</li>
     <li>Create <code>docker/docker-compose.dev.yml</code> with a single <code>db</code> service (Postgres 17).</li>
     <li>Configure a strict root <code>tsconfig</code>, inherited by every package.</li>
   </ul>
 
-  <h3>Day 2 — domain before interface</h3>
+  <h3>Day 2 - domain before interface</h3>
   <ul>
     <li>In <code>packages/shared</code>: <code>Money</code>, <code>Currency</code> and <code>Decimal</code> types, plus branded id types.</li>
     <li>In <code>packages/core</code>: <code>Ledger.createTransaction()</code> with balance validation, in memory, <strong>with no database</strong>.</li>
     <li>Write the fast-check property tests <em>now</em>: they define the model.</li>
-    <li>Verify <code>packages/core</code> has no dependency on React or Next — the dependency-cruiser rule goes in on day one.</li>
+    <li>Verify <code>packages/core</code> has no dependency on React or Next - the dependency-cruiser rule goes in on day one.</li>
   </ul>
 
-  <h3>Day 3 — schema and migrations</h3>
+  <h3>Day 3 - schema and migrations</h3>
   <ul>
     <li>Drizzle schema: <code>households</code>, <code>users</code>, <code>owners</code>, <code>portfolios</code>, <code>accounts</code>, <code>transactions</code>, <code>entries</code>.</li>
     <li>A hand-written SQL migration for what Drizzle cannot generate: extensions, <code>ltree</code>, the balance trigger, the RLS policies.</li>
@@ -144,7 +144,7 @@ mkdir -p docs/adr packages/{db,core,shared,ui,importers} apps/worker docker</pre
     <li>First Testcontainers test: the migration applies, and the trigger does reject an unbalanced transaction.</li>
   </ul>
 
-  <h3>Day 4 — authentication and shell</h3>
+  <h3>Day 4 - authentication and shell</h3>
   <ul>
     <li>Better Auth with the Drizzle adapter, email and password, sessions in the database.</li>
     <li>Server-side <code>getContext()</code> → <code>{ user, household, role }</code>; <code>scopedDb(ctx)</code> issuing the <code>SET LOCAL</code> statements.</li>
@@ -152,18 +152,18 @@ mkdir -p docs/adr packages/{db,core,shared,ui,importers} apps/worker docker</pre
     <li>First-run wizard: create the household, pick a base currency, add the first account.</li>
   </ul>
 
-  <h3>Day 5 — the loop that proves everything</h3>
+  <h3>Day 5 - the loop that proves everything</h3>
   <ul>
     <li>A <code>createTransaction</code> Server Action → <code>core</code> service → database.</li>
     <li>Quick-add form (deposit, withdrawal, transfer) and a table listing transactions.</li>
     <li>Per-account balance computed in SQL and shown on the dashboard.</li>
-    <li><b>End-of-week goal:</b> record a €1,000 deposit and a €300 transfer to a second account, and see a net worth of €1,000 — not €1,300. If that number is right, the model is sound and everything else is assembly.</li>
+    <li><b>End-of-week goal:</b> record a €1,000 deposit and a €300 transfer to a second account, and see a net worth of €1,000 - not €1,300. If that number is right, the model is sound and everything else is assembly.</li>
   </ul>
 
   <div class="box box-go">
     <div class="box-t">The first real milestone</div>
     <p>End of week 3: <strong>import your own bank export and see your real net worth curve</strong>. From
-    that moment the project becomes its own user — the best motivation engine and the best detector of
+    that moment the project becomes its own user - the best motivation engine and the best detector of
     usability flaws there is.</p>
   </div>
 </section>
@@ -195,7 +195,7 @@ mkdir -p docs/adr packages/{db,core,shared,ui,importers} apps/worker docker</pre
   <div class="box box-no">
     <div class="box-t">The only genuinely fatal risk</div>
     <p>It is neither technical nor legal: it is <strong>building for eight months and never shipping</strong>.
-    A wealth tracker has an infinite functional surface — there will always be one more asset class, one more
+    A wealth tracker has an infinite functional surface - there will always be one more asset class, one more
     preset, one more ratio. The discipline to ship a narrow but flawless v1.0 is this project's critical
     skill, more than any stack choice.</p>
   </div>
@@ -226,25 +226,25 @@ mkdir -p docs/adr packages/{db,core,shared,ui,importers} apps/worker docker</pre
   <table class="tight">
     <thead><tr><th style="width:20%">Term</th><th>Definition</th></tr></thead>
     <tbody>
-      <tr><td><b>AISP</b></td><td>Account Information Service Provider — an entity licensed under PSD2 to read payment-account data.</td></tr>
-      <tr><td><b>SCA</b></td><td>Strong Customer Authentication — required on first access and periodically thereafter.</td></tr>
+      <tr><td><b>AISP</b></td><td>Account Information Service Provider - an entity licensed under PSD2 to read payment-account data.</td></tr>
+      <tr><td><b>SCA</b></td><td>Strong Customer Authentication - required on first access and periodically thereafter.</td></tr>
       <tr><td><b>CAMT.053</b></td><td>Structured bank statement in ISO 20022 XML. The richest export format available.</td></tr>
-      <tr><td><b>TWR</b></td><td>Time-Weighted Return — return that neutralises the effect of deposits and withdrawals. Comparable to an index.</td></tr>
-      <tr><td><b>MWR / IRR</b></td><td>Money-Weighted Return — return that accounts for cash-flow timing. Answers "what did my money earn me".</td></tr>
-      <tr><td><b>PEA</b></td><td>Plan d'Épargne en Actions — French tax-advantaged equity account; gains are taxed only on withdrawal, with a five-year rule.</td></tr>
+      <tr><td><b>TWR</b></td><td>Time-Weighted Return - return that neutralises the effect of deposits and withdrawals. Comparable to an index.</td></tr>
+      <tr><td><b>MWR / IRR</b></td><td>Money-Weighted Return - return that accounts for cash-flow timing. Answers "what did my money earn me".</td></tr>
+      <tr><td><b>PEA</b></td><td>Plan d'Épargne en Actions - French tax-advantaged equity account; gains are taxed only on withdrawal, with a five-year rule.</td></tr>
       <tr><td><b>Assurance-vie</b></td><td>French life-insurance investment wrapper; partial withdrawals are split pro rata between capital and gains.</td></tr>
-      <tr><td><b>PER</b></td><td>Plan d'Épargne Retraite — French retirement savings plan with deductible contributions.</td></tr>
+      <tr><td><b>PER</b></td><td>Plan d'Épargne Retraite - French retirement savings plan with deductible contributions.</td></tr>
       <tr><td><b>Look-through</b></td><td>Decomposing a fund into its underlying exposures (countries, sectors) to measure genuine diversification.</td></tr>
       <tr><td><b>Double-entry</b></td><td>The accounting principle whereby every operation is recorded as at least two entries that sum to zero.</td></tr>
-      <tr><td><b>RLS</b></td><td>Row Level Security — row filtering enforced by PostgreSQL itself, independently of the application.</td></tr>
+      <tr><td><b>RLS</b></td><td>Row Level Security - row filtering enforced by PostgreSQL itself, independently of the application.</td></tr>
       <tr><td><b>ltree</b></td><td>A PostgreSQL type representing a hierarchical path, allowing a whole subtree to be queried in one operation.</td></tr>
     </tbody>
   </table>
 
   <h3>20.3 References consulted</h3>
   <ul style="font-size:8.6pt">
-    <li><a href="https://developer.gocardless.com/bank-account-data/overview">GoCardless — Bank Account Data documentation</a> and <a href="https://www.openbankingtracker.com/guides/free-open-banking-apis">Open Banking Tracker — Free &amp; Indie Open Banking APIs (2026)</a>: the state of self-service aggregation offerings.</li>
-    <li><a href="https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-final-report-amendment-its-technical-standards">EBA — final report on the RTS amendment (SCA exemption for account access)</a>: consent durations.</li>
+    <li><a href="https://developer.gocardless.com/bank-account-data/overview">GoCardless - Bank Account Data documentation</a> and <a href="https://www.openbankingtracker.com/guides/free-open-banking-apis">Open Banking Tracker - Free &amp; Indie Open Banking APIs (2026)</a>: the state of self-service aggregation offerings.</li>
+    <li><a href="https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-final-report-amendment-its-technical-standards">EBA - final report on the RTS amendment (SCA exemption for account access)</a>: consent durations.</li>
     <li><a href="https://www.powens.com/fr/produits/transactions/">Powens</a> and <a href="https://www.bridgeapi.io/solutions/rapprochement-bancaire-automatise-en-continu/service-agregation-de-compte">Bridge</a>: French aggregators.</li>
     <li><a href="https://www.firefly-iii.org/">Firefly III</a>, <a href="https://github.com/we-promise/sure">Sure (community fork of Maybe)</a>: directly comparable open-source precedents.</li>
   </ul>
@@ -252,10 +252,10 @@ mkdir -p docs/adr packages/{db,core,shared,ui,importers} apps/worker docker</pre
   <div class="box box-note" style="margin-top:16pt">
     <div class="box-t">Next step</div>
     <p>This document sets the frame; it is not meant to stay frozen. Three things to settle before the first
-    line of code: <strong>(1)</strong> confirm AGPL-3.0 over MIT — in practice irreversible once
+    line of code: <strong>(1)</strong> confirm AGPL-3.0 over MIT - in practice irreversible once
     contributions arrive; <strong>(2)</strong> validate the v1.0 scope in §1.2, explicitly accepting what it
     excludes; <strong>(3)</strong> decide whether the initial target is francophone (French wrappers, French
-    presets) or European from the outset — that changes preset ordering and tax-module priority, not the
+    presets) or European from the outset - that changes preset ordering and tax-module priority, not the
     architecture.</p>
   </div>
 </section>

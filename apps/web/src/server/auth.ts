@@ -13,7 +13,7 @@ import { optionalEnv, requireEnv } from '@altitude/shared/env';
  *
  * `next build` loads these modules to collect route metadata. Reading secrets
  * or opening a connection at module scope would make the build require a
- * database and a production secret to produce static output — and fail with a
+ * database and a production secret to produce static output - and fail with a
  * stack trace from inside the bundler rather than a sentence naming what is
  * missing.
  *
@@ -25,7 +25,7 @@ let cachedAuth: ReturnType<typeof build> | undefined;
 
 function dbClient(): Client {
   cachedClient ??= createClient({
-    url: requireEnv('DATABASE_URL', 'The application role, altitude_app — not the migration role.'),
+    url: requireEnv('DATABASE_URL', 'The application role, altitude_app - not the migration role.'),
   });
   return cachedClient;
 }
@@ -42,7 +42,7 @@ function build() {
       // Defaults to false, which is why a failed sign-up left a user row with
       // no credential behind: the two inserts ran as separate statements, and a
       // failure on the second stranded the first. The account is then unusable
-      // and unrecoverable — "user already exists" blocks trying again.
+      // and unrecoverable - "user already exists" blocks trying again.
       //
       // PostgreSQL has transactions; the option exists for databases that do
       // not, and this is not one.
@@ -82,7 +82,7 @@ function build() {
       database: {
         // Better Auth mints its own opaque string ids. Every id column in this
         // schema is `uuid`, and memberships.user_id is a foreign key onto one,
-        // so its default is rejected outright by Postgres — the whole schema
+        // so its default is rejected outright by Postgres - the whole schema
         // would have to become text to accommodate it.
         generateId: () => randomUUID(),
       },

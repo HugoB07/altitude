@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Money } from '../src/index';
 
-describe('Money — sign predicates', () => {
+describe('Money - sign predicates', () => {
   it('treats zero as neither positive nor negative', () => {
     const zero = Money.zero('EUR');
     expect(zero.isZero()).toBe(true);
@@ -24,7 +24,7 @@ describe('Money — sign predicates', () => {
   });
 });
 
-describe('Money — arithmetic', () => {
+describe('Money - arithmetic', () => {
   it('subtracts exactly', () => {
     expect(Money.of('0.3', 'EUR').minus(Money.of('0.1', 'EUR')).amount.toFixed()).toBe('0.2');
   });
@@ -59,7 +59,7 @@ describe('Money — arithmetic', () => {
   });
 });
 
-describe('Money — display', () => {
+describe('Money - display', () => {
   it('renders amount and currency', () => {
     expect(Money.of('1234.5', 'EUR').toString()).toBe('1234.5 EUR');
     expect(Money.of('-0.01', 'USD').toString()).toBe('-0.01 USD');

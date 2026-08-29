@@ -8,61 +8,61 @@
   <p class="lede">Condensed ADR format: context → decision → consequence. To be stored in
   <code>docs/adr/NNNN-title.md</code> and changed by pull request, never silently.</p>
 
-  <h3>ADR-001 — PostgreSQL as the only data dependency</h3>
+  <h3>ADR-001 - PostgreSQL as the only data dependency</h3>
   <div class="kv">
     <dt>Context</dt><dd>We need a transactional store, a job queue, a cache, light search and time series. The temptation is to stack Postgres + Redis + ClickHouse.</dd>
     <dt>Decision</dt><dd>PostgreSQL 17 fills all four roles. Extensions enabled: <code>pgcrypto</code>, <code>ltree</code>, <code>btree_gist</code>, <code>pg_trgm</code>, <code>unaccent</code>. Redis stays possible but <strong>optional</strong>.</dd>
-    <dt>Consequence</dt><dd>The <code>docker-compose.yml</code> is four services. Backup is a single <code>pg_dump</code>: no risk of inconsistency between two stores. In exchange, the job queue tops out around a few thousand tasks per minute — far beyond a household's needs.</dd>
+    <dt>Consequence</dt><dd>The <code>docker-compose.yml</code> is four services. Backup is a single <code>pg_dump</code>: no risk of inconsistency between two stores. In exchange, the job queue tops out around a few thousand tasks per minute - far beyond a household's needs.</dd>
     <dt>Revisit if</dt><dd>An instance exceeds roughly 500 active users or 50M quote rows.</dd>
   </div>
 
-  <h3>ADR-002 — Double-entry ledger, derived positions</h3>
+  <h3>ADR-002 - Double-entry ledger, derived positions</h3>
   <div class="kv">
     <dt>Context</dt><dd>A transfer from a brokerage account to a current account must not look like income; buying a security converts cash into quantity; a foreign dividend comes with fees and withholding tax.</dd>
     <dt>Decision</dt><dd>A <code>transaction</code> carries N <code>entries</code> (lines); the lines sum to zero <em>per currency</em>. Positions and balances are <strong>derived</strong> from the ledger, never entered directly.</dd>
-    <dt>Consequence</dt><dd>A property-testable invariant. Cost: each entry takes more work in the UI — hidden behind "recipes" (buy, sell, dividend, transfer) that generate the lines.</dd>
+    <dt>Consequence</dt><dd>A property-testable invariant. Cost: each entry takes more work in the UI - hidden behind "recipes" (buy, sell, dividend, transfer) that generate the lines.</dd>
   </div>
 
-  <h3>ADR-003 — Owners are distinct from users</h3>
+  <h3>ADR-003 - Owners are distinct from users</h3>
   <div class="kv">
     <dt>Context</dt><dd>A six-year-old owns a savings account but has no application login. A holding company owns a property but is not a person. A joint account belongs to two people 50/50.</dd>
-    <dt>Decision</dt><dd>Three separate notions: <code>users</code> (who logs in), <code>owners</code> (who owns — natural person, legal entity, child), <code>ownerships</code> (an owner's dated share of an account).</dd>
-    <dt>Consequence</dt><dd>Net worth can be sliced by owner, household, user or portfolio independently. Any asset total must state its consolidation basis — this is explicit in the API.</dd>
+    <dt>Decision</dt><dd>Three separate notions: <code>users</code> (who logs in), <code>owners</code> (who owns - natural person, legal entity, child), <code>ownerships</code> (an owner's dated share of an account).</dd>
+    <dt>Consequence</dt><dd>Net worth can be sliced by owner, household, user or portfolio independently. Any asset total must state its consolidation basis - this is explicit in the API.</dd>
   </div>
 
-  <h3>ADR-004 — Bank connectors: external, optional, off by default</h3>
+  <h3>ADR-004 - Bank connectors: external, optional, off by default</h3>
   <div class="kv">
     <dt>Context</dt><dd>Accessing PSD2 bank APIs requires an AISP licence. An open-source project cannot ship its own aggregator credentials.</dd>
     <dt>Decision</dt><dd>A stable <code>Connector</code> interface, implementations distributed separately, enabled by environment variable, with credentials supplied by the operator. No keys in the repository. Full analysis in §7.</dd>
     <dt>Consequence</dt><dd>The core stays legally neutral and testable without network access. Configuring a connector is an explicit, documented step.</dd>
   </div>
 
-  <h3>ADR-005 — Server Actions for internal mutations, Route Handlers for the API</h3>
+  <h3>ADR-005 - Server Actions for internal mutations, Route Handlers for the API</h3>
   <div class="kv">
     <dt>Context</dt><dd>Next.js offers two server mechanisms; mixing them without a rule produces an unreadable codebase and authorisation gaps.</dd>
-    <dt>Decision</dt><dd>A clean boundary: <code>app/api/v1/**</code> (Route Handlers) is the versioned public contract, authenticated by API token, documented with OpenAPI. Server Actions are UI-triggered mutations, authenticated by session cookie. <strong>Both call the same <code>packages/core/services</code> layer</strong> — no business logic in either.</dd>
+    <dt>Decision</dt><dd>A clean boundary: <code>app/api/v1/**</code> (Route Handlers) is the versioned public contract, authenticated by API token, documented with OpenAPI. Server Actions are UI-triggered mutations, authenticated by session cookie. <strong>Both call the same <code>packages/core/services</code> layer</strong> - no business logic in either.</dd>
     <dt>Consequence</dt><dd>Logic is testable without HTTP. The public API never drifts from the UI. Review rule: a Server Action longer than 20 lines is a design bug.</dd>
   </div>
 
-  <h3>ADR-006 — Numeric precision: never a floating-point number</h3>
+  <h3>ADR-006 - Numeric precision: never a floating-point number</h3>
   <div class="kv">
     <dt>Context</dt><dd><code>0.1 + 0.2 !== 0.3</code> in IEEE-754. Across 10,000 transactions the drift becomes visible. A crypto quantity needs up to 18 decimals.</dd>
     <dt>Decision</dt><dd>In the database: <code>numeric(28,10)</code> for amounts, <code>numeric(38,18)</code> for quantities, <code>numeric(24,12)</code> for prices and rates. In TypeScript: <code>decimal.js</code>. At JSON boundaries: <strong>strings</strong>, never <code>number</code>.</dd>
     <dt>Consequence</dt><dd>A bespoke <code>Money</code> type wraps amount plus currency and makes adding two different currencies a compile error. SQL aggregates stay exact.</dd>
   </div>
 
-  <h3>ADR-007 — Multi-tenant isolation: two barriers</h3>
+  <h3>ADR-007 - Multi-tenant isolation: two barriers</h3>
   <div class="kv">
     <dt>Context</dt><dd>On a family instance, one query missing <code>WHERE household_id = ?</code> exposes another household's net worth. This is the number-one failure class in multi-tenant applications.</dd>
-    <dt>Decision</dt><dd>(1) Every query goes through a <code>scopedDb(ctx)</code> helper that injects the filter — direct access to the Drizzle client is forbidden by an ESLint rule. (2) <strong>PostgreSQL Row Level Security</strong> as defence in depth, via <code>SET LOCAL app.current_household</code> at the start of each transaction.</dd>
+    <dt>Decision</dt><dd>(1) Every query goes through a <code>scopedDb(ctx)</code> helper that injects the filter - direct access to the Drizzle client is forbidden by an ESLint rule. (2) <strong>PostgreSQL Row Level Security</strong> as defence in depth, via <code>SET LOCAL app.current_household</code> at the start of each transaction.</dd>
     <dt>Consequence</dt><dd>An application bug alone cannot cause a leak. Cost: migrations must create the RLS policies, and the migration role must differ from the application role.</dd>
   </div>
 
-  <h3>ADR-008 — Valued history: materialised daily snapshots</h3>
+  <h3>ADR-008 - Valued history: materialised daily snapshots</h3>
   <div class="kv">
     <dt>Context</dt><dd>Rendering ten years of net worth by replaying the ledger on every request cannot be kept under 200 ms.</dd>
     <dt>Decision</dt><dd>A <code>daily_balances</code> table (account × day × currency), filled incrementally by a nightly job and invalidated from the earliest date any entry touches. Portfolio-level aggregates are computed on the fly from that table.</dd>
-    <dt>Consequence</dt><dd>Fast reads, and a full rebuild is one command (<code>altitude recompute --from 2015-01-01</code>). Any backdated change triggers a partial recompute — worth watching on large imports.</dd>
+    <dt>Consequence</dt><dd>Fast reads, and a full rebuild is one command (<code>altitude recompute --from 2015-01-01</code>). Any backdated change triggers a partial recompute - worth watching on large imports.</dd>
   </div>
 
   <div class="box box-note">

@@ -30,7 +30,7 @@
       <tr><td><b>Sale</b></td><td>Symmetrical, plus lot consumption and realised gain recorded in <code>lot_closures</code>.</td></tr>
       <tr><td><b>Foreign dividend</b><br><span style="font-size:7.4pt;color:#64748B">$120 gross, $18 withheld</span></td>
           <td><code>+$120 income</code> · <code>−$18 tax</code> · <code>+$102 cash</code>, with the day's FX rate frozen on each line</td></tr>
-      <tr><td><b>Internal transfer</b></td><td>Two opposite lines on two accounts. <b>No effect on net worth</b> — precisely what a flat model gets wrong.</td></tr>
+      <tr><td><b>Internal transfer</b></td><td>Two opposite lines on two accounts. <b>No effect on net worth</b> - precisely what a flat model gets wrong.</td></tr>
       <tr><td><b>Loan instalment</b></td><td><code>−€780 current account</code> · <code>+€620 principal (reduces the liability)</code> · <code>−€160 interest (expense)</code>. Outstanding principal decreases correctly.</td></tr>
       <tr><td><b>Revaluation</b><br><span style="font-size:7.4pt;color:#64748B">property, watch, unlisted holdings</span></td>
           <td>A dedicated <code>revaluation</code> entry against a technical valuation-difference account, so real cash flows are not polluted and the TWR stays correct.</td></tr>
@@ -62,11 +62,11 @@
   </div>
 
   <div class="box box-dec">
-    <div class="box-t">Decision — "balance tracking" mode for accounts you do not want to itemise</div>
+    <div class="box-t">Decision - "balance tracking" mode for accounts you do not want to itemise</div>
     <p>Nobody will enter 400 rows a year for a regulated savings account. Any account can therefore run in
     <strong>balance mode</strong>: you record a value at a date, and Altitude generates the matching
     adjustment entry. You keep an accurate net-worth curve without imposing bookkeeping. An account can move
-    from balance mode to itemised mode without loss, and the mode is clearly displayed — an entered balance
+    from balance mode to itemised mode without loss, and the mode is clearly displayed - an entered balance
     is not a computed balance.</p>
   </div>
 </section>
@@ -94,7 +94,7 @@
   portfolio and held at the same bank as the parents, without being able to see their accounts, and without
   their share being counted twice in household net worth.</p>
 
-  <h3>10.2 Child portfolios — the full scenario</h3>
+  <h3>10.2 Child portfolios - the full scenario</h3>
   <div class="grid2">
     <div class="card">
       <h5>What must be possible</h5>
@@ -102,7 +102,7 @@
         <li>Create an owner with <code>kind = 'child'</code> and a date of birth.</li>
         <li>Attach savings accounts, a junior investment account, a life-insurance policy in their name, money gifted by grandparents.</li>
         <li>Track <b>contributions by donor</b> (useful for customary gifts and for tracking donations).</li>
-        <li>A simplified "child view": one balance, one curve, one goal — no jargon.</li>
+        <li>A simplified "child view": one balance, one curve, one goal - no jargon.</li>
         <li>A dated goal: "age 18", with a projection at a configurable rate.</li>
         <li>Consolidated into household net worth, but on a <b>separate line</b>, excludable in one click.</li>
       </ul>
@@ -158,9 +158,9 @@
   <h3>11.1 Real estate</h3>
   <div class="kv">
     <dt>Attributes</dt><dd>Geocoded address, floor area, type, acquisition date and price, notary fees, capitalised works, energy rating, property tax.</dd>
-    <dt>Valuation</dt><dd>Three modes: (1) dated manual value — the honest default; (2) indexation against a configurable price index; (3) estimate assisted by open <strong>DVF</strong> data (registered French property sales) on comparable local transactions. The mode in use is always displayed.</dd>
+    <dt>Valuation</dt><dd>Three modes: (1) dated manual value - the honest default; (2) indexation against a configurable price index; (3) estimate assisted by open <strong>DVF</strong> data (registered French property sales) on comparable local transactions. The mode in use is always displayed.</dd>
     <dt>Rentals</dt><dd>Leases, rents, charges, vacancy, works. Computed: gross yield, net yield, monthly cash flow, IRR including mortgage leverage.</dd>
-    <dt>Tax</dt><dd>Regime (micro-foncier, réel, LMNP) and LMNP depreciation. A separate per-country tax module — see §16.4.</dd>
+    <dt>Tax</dt><dd>Regime (micro-foncier, réel, LMNP) and LMNP depreciation. A separate per-country tax module - see §16.4.</dd>
     <dt>On the globe</dt><dd>100% exposure to the property's country, with the marker at the real coordinates.</dd>
   </div>
 
@@ -178,7 +178,7 @@
     <thead><tr><th style="width:24%">Source</th><th style="width:16%">Safety</th><th>Handling</th></tr></thead>
     <tbody>
       <tr><td>Exchange API key</td><td><span class="tag t-yes">Read-only</span></td><td>Explicit refusal of any key carrying withdrawal or trading rights, checked on save. IP restriction recommended in the documentation.</td></tr>
-      <tr><td>Public address / xpub</td><td><span class="tag t-yes">No secret</span></td><td>Reading public data. BTC (xpub/zpub with local derivation), EVM and Solana support. No private key ever enters Altitude — stated plainly in the interface.</td></tr>
+      <tr><td>Public address / xpub</td><td><span class="tag t-yes">No secret</span></td><td>Reading public data. BTC (xpub/zpub with local derivation), EVM and Solana support. No private key ever enters Altitude - stated plainly in the interface.</td></tr>
       <tr><td>CSV import</td><td><span class="tag t-yes">Full</span></td><td>Presets for the major exchanges' exports.</td></tr>
     </tbody>
   </table>

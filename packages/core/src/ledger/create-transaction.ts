@@ -27,8 +27,8 @@ export function sumByCurrency(
 /**
  * Validates a transaction and returns it in a form the rest of the system can trust.
  *
- * This is the only door into the ledger. Everything upstream — manual entry, CSV
- * import, a bank connector — funnels through here, so the invariant is enforced
+ * This is the only door into the ledger. Everything upstream - manual entry, CSV
+ * import, a bank connector - funnels through here, so the invariant is enforced
  * once rather than at each call site (ADR-0002).
  *
  * Checks, in order:
@@ -111,7 +111,7 @@ export function createTransaction(input: TransactionInput): Transaction {
  * The ledger is append-only: a mistake is corrected by posting its mirror image,
  * never by editing history (ADR-0002). Negating every line of a balanced
  * transaction yields a balanced transaction, so the result is valid by
- * construction — but it goes through `createTransaction` anyway, because an
+ * construction - but it goes through `createTransaction` anyway, because an
  * invariant enforced in one place only is an invariant enforced everywhere.
  */
 export function reverseTransaction(

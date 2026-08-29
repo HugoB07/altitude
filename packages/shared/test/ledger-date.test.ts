@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { compareDates, ledgerDate, todayIn } from '../src/index';
 
-describe('ledgerDate — why accounting dates are not instants', () => {
+describe('ledgerDate - why accounting dates are not instants', () => {
   it('accepts a well-formed calendar date', () => {
     expect(ledgerDate('2026-03-01')).toBe('2026-03-01');
   });
@@ -68,7 +68,7 @@ describe('todayIn', () => {
     expect(todayIn()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('can differ by a day between timezones — which is the point', () => {
+  it('can differ by a day between timezones - which is the point', () => {
     const kiritimati = todayIn('Pacific/Kiritimati'); // UTC+14
     const midway = todayIn('Pacific/Midway'); // UTC−11
     expect(compareDates(midway, kiritimati)).toBeLessThanOrEqual(0);

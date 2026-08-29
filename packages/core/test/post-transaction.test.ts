@@ -28,7 +28,7 @@ import {
  * service, permission check, tenant-scoped transaction, and PostgreSQL.
  *
  *   "Record a EUR 1,000 deposit and a EUR 300 transfer to a second account, and
- *    see a net worth of EUR 1,000 — not EUR 1,300."
+ *    see a net worth of EUR 1,000 - not EUR 1,300."
  *
  * The unit tests already assert this against an in-memory ledger. Here the
  * numbers come back out of the database, summed by it, which is the version a
@@ -128,7 +128,7 @@ afterAll(async () => {
   await container?.stop();
 });
 
-describe('postTransaction — the week 1 number, through the database', () => {
+describe('postTransaction - the week 1 number, through the database', () => {
   it('records a deposit and a transfer, and reports 1000 rather than 1300', async () => {
     await withHousehold(client, { householdId: HOUSE, userId: USER }, async (tx) => {
       await postTransaction(tx, owner, {
@@ -163,7 +163,7 @@ describe('postTransaction — the week 1 number, through the database', () => {
     expect(byName['Savings']).toBe('300');
     expect(byName['Income']).toBe('-1000');
 
-    // Net worth over the asset accounts only — the same shape as the unit test.
+    // Net worth over the asset accounts only - the same shape as the unit test.
     const assets = balances.filter((b) => b.name !== 'Income');
     expect(netWorth(assets, 'EUR').amount.toFixed()).toBe('1000');
   });
@@ -208,7 +208,7 @@ describe('postTransaction — the week 1 number, through the database', () => {
   });
 });
 
-describe('postTransaction — the checks it must not skip', () => {
+describe('postTransaction - the checks it must not skip', () => {
   it('refuses a viewer before looking at the input', async () => {
     // The entries below are unbalanced. A viewer must be refused for their role,
     // not told their data is wrong: the order of the checks is the point.
@@ -245,7 +245,7 @@ describe('postTransaction — the checks it must not skip', () => {
 
   it('refuses an actor whose household is not the one this work is bound to', async () => {
     // Row-level security would still return the right rows here, so nothing
-    // would look wrong — the caller would simply be acting for a household it
+    // would look wrong - the caller would simply be acting for a household it
     // did not intend. The service refuses rather than serving that.
     const outsider: Actor = { userId: USER, householdId: OTHER, role: 'owner' };
     await expect(

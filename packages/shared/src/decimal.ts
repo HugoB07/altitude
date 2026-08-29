@@ -9,7 +9,7 @@ import { Decimal } from 'decimal.js';
  *
  * - `precision: 40` significant digits comfortably covers the widest column in
  *   the schema, `numeric(38,18)`, with room for intermediate results.
- * - `ROUND_HALF_EVEN` — banker's rounding. Half-up biases every tie upwards, and
+ * - `ROUND_HALF_EVEN` - banker's rounding. Half-up biases every tie upwards, and
  *   over a long series of roundings that bias accumulates in one direction.
  *   Half-even splits ties between up and down, so the error cancels out.
  * - `toExpNeg`/`toExpPos` are pushed out of range so `toString()` never produces
@@ -32,7 +32,7 @@ export type DecimalInput = string | Decimal;
  * Builds a Decimal, refusing `number` at runtime as well as at compile time.
  *
  * The type signature already excludes `number`, but values arriving from JSON,
- * a form or an untyped import are `any` at the boundary — which is exactly where
+ * a form or an untyped import are `any` at the boundary - which is exactly where
  * a float would slip in unnoticed. Hence the runtime guard.
  */
 export function dec(value: DecimalInput): Decimal {

@@ -11,7 +11,7 @@ import { getAuth, getAuthDbClient } from './auth';
  * Two questions, deliberately kept apart.
  *
  * "Who is signed in?" and "which household are they acting for?" have different
- * answers and different remedies — one sends you to sign-in, the other to
+ * answers and different remedies - one sends you to sign-in, the other to
  * setup. Collapsing them into a single nullable result makes creating a first
  * household impossible, because that flow needs a user who has no household
  * yet and one check cannot tell the two apart.
@@ -73,7 +73,7 @@ export async function requireSessionUser(): Promise<SessionUser> {
 /**
  * The session resolved to a household and a role.
  *
- * Null means signed in but not yet in a household — the state the setup page
+ * Null means signed in but not yet in a household - the state the setup page
  * exists to resolve.
  */
 export const getContext = cache(async (): Promise<RequestContext | null> => {
@@ -102,7 +102,7 @@ export const getContext = cache(async (): Promise<RequestContext | null> => {
 });
 
 /**
- * `getContext`, refusing rather than returning null — and saying which of the
+ * `getContext`, refusing rather than returning null - and saying which of the
  * two problems it is, because callers respond to them differently.
  */
 export async function requireContext(): Promise<RequestContext> {
@@ -117,7 +117,7 @@ export async function requireContext(): Promise<RequestContext> {
  *
  * The only route from a request to household data. It carries the actor's
  * tenant into the connection, so the row-level security policies have something
- * to filter on — the two barriers of ADR-0007 meeting in one call.
+ * to filter on - the two barriers of ADR-0007 meeting in one call.
  *
  * It takes no household argument on purpose. A caller that could name the
  * household would eventually name the wrong one; here the tenant comes from the

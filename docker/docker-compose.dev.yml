@@ -21,7 +21,7 @@ services:
     ports:
       # Loopback only: without the 127.0.0.1 prefix Docker publishes on every
       # interface, exposing a database whose password is "altitude" to anyone
-      # on the same network — a hotel or coworking wifi included.
+      # on the same network - a hotel or coworking wifi included.
       #
       # Host port 55432, not 5432, so a PostgreSQL installed natively on the
       # machine keeps 5432 and there is never any doubt about which database a

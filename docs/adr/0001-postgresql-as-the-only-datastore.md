@@ -1,4 +1,4 @@
-# ADR-0001 — PostgreSQL as the only datastore
+# ADR-0001 - PostgreSQL as the only datastore
 
 - **Status:** accepted
 - **Date:** 2026-08-28
@@ -8,7 +8,7 @@
 
 Altitude needs a transactional store, a background job queue, an application cache,
 lightweight text search, and daily time series for valuation history. The reflex is to
-reach for a specialised tool per role — Postgres plus Redis plus a columnar store.
+reach for a specialised tool per role - Postgres plus Redis plus a columnar store.
 
 The deployment target rules that out. Altitude is self-hosted, and a large share of its
 users will run it on a NAS, a Raspberry Pi, or a small VPS. Every additional service is
@@ -40,7 +40,7 @@ may depend on its presence.
 
 | Option                      | Why it was rejected                                                                                                                                                                   |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SQLite                      | Attractive for single-user self-hosting, but no row-level security, a weak concurrent-writer story, and `NUMERIC` is not exact — disqualifying for money (development plan, ADR-006). |
+| SQLite                      | Attractive for single-user self-hosting, but no row-level security, a weak concurrent-writer story, and `NUMERIC` is not exact - disqualifying for money (development plan, ADR-006). |
 | Postgres + Redis            | Redis is the better queue and cache, but it doubles the operational surface for every self-hoster to serve a load none of them will reach. Kept as an option, never a requirement.    |
 | MongoDB                     | No natural multi-document transaction model for a double-entry ledger, and no exact decimal arithmetic.                                                                               |
 | Postgres + a columnar store | Justified above roughly 50M quote rows. No instance will approach that for years.                                                                                                     |
@@ -51,7 +51,7 @@ may depend on its presence.
 volume, so a restore cannot land in a state where two stores disagree. Integration tests
 run against a single Testcontainers image.
 
-**Harder.** The job queue tops out around a few thousand tasks per minute — far beyond a
+**Harder.** The job queue tops out around a few thousand tasks per minute - far beyond a
 household, but it is a real ceiling. Cache invalidation runs through SQL rather than
 Redis TTLs. Heavy analytical queries compete with transactional load on one instance.
 
