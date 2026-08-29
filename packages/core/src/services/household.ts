@@ -7,7 +7,7 @@ import { currency, type HouseholdId, type UserId } from '@altitude/shared';
  *
  * This is the one write with a chicken-and-egg problem. The INSERT policy on
  * `households` is `WITH CHECK (id = current_household())`, so the row can only
- * be written by a connection already claiming to be that household — which
+ * be written by a connection already claiming to be that household - which
  * does not exist yet.
  *
  * The way through is to mint the id first and open the unit of work with it.
@@ -23,7 +23,18 @@ export interface NewHousehold {
   readonly baseCurrency: string;
   readonly ownerUserId: UserId;
   readonly ownerDisplayName: string;
+  /**
+   * Names for the three starter accounts, supplied by the caller.
+   *
+   * The domain does not know what language the person creating the household
+   * reads. Translating here would put a message catalogue inside a package that
+   * has no browser, no request and no locale, so the caller passes the words and
+   * this decides the shapes.
+   */
+  readonly accountNames: Record<StarterAccount, string>;
 }
+
+export type StarterAccount = 'current' | 'savings' | 'opening';
 
 export interface CreatedHousehold {
   readonly householdId: HouseholdId;
@@ -41,14 +52,14 @@ export interface CreatedHousehold {
  * by being a liability.
  *
  * Two asset accounts because one is not enough to make an internal transfer,
- * and an internal transfer is the thing a new user should try first — it is
+ * and an internal transfer is the thing a new user should try first - it is
  * what proves the tool is not double-counting their money.
  */
 const STARTER_ACCOUNTS = [
-  { key: 'current', name: 'Current account', kind: 'cash' },
-  { key: 'savings', name: 'Savings', kind: 'savings' },
-  { key: 'opening', name: 'Opening balances', kind: 'other_liability' },
-] as const;
+  { key: 'current', kind: 'cash' },
+  { key: 'savings', kind: 'savings' },
+  { key: 'opening', kind: 'other_liability' },
+] as const satisfies readonly { key: StarterAccount; kind: string }[];
 
 export async function createHousehold(
   tx: Database,
@@ -69,7 +80,7 @@ export async function createHousehold(
     role: 'owner',
   });
 
-  // An owner distinct from the user, per ADR-0003 — the person who *owns* the
+  // An owner distinct from the user, per ADR-0003 - the person who *owns* the
   // money, which a household will later have several of, most without a login.
   await tx.insert(owners).values({
     householdId: input.householdId,
@@ -96,7 +107,7 @@ export async function createHousehold(
       STARTER_ACCOUNTS.map((account) => ({
         householdId: input.householdId,
         portfolioId: portfolio!.id,
-        name: account.name,
+        name: input.accountNames[account.key],
         kind: account.kind,
         currency: baseCurrency,
       })),
@@ -106,7 +117,7 @@ export async function createHousehold(
   const byKey = Object.fromEntries(
     STARTER_ACCOUNTS.map((account) => [
       account.key,
-      created.find((row) => row.name === account.name)!.id,
+      created.find((row) => row.name === input.accountNames[account.key])!.id,
     ]),
   ) as CreatedHousehold['accountIds'];
 

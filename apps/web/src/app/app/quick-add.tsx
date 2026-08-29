@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { quickAddAction, type ActionResult } from '@/server/actions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -35,11 +36,12 @@ export function QuickAdd({ accounts, role }: Props) {
 
   // Controlled, and the label passed to SelectValue explicitly. Radix resolves
   // an item's text from SelectContent, which is unmounted until the menu is
-  // opened — so an uncontrolled Select renders the raw value, and here that
+  // opened - so an uncontrolled Select renders the raw value, and here that
   // value is an account UUID.
   const [from, setFrom] = useState(accounts[0]?.id ?? '');
   const [to, setTo] = useState(accounts[1]?.id ?? '');
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '';
+  const t = useTranslations('quickAdd');
 
   // The server refuses these roles regardless. Hiding the form is courtesy, not
   // security, and the two must never be confused for one another.
@@ -48,16 +50,14 @@ export function QuickAdd({ accounts, role }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Move money</CardTitle>
-        <CardDescription>
-          Between two of your accounts. Net worth will not change — that is the point.
-        </CardDescription>
+        <CardTitle className="text-base">{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
 
       <CardContent>
         <form action={action} className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="from">From</Label>
+            <Label htmlFor="from">{t('from')}</Label>
             <Select name="from" value={from} onValueChange={(v) => setFrom(v ?? from)}>
               <SelectTrigger id="from" className="w-full">
                 <SelectValue>{nameOf(from)}</SelectValue>
@@ -73,7 +73,7 @@ export function QuickAdd({ accounts, role }: Props) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="to">To</Label>
+            <Label htmlFor="to">{t('to')}</Label>
             <Select name="to" value={to} onValueChange={(v) => setTo(v ?? to)}>
               <SelectTrigger id="to" className="w-full">
                 <SelectValue>{nameOf(to)}</SelectValue>
@@ -89,7 +89,7 @@ export function QuickAdd({ accounts, role }: Props) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="amount">Amount</Label>
+            <Label htmlFor="amount">{t('amount')}</Label>
             <Input
               id="amount"
               name="amount"
@@ -100,21 +100,26 @@ export function QuickAdd({ accounts, role }: Props) {
               aria-describedby="amount-hint"
             />
             <p id="amount-hint" className="text-muted-foreground text-xs">
-              A comma works as a decimal point.
+              {t('amountHint')}
             </p>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="bookedOn">Date</Label>
-            <DateField id="bookedOn" name="bookedOn" describedBy="date-hint" placeholder="Today" />
+            <Label htmlFor="bookedOn">{t('date')}</Label>
+            <DateField
+              id="bookedOn"
+              name="bookedOn"
+              describedBy="date-hint"
+              placeholder={t('datePlaceholder')}
+            />
             <p id="date-hint" className="text-muted-foreground text-xs">
-              Today if left empty.
+              {t('dateHint')}
             </p>
           </div>
 
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="description">Description</Label>
-            <Input id="description" name="description" placeholder="Move to savings" />
+            <Label htmlFor="description">{t('description_')}</Label>
+            <Input id="description" name="description" placeholder={t('descriptionPlaceholder')} />
           </div>
 
           {state.error !== undefined && (
@@ -124,7 +129,7 @@ export function QuickAdd({ accounts, role }: Props) {
           )}
 
           <Button type="submit" disabled={pending} className="sm:col-span-2">
-            Record
+            {t('submit')}
           </Button>
         </form>
       </CardContent>

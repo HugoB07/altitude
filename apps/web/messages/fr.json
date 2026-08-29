@@ -1,0 +1,73 @@
+{
+  "app": {
+    "name": "Altitude",
+    "tagline": "Suivi de patrimoine auto-hébergé."
+  },
+  "auth": {
+    "name": "Nom",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "passwordHint": "12 caractères minimum.",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "createAccount": "Créer un compte",
+    "switchToSignIn": "J'ai déjà un compte",
+    "switchToSignUp": "Créer un compte",
+    "genericError": "Connexion impossible."
+  },
+  "setup": {
+    "title": "Créez votre foyer",
+    "description": "Un foyer regroupe vos comptes et les personnes qui les partagent. Vous pourrez en ajouter plus tard.",
+    "householdName": "Nom du foyer",
+    "householdNamePlaceholder": "Lecomte",
+    "baseCurrency": "Devise de référence",
+    "baseCurrencyHint": "Tout y est consolidé. Modifiable ensuite, mais jamais en silence.",
+    "submit": "Créer le foyer",
+    "nameRequired": "Donnez un nom au foyer."
+  },
+  "dashboard": {
+    "netWorth": "Patrimoine net",
+    "netWorthHint": "Actifs uniquement. Un virement interne ne change pas ce montant.",
+    "accounts": "Comptes",
+    "notCounted": "hors patrimoine net"
+  },
+  "quickAdd": {
+    "title": "Déplacer de l'argent",
+    "description": "Entre deux de vos comptes. Le patrimoine net ne bougera pas — c'est le principe.",
+    "from": "Depuis",
+    "to": "Vers",
+    "amount": "Montant",
+    "amountHint": "La virgule fait office de séparateur décimal.",
+    "date": "Date",
+    "dateHint": "Aujourd'hui si laissé vide.",
+    "datePlaceholder": "Aujourd'hui",
+    "description_": "Libellé",
+    "descriptionPlaceholder": "Virement vers l'épargne",
+    "submit": "Enregistrer",
+    "bothAccounts": "Choisissez les deux comptes.",
+    "sameAccount": "Les deux comptes doivent être différents.",
+    "invalidAmount": "Saisissez un montant en chiffres.",
+    "genericError": "Une erreur est survenue."
+  },
+  "accountKind": {
+    "cash": "compte courant",
+    "savings": "épargne",
+    "securities": "compte-titres",
+    "life_insurance": "assurance-vie",
+    "retirement": "retraite",
+    "crypto": "crypto",
+    "real_estate": "immobilier",
+    "vehicle": "véhicule",
+    "collectible": "objet de valeur",
+    "private_equity": "non coté",
+    "receivable": "créance",
+    "loan": "crédit",
+    "credit_card": "carte de crédit",
+    "other_liability": "autre passif"
+  },
+  "starterAccounts": {
+    "current": "Compte courant",
+    "savings": "Épargne",
+    "opening": "Soldes d'ouverture"
+  }
+}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { fr } from 'date-fns/locale';
+import { useLocale } from 'next-intl';
+import { enGB, fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -10,7 +11,7 @@ interface Props {
   readonly name: string;
   readonly id?: string;
   readonly describedBy?: string;
-  readonly placeholder?: string;
+  readonly placeholder: string;
 }
 
 /**
@@ -18,7 +19,7 @@ interface Props {
  *
  * The formatting below is deliberate and is the whole reason this component is
  * not three lines. `toISOString()` converts to UTC first, so 1 March picked in
- * Paris arrives as `2026-02-28` — the transaction moves to the previous month
+ * Paris arrives as `2026-02-28` - the transaction moves to the previous month
  * and takes the monthly report with it. This is the same bug the `LedgerDate`
  * type exists to prevent on the server, and it has to be prevented here too:
  * a value that is already wrong when it leaves the browser cannot be recovered.
@@ -34,19 +35,21 @@ function toLedgerDate(date: Date): string {
 }
 
 /**
- * French, matching the currency and number formatting elsewhere.
+ * date-fns locales, keyed by the application's.
  *
- * Hardcoded for now and knowingly inconsistent with the English interface
- * text: real localisation is next-intl in phase 6 (plan §4.2), and this is the
- * placeholder until the locale comes from a request rather than a constant.
- * Passing it to the calendar as well keeps the widget internally coherent —
- * "August 2026" above "1 août 2026" is worse than either language alone.
+ * The calendar and the field label have to agree: "August 2026" above
+ * "1 août 2026" is worse than either language alone. enGB rather than enUS so
+ * the week starts on Monday, matching French and every other European locale
+ * this is likely to run under.
  */
-const LABEL = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' });
+const CALENDAR_LOCALES = { en: enGB, fr } as const;
 
-export function DateField({ name, id, describedBy, placeholder = 'Today' }: Props) {
+export function DateField({ name, id, describedBy, placeholder }: Props) {
   const [selected, setSelected] = useState<Date | undefined>(undefined);
   const [open, setOpen] = useState(false);
+  const locale = useLocale();
+  const calendarLocale = CALENDAR_LOCALES[locale as keyof typeof CALENDAR_LOCALES] ?? enGB;
+  const label = new Intl.DateTimeFormat(locale, { dateStyle: 'long' });
 
   return (
     <>
@@ -74,14 +77,14 @@ export function DateField({ name, id, describedBy, placeholder = 'Today' }: Prop
           {selected === undefined ? (
             <span className="text-muted-foreground">{placeholder}</span>
           ) : (
-            LABEL.format(selected)
+            label.format(selected)
           )}
         </PopoverTrigger>
 
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             mode="single"
-            locale={fr}
+            locale={calendarLocale}
             selected={selected}
             defaultMonth={selected}
             // Month and year as a plain label, navigated with the arrows.
@@ -91,7 +94,7 @@ export function DateField({ name, id, describedBy, placeholder = 'Today' }: Prop
             // rest of the application; replacing them with shadcn Selects put
             // one popup inside another, and the outer closed on the click that
             // opened the inner. Making that hold needed the nested list
-            // portalled into the popover element — a fix resting on two
+            // portalled into the popover element - a fix resting on two
             // libraries continuing to agree about where things render.
             //
             // A label and two arrows have none of that, and the range below
@@ -104,7 +107,7 @@ export function DateField({ name, id, describedBy, placeholder = 'Today' }: Prop
             //
             // Ten years back covers what an import can reasonably reach; the
             // upper bound is today, because a transaction cannot be booked in
-            // the future — it has not happened. Backdating stays easy, since
+            // the future - it has not happened. Backdating stays easy, since
             // that is most of what importing history is.
             startMonth={new Date(new Date().getFullYear() - 10, 0)}
             endMonth={new Date()}

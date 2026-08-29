@@ -1,38 +1,45 @@
 # Contributing to Altitude
 
 Thanks for looking. This document says what is useful right now, what the conventions
-are, and what will not be accepted — so nobody spends an evening on a pull request that
+are, and what will not be accepted - so nobody spends an evening on a pull request that
 was never going to land.
 
 ## Current phase: phase 0, foundations
 
-The domain core exists — `packages/shared` (money, dates, identifiers) and
-`packages/core` (the double-entry ledger) — with the toolchain and the development
-database around them. There is no user interface yet, and no persistence: the ledger
-lives in memory and is exercised by tests.
+Foundations are in place: `packages/shared` (money, dates, identifiers),
+`packages/core` (the double-entry ledger and the authorisation policy), `packages/db`
+(schema, migrations, row-level security) and `apps/web` - sign-in, household creation and
+a quick-add form, in English and French.
 
-Contributions to those two packages are welcome now. Everything above them is still
-being laid down, so check the roadmap in `README.md` before starting on anything else.
+That is deliberately not a wealth tracker yet. There is no account management, no import,
+no market data and no history. Contributions to the two domain packages are welcome now;
+everything above them is still being laid down, so check the roadmap in `README.md`
+before starting on anything else.
 
 ### What is useful today
 
-- **Critique of the plan.** Read `docs/plan/` — particularly §5 (data model), §6
+- **Critique of the plan.** Read `docs/plan/` - particularly §5 (data model), §6
   (calculation engine) and §7 (bank synchronisation). If a modelling decision is wrong,
   now is when it is cheap to fix. Open a discussion, not a pull request.
 - **Anonymised bank and broker export samples.** These are the single most valuable
   contribution before code exists. Every import preset needs a real-world file to test
   against, and no one person has an account at every bank. Read the anonymisation
-  section below first — it is not optional.
+  section below first - it is not optional.
 - **ETF exposure data.** Country and sector breakdowns for widely held ETFs, with an
   as-of date and a cited source. This is what makes the geographic globe meaningful.
 - **Prior art we have missed.** If an existing project already solved something well,
   say so. Borrowing beats reinventing.
+- **Translation review.** The interface ships in English and French
+  ([ADR-0010](docs/adr/0010-bilingual-from-the-first-screen.md)). Key parity between the
+  two catalogues is checked mechanically; whether the French reads like French is not.
+  Corrections to `apps/web/messages/fr.json` are welcome, and a new language is one file
+  plus one entry in `LOCALES`.
 
 ### What is useful once the importer lands
 
-- **Import presets** — the intended entry point for new contributors: a JSON file plus a
+- **Import presets** - the intended entry point for new contributors: a JSON file plus a
   test fixture, no TypeScript required. Format documented in `docs/plan/` §8.4.
-- Bug fixes, tests, documentation, translations.
+- Bug fixes, tests, documentation.
 - Feature work that is already on the roadmap. Please claim the issue first.
 
 ## Ground rules
@@ -83,22 +90,22 @@ Explain **why** in the body when the reason is not obvious from the diff.
 
 Import presets need real bank exports to test against, and real bank exports contain
 your account number, your balance, your salary, your landlord's name and your grocery
-habits. Once attached to an issue, that is public forever and cannot be recalled — a
+habits. Once attached to an issue, that is public forever and cannot be recalled - a
 private repository today can be made public tomorrow.
 
 Before attaching any export file:
 
 - [ ] Replace account numbers and IBANs with obvious fakes (`FR7630001007941234567890185`).
-- [ ] Replace all amounts with invented ones. **Keep the format** — the decimal comma, the
-      thousands separator, the parentheses for negatives — because the format is exactly
+- [ ] Replace all amounts with invented ones. **Keep the format** - the decimal comma, the
+      thousands separator, the parentheses for negatives - because the format is exactly
       what the parser is being tested on. The values themselves are irrelevant.
 - [ ] Replace counterparty and merchant names, but keep their _shape_: if the bank writes
       `CARTE 12/03 CARREFOUR MARKET 3388`, keep the prefix, the embedded date and the
       trailing digits, because the preset's rules key off that structure.
 - [ ] Remove your name, address, phone number, customer number and adviser's name.
-- [ ] Cut the file down to 20–50 rows. A preset test does not need three years of history;
+- [ ] Cut the file down to 20-50 rows. A preset test does not need three years of history;
       it needs one example of each transaction shape.
-- [ ] Keep the original encoding and line endings — CP1252 and CRLF are part of the test.
+- [ ] Keep the original encoding and line endings - CP1252 and CRLF are part of the test.
 - [ ] Open the finished file and read it. Every line.
 
 If you would not post it in a public forum, do not attach it. When in doubt, describe the
@@ -107,7 +114,7 @@ format in an issue and we will work out the fixture together.
 ## Reporting bugs
 
 Open an issue with: what you did, what you expected, what happened, your version, and
-your deployment method. Redact amounts and account identifiers — a screenshot with the
+your deployment method. Redact amounts and account identifiers - a screenshot with the
 privacy mode enabled (`Ctrl/⌘ + Shift + H`) is usually enough.
 
 **Security bugs do not go in the issue tracker.** See `SECURITY.md`.
@@ -124,7 +131,7 @@ are consequences of what Altitude is, and the reasoning for each is in `docs/pla
 - **Bundled API credentials.** No aggregator or price-provider key ever enters the
   repository, not even a free-tier one, and not even in an example file.
 - **Telemetry, analytics, or a phone-home update check enabled by default.** §13.2.
-- **Third-party assets loaded at runtime** — CDN scripts, remote fonts, hosted icons. A
+- **Third-party assets loaded at runtime** - CDN scripts, remote fonts, hosted icons. A
   disconnected instance must render perfectly.
 - **Payment initiation.** Altitude reads; it never moves money.
 - **Investment advice.** Projections are simulations and are labelled as such. Tax
@@ -135,6 +142,10 @@ are consequences of what Altitude is, and the reasoning for each is in `docs/pla
   change it. §ADR-006.
 - **Business logic in a Server Action or a Route Handler.** Both call
   `packages/core/services`; neither implements anything. §ADR-005.
+- **A default value for a secret.** No `process.env.X ?? 'something'`, in any form. A
+  missing secret must throw and say which one. A test enforces this across the workspace.
+- **User-visible English in `packages/shared` or `packages/core`.** Those packages return
+  codes and identifiers; `apps/web` turns them into text. ADR-0010.
 - **A dependency added without justification.** Especially in `packages/core`, which must
   keep working with no browser, no server and no network.
 
@@ -146,8 +157,14 @@ install it yourself:
 ```bash
 corepack enable
 pnpm install
-pnpm db:up          # PostgreSQL 17 on 127.0.0.1:55432
+cp .env.example .env.local                     # then fill in the secrets it asks for
+pnpm db:up                                     # PostgreSQL 17 on 127.0.0.1:55432
+pnpm --filter @altitude/db exec drizzle-kit migrate
 ```
+
+No environment variable has a fallback value in the code. A missing one raises
+`MissingConfigurationError` at startup and names itself, rather than quietly running with
+a default that would be wrong in production.
 
 Then the four checks CI runs, which should all pass on a clean clone:
 
@@ -161,7 +178,13 @@ pnpm format:check   # prettier
 `pnpm test:coverage` adds the thresholds. They are deliberately strict on
 `packages/core`: a gap in its coverage is a gap in the ledger guarantee.
 
-There is no application to run yet — `pnpm dev` will start one when `apps/web` lands.
+`pnpm dev` starts the application on <http://localhost:3000>. It follows your browser's
+`Accept-Language`, so to see the French interface set French as your preferred language
+rather than looking for a switcher - there is not one yet, and
+[ADR-0010](docs/adr/0010-bilingual-from-the-first-screen.md) explains why.
+
+The database tests spin up their own PostgreSQL through Testcontainers, so `pnpm test`
+needs Docker running but not `pnpm db:up`.
 
 The development plan builds separately, and needs a local Chrome:
 
@@ -172,5 +195,5 @@ cd docs/plan && node build-html.mjs && node build-pdf.mjs
 ## Getting in touch
 
 Open a GitHub discussion for anything design-related, an issue for anything concrete.
-Questions are welcome — an hour of discussion beats a week spent building the wrong
+Questions are welcome - an hour of discussion beats a week spent building the wrong
 thing.

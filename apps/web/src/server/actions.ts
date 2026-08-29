@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
+import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { createHousehold, postTransaction } from '@altitude/core';
 import { withHousehold } from '@altitude/db';
@@ -30,9 +31,18 @@ export interface ActionResult {
   readonly error?: string;
 }
 
-/** Turns a service refusal into something a form can display. */
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.';
+/**
+ * Turns a service refusal into something a form can display.
+ *
+ * A service message is passed through rather than replaced. "This transaction
+ * does not balance" and "you may not do that" are different problems, and
+ * flattening both into one translated sentence would hide which one occurred.
+ * The fallback is translated because it is the only case with nothing to say.
+ */
+async function toMessage(error: unknown): Promise<string> {
+  if (error instanceof Error) return error.message;
+  const t = await getTranslations('quickAdd');
+  return t('genericError');
 }
 
 export async function createHouseholdAction(formData: FormData): Promise<ActionResult> {
@@ -41,8 +51,10 @@ export async function createHouseholdAction(formData: FormData): Promise<ActionR
   // has no household yet, so demanding one here would make it unreachable.
   const user = await requireSessionUser();
 
+  const t = await getTranslations('setup');
+  const accounts = await getTranslations('starterAccounts');
   const name = String(formData.get('name') ?? '').trim();
-  if (name === '') return { error: 'Give the household a name.' };
+  if (name === '') return { error: t('nameRequired') };
 
   // Minted here rather than by the database: the tenant has to be declared
   // before the row defining it can satisfy its own INSERT policy.
@@ -56,10 +68,15 @@ export async function createHouseholdAction(formData: FormData): Promise<ActionR
         baseCurrency: String(formData.get('currency') ?? 'EUR').trim(),
         ownerUserId: user.userId,
         ownerDisplayName: user.displayName,
+        accountNames: {
+          current: accounts('current'),
+          savings: accounts('savings'),
+          opening: accounts('opening'),
+        },
       }),
     );
   } catch (error) {
-    return { error: toMessage(error) };
+    return { error: await toMessage(error) };
   }
 
   redirect('/app');
@@ -79,10 +96,11 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
   const description = String(formData.get('description') ?? '').trim();
   const on = String(formData.get('bookedOn') ?? '');
 
-  if (from === '' || to === '') return { error: 'Choose both accounts.' };
-  if (from === to) return { error: 'The two accounts must be different.' };
+  const t = await getTranslations('quickAdd');
+  if (from === '' || to === '') return { error: t('bothAccounts') };
+  if (from === to) return { error: t('sameAccount') };
   if (!/^\d+(\.\d+)?$/.test(amount) || amount === '0') {
-    return { error: 'Enter an amount using digits.' };
+    return { error: t('invalidAmount') };
   }
 
   try {
@@ -101,7 +119,7 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
       }),
     );
   } catch (error) {
-    return { error: toMessage(error) };
+    return { error: await toMessage(error) };
   }
 
   revalidatePath('/app');

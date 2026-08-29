@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import createNextIntlPlugin from 'next-intl/plugin';
 import type { NextConfig } from 'next';
 
 /**
@@ -7,7 +8,7 @@ import type { NextConfig } from 'next';
  *
  * Next looks for .env.local beside the application, which in a monorepo means
  * apps/web/.env.local. drizzle-kit reads the repository root. Left alone, the
- * same secrets would have to exist in two files and would eventually disagree —
+ * same secrets would have to exist in two files and would eventually disagree -
  * and the way that failure shows up is a migration applied to one database
  * while the application talks to another.
  *
@@ -16,7 +17,7 @@ import type { NextConfig } from 'next';
  * "/C:/..." on Windows.
  *
  * loadEnvFile does not overwrite variables already set, so a real environment
- * still wins over the file — which is what production does.
+ * still wins over the file - which is what production does.
  */
 for (const file of ['../../.env.local', '../../.env']) {
   const path = fileURLToPath(new URL(file, import.meta.url));
@@ -32,4 +33,6 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@altitude/shared', '@altitude/core', '@altitude/db'],
 };
 
-export default nextConfig;
+// next-intl needs the request config wired at build time so server components
+// can read messages without a provider above them.
+export default createNextIntlPlugin('./src/i18n/request.ts')(nextConfig);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createHouseholdAction, type ActionResult } from '@/server/actions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -15,10 +16,10 @@ import {
 } from '@/components/ui/select';
 
 const CURRENCIES = [
-  { code: 'EUR', label: 'EUR — euro' },
-  { code: 'USD', label: 'USD — US dollar' },
-  { code: 'GBP', label: 'GBP — pound sterling' },
-  { code: 'CHF', label: 'CHF — Swiss franc' },
+  { code: 'EUR', label: 'EUR - euro' },
+  { code: 'USD', label: 'USD - US dollar' },
+  { code: 'GBP', label: 'GBP - pound sterling' },
+  { code: 'CHF', label: 'CHF - Swiss franc' },
 ] as const;
 
 export function SetupForm() {
@@ -30,16 +31,23 @@ export function SetupForm() {
   // Controlled for the same reason as the account pickers: Radix cannot read an
   // item's label while SelectContent is unmounted.
   const [code, setCode] = useState('EUR');
+  const t = useTranslations('setup');
 
   return (
     <form action={action} className="grid gap-4">
       <div className="grid gap-2">
-        <Label htmlFor="name">Household name</Label>
-        <Input id="name" name="name" required placeholder="Lecomte" autoFocus />
+        <Label htmlFor="name">{t('householdName')}</Label>
+        <Input
+          id="name"
+          name="name"
+          required
+          placeholder={t('householdNamePlaceholder')}
+          autoFocus
+        />
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="currency">Base currency</Label>
+        <Label htmlFor="currency">{t('baseCurrency')}</Label>
         {/* Radix Select renders a button, not a <select>, so it needs a hidden
             field with the same name for the form action to receive a value. */}
         <Select name="currency" value={code} onValueChange={(v) => setCode(v ?? code)}>
@@ -54,9 +62,7 @@ export function SetupForm() {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-muted-foreground text-xs">
-          Everything is consolidated into this. Changeable later, but never silently.
-        </p>
+        <p className="text-muted-foreground text-xs">{t('baseCurrencyHint')}</p>
       </div>
 
       {state.error !== undefined && (
@@ -66,7 +72,7 @@ export function SetupForm() {
       )}
 
       <Button type="submit" disabled={pending} className="w-full">
-        Create household
+        {t('submit')}
       </Button>
     </form>
   );

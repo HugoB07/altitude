@@ -1,0 +1,73 @@
+{
+  "app": {
+    "name": "Altitude",
+    "tagline": "Self-hosted wealth tracking."
+  },
+  "auth": {
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 12 characters.",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "createAccount": "Create account",
+    "switchToSignIn": "I already have an account",
+    "switchToSignUp": "Create an account",
+    "genericError": "Could not sign in."
+  },
+  "setup": {
+    "title": "Create your household",
+    "description": "A household holds your accounts and everyone who shares them. You can add people later.",
+    "householdName": "Household name",
+    "householdNamePlaceholder": "Lecomte",
+    "baseCurrency": "Base currency",
+    "baseCurrencyHint": "Everything is consolidated into this. Changeable later, but never silently.",
+    "submit": "Create household",
+    "nameRequired": "Give the household a name."
+  },
+  "dashboard": {
+    "netWorth": "Net worth",
+    "netWorthHint": "Assets only. Internal transfers do not change this figure.",
+    "accounts": "Accounts",
+    "notCounted": "not counted in net worth"
+  },
+  "quickAdd": {
+    "title": "Move money",
+    "description": "Between two of your accounts. Net worth will not change — that is the point.",
+    "from": "From",
+    "to": "To",
+    "amount": "Amount",
+    "amountHint": "A comma works as a decimal point.",
+    "date": "Date",
+    "dateHint": "Today if left empty.",
+    "datePlaceholder": "Today",
+    "description_": "Description",
+    "descriptionPlaceholder": "Move to savings",
+    "submit": "Record",
+    "bothAccounts": "Choose both accounts.",
+    "sameAccount": "The two accounts must be different.",
+    "invalidAmount": "Enter an amount using digits.",
+    "genericError": "Something went wrong."
+  },
+  "accountKind": {
+    "cash": "cash",
+    "savings": "savings",
+    "securities": "securities",
+    "life_insurance": "life insurance",
+    "retirement": "retirement",
+    "crypto": "crypto",
+    "real_estate": "real estate",
+    "vehicle": "vehicle",
+    "collectible": "collectible",
+    "private_equity": "private equity",
+    "receivable": "receivable",
+    "loan": "loan",
+    "credit_card": "credit card",
+    "other_liability": "other liability"
+  },
+  "starterAccounts": {
+    "current": "Current account",
+    "savings": "Savings",
+    "opening": "Opening balances"
+  }
+}

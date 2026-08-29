@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { signIn, signUp } from '@/lib/auth-client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,6 +16,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const t = useTranslations('auth');
 
   async function submit(formData: FormData) {
     setError(null);
@@ -31,7 +33,7 @@ export function LoginForm() {
       // Better Auth's own message rather than a rewritten one: "password too
       // short" and "no such account" are different problems, and the person in
       // front of the form needs to know which one they have.
-      setError(result.error.message ?? 'Could not sign in.');
+      setError(result.error.message ?? t('genericError'));
       return;
     }
     // The household is resolved server-side; /app sends new users on to /setup.
@@ -43,18 +45,18 @@ export function LoginForm() {
     <form action={(fd) => void submit(fd)} className="grid gap-4">
       {mode === 'signup' && (
         <div className="grid gap-2">
-          <Label htmlFor="name">Name</Label>
+          <Label htmlFor="name">{t('name')}</Label>
           <Input id="name" name="name" autoComplete="name" />
         </div>
       )}
 
       <div className="grid gap-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('email')}</Label>
         <Input id="email" name="email" type="email" required autoComplete="email" />
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t('password')}</Label>
         <Input
           id="password"
           name="password"
@@ -68,7 +70,7 @@ export function LoginForm() {
         />
         {mode === 'signup' && (
           <p id="password-hint" className="text-muted-foreground text-xs">
-            At least 12 characters.
+            {t('passwordHint')}
           </p>
         )}
       </div>
@@ -80,7 +82,7 @@ export function LoginForm() {
       )}
 
       <Button type="submit" disabled={pending} className="w-full">
-        {mode === 'signup' ? 'Create account' : 'Sign in'}
+        {mode === 'signup' ? t('createAccount') : t('signIn')}
       </Button>
 
       <Button
@@ -92,7 +94,7 @@ export function LoginForm() {
           setError(null);
         }}
       >
-        {mode === 'signup' ? 'I already have an account' : 'Create an account'}
+        {mode === 'signup' ? t('switchToSignIn') : t('switchToSignUp')}
       </Button>
     </form>
   );
