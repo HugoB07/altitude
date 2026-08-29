@@ -24,7 +24,9 @@
     "lint": "depcruise packages --config .dependency-cruiser.cjs",
     "plan": "cd docs/plan && node build-html.mjs && node build-pdf.mjs",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run packages/shared packages/core --coverage",
+    "test:db": "vitest run packages/db",
+    "test:unit": "vitest run packages/shared packages/core",
     "test:watch": "vitest",
     "typecheck": "turbo run typecheck"
   },

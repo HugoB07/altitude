@@ -59,8 +59,15 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Tests and coverage
+      - name: Unit tests and coverage
         run: pnpm test:coverage
+
+      # Testcontainers boots a real PostgreSQL 17. Split from the unit tests so a
+      # logic failure is reported in seconds rather than after an image pull, and
+      # so a Docker problem is never mistaken for a broken invariant.
+      # ubuntu-latest ships a working Docker daemon, so no service block is needed.
+      - name: Database tests
+        run: pnpm test:db
 
       - name: Upload coverage
         if: always() && hashFiles('coverage/**') != ''
@@ -71,7 +78,6 @@ jobs:
           retention-days: 14
 # Deliberately not here yet, each waiting on the code it would test:
 #
-#   test:db     Testcontainers against Postgres 17 — needs packages/db (phase 0, day 3)
 #   build       next build + worker build          — needs apps/web (phase 0, day 4)
 #   test:e2e    Playwright                         — needs a running application
 #   sbom        CycloneDX                          — worth generating per release, not per commit
