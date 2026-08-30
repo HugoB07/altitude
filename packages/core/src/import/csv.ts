@@ -114,3 +114,38 @@ export function parseRecords(
 
   return { header, records };
 }
+
+/**
+ * Which character separates the fields, decided by reading the header.
+ *
+ * Not a preference a preset can hardcode. Trade Republic's own export is
+ * semicolon-separated in one place and comma-separated in another, and a reader
+ * that assumed either one produced a single column containing the whole line -
+ * which reads as "this file has no date column" rather than as "wrong
+ * delimiter", and sends somebody looking in the wrong place.
+ *
+ * Decided by field count, because that is the only signal that does not depend
+ * on knowing the file: the wrong delimiter yields one field, the right one
+ * yields as many as the exporter wrote. Ties go to the earliest candidate,
+ * which is why the comma is first.
+ */
+export function sniffDelimiter(
+  text: string,
+  candidates: readonly string[] = [',', ';', '\t', '|'],
+): string {
+  // The header alone, and only as much of it as any header could be. Parsing a
+  // whole file once per candidate would read a large export four times to
+  // answer a question its first line already settles.
+  const head = text.slice(0, 8192);
+
+  let best = candidates[0] ?? ',';
+  let width = 0;
+  for (const candidate of candidates) {
+    const fields = parseDelimited(head, candidate)[0]?.length ?? 0;
+    if (fields > width) {
+      width = fields;
+      best = candidate;
+    }
+  }
+  return best;
+}

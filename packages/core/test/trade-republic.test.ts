@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dec } from '@altitude/shared';
-import { EXTERNAL, looksLikeTradeRepublic, readTradeRepublic } from '../src/index';
+import { EXTERNAL, looksLikeTradeRepublic, readTradeRepublic, securitiesLabel } from '../src/index';
 import type { Candidate } from '../src/index';
 
 /**
@@ -167,22 +167,50 @@ describe('readTradeRepublic', () => {
     expect(holding?.quantity).toBe('4.0000000000');
     expect(holding?.instrument?.isin).toBe('FR0000000001');
     expect(holding?.instrument?.kind).toBe('fund');
-    // Both sides are the brokerage account: buying moves value within it rather
-    // than out of it, which is why a purchase does not change net worth.
-    expect(new Set(buy?.entries.map((e) => e.account))).toEqual(new Set(['PEA']));
+    // Two accounts, not one. The file says `PEA` on both sides and means the
+    // cash on one and the shares on the other; booking both to the same account
+    // netted every purchase to zero and left the holding nowhere - reported
+    // from a real import, where shares landed in a current account.
+    expect(cash?.account).toBe('PEA');
+    expect(holding?.account).toBe(securitiesLabel('PEA'));
+
+    // Value moved between two of the household's own accounts, so net worth is
+    // unchanged. That was true before and stays true: it is the residual above,
+    // not the fact that one account was named twice.
+    expect(residual(buy!)).toBe('0');
+  });
+
+  it('asks about the securities account separately from the cash one', () => {
+    const reading = readTradeRepublic(file(BUY));
+    expect(reading.accounts).toEqual(['PEA']);
+    expect(reading.securities).toEqual([securitiesLabel('PEA')]);
   });
 
   it('splits interest into gross and the tax already withheld', () => {
     const [interest] = readTradeRepublic(file(INTEREST)).candidates;
 
     expect(residual(interest!)).toBe('0');
-    expect(interest?.entries).toHaveLength(3);
 
-    const cash = interest!.entries.filter((e) => e.account === 'DEFAULT');
-    expect(cash.map((e) => e.amount)).toEqual(['2', '-0.5']);
+    // Three lines, each named. The third is the one people ask about: the
+    // account earned the gross and paid the tax, so what is left needs a
+    // counterpart, and that is the net that actually arrived. Unnamed, it reads
+    // as an unexplained figure - which is how it was reported.
+    //
+    // Tokens, not sentences. A reader that wrote "Withholding tax" put English
+    // into a French ledger permanently, because the memo is persisted; the web
+    // layer turns these into words in the language of whoever is reading.
+    expect(interest?.entries).toHaveLength(3);
+    expect(interest?.entries.map((e) => [e.account, e.amount, e.role])).toEqual([
+      ['DEFAULT', '2', 'gross'],
+      ['DEFAULT', '-0.5', 'withholdingTax'],
+      [EXTERNAL, '-1.5', 'netCredited'],
+    ]);
+    expect(interest?.entries.every((e) => e.memo === undefined)).toBe(true);
+
     // 2.00 gross less 0.50 withheld is 1.50 actually credited, which is what
     // the account balance has to move by if it is to match the bank.
-    expect(interest?.entries.find((e) => e.account === EXTERNAL)?.amount).toBe('-1.5');
+    const cash = interest!.entries.filter((e) => e.account === 'DEFAULT');
+    expect(cash.reduce((sum, e) => sum.plus(dec(e.amount)), dec('0')).toFixed()).toBe('1.5');
   });
 
   it('gives money from outside a counterpart, because double entry needs one', () => {
@@ -192,9 +220,16 @@ describe('readTradeRepublic', () => {
     expect(inbound?.entries.find((e) => e.account === EXTERNAL)?.amount).toBe('-500');
   });
 
-  it('lists every account the file mentions, for the preview to bind', () => {
+  it('lists the accounts the file mentions apart from the outside world', () => {
     const reading = readTradeRepublic(file(TRANSFER_OUT, TRANSFER_IN, BUY, INTEREST));
-    expect([...reading.accounts].sort()).toEqual(['DEFAULT', EXTERNAL, 'PEA']);
+
+    // Two lists, because the preview asks about them differently. An account of
+    // the file is one account for the whole import; the outside world is a
+    // different answer on every transaction - a salary here, a transfer from
+    // your own account at another bank there.
+    expect([...reading.accounts].sort()).toEqual(['DEFAULT', 'PEA']);
+    expect(reading.securities).toEqual([securitiesLabel('PEA')]);
+    expect(reading.counterparts).toEqual([EXTERNAL]);
   });
 
   it('reports a bad row and keeps the rest', () => {
@@ -215,5 +250,72 @@ describe('readTradeRepublic', () => {
     const scrubbed = INBOUND.replace('tx-in-2', 'Anonyme');
     expect(readTradeRepublic(file(scrubbed)).candidates[0]?.externalId).toBeUndefined();
     expect(readTradeRepublic(file(INBOUND)).candidates[0]?.externalId).toBe('tx-in-2');
+  });
+});
+
+describe('the shape of the file itself', () => {
+  /**
+   * The same rows, comma-separated and quoted, with ISO dates.
+   *
+   * This is the second shape the broker exports, and the reader used to assume
+   * the first. A semicolon reader given this file parses each line into a
+   * single field, finds none of the columns it needs, and reports "not a Trade
+   * Republic export" - about a Trade Republic export.
+   */
+  function asQuotedCommas(text: string): string {
+    return text
+      .split(/\r?\n/)
+      .filter((line) => line !== '')
+      .map((line) =>
+        line
+          .split(';')
+          .map((cell) => `"${toIso(cell)}"`)
+          .join(','),
+      )
+      .join('\n');
+  }
+
+  function toIso(cell: string): string {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(cell);
+    return match === null ? cell : `${match[3]!}-${match[2]!}-${match[1]!}`;
+  }
+
+  it('is recognised whether the fields are separated by semicolons or commas', () => {
+    const semicolons = file(TRANSFER_OUT, TRANSFER_IN);
+    expect(looksLikeTradeRepublic(semicolons)).toBe(true);
+    expect(looksLikeTradeRepublic(asQuotedCommas(semicolons))).toBe(true);
+  });
+
+  it('reads the same transactions out of both', () => {
+    const semicolons = file(TRANSFER_OUT, TRANSFER_IN, INTEREST, INBOUND);
+    const reading = readTradeRepublic(asQuotedCommas(semicolons));
+
+    expect(reading.problems).toEqual([]);
+    expect(reading.candidates).toEqual(readTradeRepublic(semicolons).candidates);
+  });
+
+  it('reads an ISO date as the day it names, not as something else', () => {
+    // The eleventh of January. Read as a European date it would be the first of
+    // November - a difference no screen makes obvious.
+    const reading = readTradeRepublic(
+      asQuotedCommas(
+        file(
+          row({
+            date: '11/01/2026',
+            account_type: 'DEFAULT',
+            type: 'TRANSFER_INSTANT_INBOUND',
+            amount: '5.000000',
+            currency: 'EUR',
+          }),
+        ),
+      ),
+    );
+    expect(reading.candidates[0]?.bookedOn).toBe('2026-01-11');
+  });
+
+  it('a file that is not one is refused by naming what is missing', () => {
+    const reading = readTradeRepublic(['date,amount', '2026-01-11,3'].join('\n'));
+    expect(reading.candidates).toEqual([]);
+    expect(reading.problems[0]?.reason).toContain('account_type');
   });
 });

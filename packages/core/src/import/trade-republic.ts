@@ -1,9 +1,10 @@
 import { dec, ledgerDate, type LedgerDate } from '@altitude/shared';
-import { parseRecords } from './csv';
+import { parseRecords, sniffDelimiter } from './csv';
 import type {
   Candidate,
   CandidateEntry,
   CandidateInstrument,
+  EntryRole,
   ImportProblem,
   ImportReading,
 } from './types';
@@ -30,8 +31,36 @@ import type {
  */
 export const EXTERNAL = 'EXTERNAL';
 
-/** The delimiter, which is not a comma because the comma is a decimal separator here. */
-const DELIMITER = ';';
+/**
+ * The securities side of a trade on a given account.
+ *
+ * The file names one account for a purchase - `PEA`, `DEFAULT` - and means two
+ * things by it: cash left the cash account and a holding arrived in the
+ * securities account. Booking both to the same account made a purchase net to
+ * zero on the cash account and put the shares nowhere anybody could see them.
+ *
+ * A derived label rather than a column, because there is no column. The preview
+ * asks which of your accounts it is, exactly as it does for the ones the file
+ * does name.
+ */
+export const SECURITIES_SUFFIX = ':SECURITIES';
+
+export function securitiesLabel(account: string): string {
+  return `${account}${SECURITIES_SUFFIX}`;
+}
+
+/**
+ * The delimiter is not fixed, and finding that out cost an afternoon.
+ *
+ * The same broker exports semicolons from one place and commas from another,
+ * quoting every field in the second case and not the first. A reader that
+ * assumed either one parsed each line into a single field and reported "not a
+ * Trade Republic export: no date, account_type, type, amount, currency" - which
+ * is true of what it managed to read and useless as a description of the file.
+ */
+function delimiterOf(text: string): string {
+  return sniffDelimiter(text);
+}
 
 /**
  * Columns that must exist for this to be a Trade Republic export.
@@ -68,18 +97,20 @@ interface Row {
 }
 
 export function looksLikeTradeRepublic(text: string): boolean {
-  const { header } = parseRecords(text, DELIMITER);
+  const { header } = parseRecords(text, delimiterOf(text));
   return REQUIRED.every((name) => header.includes(name));
 }
 
 export function readTradeRepublic(text: string): ImportReading {
-  const { header, records } = parseRecords(text, DELIMITER);
+  const { header, records } = parseRecords(text, delimiterOf(text));
 
   const missing = REQUIRED.filter((name) => !header.includes(name));
   if (missing.length > 0) {
     return {
       candidates: [],
       accounts: [],
+      securities: [],
+      counterparts: [],
       problems: [{ line: 1, reason: `Not a Trade Republic export: no ${missing.join(', ')}` }],
     };
   }
@@ -144,14 +175,25 @@ export function readTradeRepublic(text: string): ImportReading {
   // can check against the file they are holding.
   candidates.sort((a, b) => (a.sourceLines[0] ?? 0) - (b.sourceLines[0] ?? 0));
 
+  // Three lists, because the preview asks about them differently: an account
+  // of the file has one answer, so does its securities side, and the outside
+  // world has one per transaction.
   const accounts: string[] = [];
+  const securities: string[] = [];
+  const counterparts: string[] = [];
   for (const candidate of candidates) {
     for (const entry of candidate.entries) {
-      if (!accounts.includes(entry.account)) accounts.push(entry.account);
+      const into =
+        entry.account === EXTERNAL
+          ? counterparts
+          : entry.account.endsWith(SECURITIES_SUFFIX)
+            ? securities
+            : accounts;
+      if (!into.includes(entry.account)) into.push(entry.account);
     }
   }
 
-  return { candidates, accounts, problems };
+  return { candidates, accounts, securities, counterparts, problems };
 }
 
 /** One row that is a transaction on its own. */
@@ -190,7 +232,7 @@ function single(row: Row): Candidate | { reason: string } {
       entries: [
         line(account, amount, currency),
         {
-          ...line(account, negate(amount), currency),
+          ...line(securitiesLabel(account), negate(amount), currency),
           quantity: type === 'BUY' ? quantity : negate(quantity),
           ...(isDecimal(data['price'] ?? '') ? { unitPrice: data['price'] } : {}),
           instrument,
@@ -201,17 +243,26 @@ function single(row: Row): Candidate | { reason: string } {
 
   // Interest and dividends arrive with tax already deducted: `amount` is the
   // gross and `tax` is what was taken, so the cash actually credited is their
-  // sum. Written as two lines rather than one net figure, because a tax figure
-  // folded into a total is a tax figure nobody can report on later.
+  // sum. Written as two lines rather than one net figure, because a tax folded
+  // into a total is a tax nobody can report on later.
+  //
+  // Three lines, and the third is the one people ask about. The account earned
+  // the gross and paid the tax - two movements - so double entry needs one
+  // counterpart for what is left, which is the net that actually arrived. It is
+  // labelled as such: an unexplained third figure on an interest payment reads
+  // as an error, and was reported as one.
+  //
+  // Splitting it into two pairs was tried and rejected. It balances too, and it
+  // turns one credit into four rows nobody asked for.
   const tax = data['tax'] ?? '';
   if (isDecimal(tax) && !dec(tax).isZero()) {
     const net = dec(amount).plus(dec(tax));
     return {
       ...common,
       entries: [
-        line(account, amount, currency, 'Gross'),
-        line(account, tax, currency, 'Withholding tax'),
-        line(EXTERNAL, negate(net.toFixed()), currency),
+        line(account, amount, currency, 'gross'),
+        line(account, tax, currency, 'withholdingTax'),
+        line(EXTERNAL, negate(net.toFixed()), currency, 'netCredited'),
       ],
     };
   }
@@ -222,7 +273,7 @@ function single(row: Row): Candidate | { reason: string } {
   };
 }
 
-function line(account: string, amount: string, currency: string, memo?: string): CandidateEntry {
+function line(account: string, amount: string, currency: string, role?: EntryRole): CandidateEntry {
   return {
     account,
     // Normalised through Decimal so "0.730000" and "0.73" are the same value,
@@ -230,7 +281,8 @@ function line(account: string, amount: string, currency: string, memo?: string):
     // database.
     amount: dec(amount).toFixed(),
     currency,
-    ...(memo === undefined ? {} : { memo }),
+    // A token, not a sentence. The reader has no language.
+    ...(role === undefined ? {} : { role }),
   };
 }
 
@@ -268,13 +320,34 @@ function externalId(data: Record<string, string>): { externalId?: string } {
   return { externalId: id };
 }
 
-/** `DD/MM/YYYY`, which is the accounting day. The ISO column beside it is UTC. */
+/**
+ * The accounting day, written either way this exporter writes it.
+ *
+ * `DD/MM/YYYY` in one export and `YYYY-MM-DD` in another. Both are read here
+ * rather than guessed at, because the two are ambiguous for eleven days of
+ * every month and a wrong guess moves a transaction by up to a year without
+ * looking wrong on screen.
+ *
+ * The `datetime` column beside it is deliberately unused: it is an instant in
+ * UTC, and an instant late on the 31st is the 1st in half the world (ADR-0006's
+ * argument about dates, which is why the column is a `date`).
+ */
 function toLedgerDate(value: string | undefined): LedgerDate | null {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((value ?? '').trim());
-  if (match === null) return null;
-  const [, day, month, year] = match;
+  const text = (value ?? '').trim();
+
+  const european = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+
+  const parts =
+    european !== null
+      ? { year: european[3]!, month: european[2]!, day: european[1]! }
+      : iso !== null
+        ? { year: iso[1]!, month: iso[2]!, day: iso[3]! }
+        : null;
+  if (parts === null) return null;
+
   try {
-    return ledgerDate(`${year!}-${month!}-${day!}`);
+    return ledgerDate(`${parts.year}-${parts.month}-${parts.day}`);
   } catch {
     // A well-formed 31/02 is caught here rather than becoming the 3rd of March.
     return null;

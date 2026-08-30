@@ -152,6 +152,45 @@ describe('bindAccounts', () => {
     expect(bound).toEqual([]);
     expect(problems[0]?.reason).toContain('OPENING');
   });
+
+  /**
+   * The counterpart is a question per transaction, not per file.
+   *
+   * `OPENING` here stands for what a bank export calls the outside world. One
+   * answer for the whole file puts a salary and a transfer from your own
+   * account at another bank into the same account, and nothing on any screen
+   * afterwards shows that the two were ever different.
+   */
+  it('lets one transaction answer differently from the rest of the file', () => {
+    const salary = candidate('2026-03-01', '2000');
+    const fromElsewhere = candidate('2026-03-02', '500');
+
+    const { bound, problems } = bindAccounts([salary, fromElsewhere], binding(), {
+      1: { OPENING: savings },
+    });
+
+    expect(problems).toEqual([]);
+    expect(bound[0]?.entries.map((e) => e.accountId)).toEqual([cash, opening]);
+    expect(bound[1]?.entries.map((e) => e.accountId)).toEqual([cash, savings]);
+  });
+
+  it('an override for a label the candidate does not mention changes nothing', () => {
+    const { bound, problems } = bindAccounts([candidate('2026-03-01', '10')], binding(), {
+      0: { NOWHERE: savings },
+    });
+    expect(problems).toEqual([]);
+    expect(bound[0]?.entries.map((e) => e.accountId)).toEqual([cash, opening]);
+  });
+
+  it('still refuses to guess when only some rows were answered', () => {
+    const { bound, problems } = bindAccounts(
+      [candidate('2026-03-01', '10'), candidate('2026-03-02', '20')],
+      { CASH: cash },
+      { 0: { OPENING: opening } },
+    );
+    expect(bound).toHaveLength(1);
+    expect(problems[0]?.reason).toContain('OPENING');
+  });
 });
 
 describe('findDuplicates', () => {

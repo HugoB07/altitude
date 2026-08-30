@@ -59,17 +59,30 @@ export {
   AccountNotEmptyError,
   type NewAccount,
 } from './services/accounts';
-export { parseDelimited, parseRecords } from './import/csv';
-export { EXTERNAL, looksLikeTradeRepublic, readTradeRepublic } from './import/trade-republic';
+export { parseDelimited, parseRecords, sniffDelimiter } from './import/csv';
+export {
+  EXTERNAL,
+  SECURITIES_SUFFIX,
+  looksLikeTradeRepublic,
+  readTradeRepublic,
+  securitiesLabel,
+} from './import/trade-republic';
 export type {
   Candidate,
   CandidateEntry,
   CandidateInstrument,
+  EntryRole,
   ImportProblem,
   ImportReading,
 } from './import/types';
 export { bindAccounts } from './import/bind';
-export type { AccountBinding, BindResult, BoundCandidate, BoundEntry } from './import/bind';
+export type {
+  AccountBinding,
+  BindResult,
+  BoundCandidate,
+  BoundEntry,
+  CandidateOverrides,
+} from './import/bind';
 export { findDuplicates } from './services/import';
 export { commitImport } from './services/import';
 export type { CommitInput, CommitResult, DuplicateReport, Verdict } from './services/import';

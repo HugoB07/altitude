@@ -9,6 +9,20 @@ import type { LedgerDate } from '@altitude/shared';
  * makes on the preview screen, and keeping it out of the reader is what lets the
  * reader be a pure function over text.
  */
+/**
+ * What a reader decided one line of a transaction is.
+ *
+ * A token rather than a sentence, because the sentence has to be written in the
+ * reader's language and `packages/core` has no idea what that is. Prose here
+ * meant "Gross" and "Withholding tax" reaching a French ledger in English and
+ * staying there: the memo is persisted, so the mistake is permanent per row.
+ *
+ * The web layer renders these, and writes the rendered text into `memo` at
+ * import time. Distinct from `memo` itself, which carries text that came from
+ * the file and is nobody's to translate.
+ */
+export type EntryRole = 'gross' | 'withholdingTax' | 'netCredited';
+
 export interface CandidateEntry {
   /**
    * The source's own name for the account this line moves.
@@ -25,6 +39,9 @@ export interface CandidateEntry {
   readonly quantity?: string;
   readonly unitPrice?: string;
   readonly instrument?: CandidateInstrument;
+  /** What this line is, for the screen to name. See `EntryRole`. */
+  readonly role?: EntryRole;
+  /** Text the file itself carried, such as a payment reference. Never translated. */
   readonly memo?: string;
 }
 
@@ -86,5 +103,31 @@ export interface ImportReading {
    * several accounts, and only a person knows which of theirs each one is.
    */
   readonly accounts: readonly string[];
+  /**
+   * Labels for the account that holds the shares, not the cash beside them.
+   *
+   * A broker statement names one account and means two: buying moves cash out
+   * of the cash account and a holding into the securities account, and both
+   * sides carry the same name in the file. Booking them to one account netted
+   * every purchase to nothing and left the shares nowhere.
+   *
+   * Bound once for the whole file, like `accounts` - a securities account does
+   * not change between transactions the way a counterpart does.
+   */
+  readonly securities: readonly string[];
+  /**
+   * Labels that stand for the outside world rather than for an account.
+   *
+   * Kept apart from `accounts` because the two are answered differently, and
+   * treating them alike was a real mistake on the preview screen. `PEA` is one
+   * account for the whole file. `EXTERNAL` is not an account at all: it is
+   * wherever the money came from, and that is a salary on one line and a
+   * transfer from another bank of your own on the next. One answer for the file
+   * would file both under the same account and quietly lose the difference.
+   *
+   * So a counterpart gets a default that a person can override transaction by
+   * transaction, and a plain account does not.
+   */
+  readonly counterparts: readonly string[];
   readonly problems: readonly ImportProblem[];
 }
