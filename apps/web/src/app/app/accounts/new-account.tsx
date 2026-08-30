@@ -1,11 +1,19 @@
 'use client';
 
-import { useActionState, useRef, useState } from 'react';
+import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { createAccountAction, type ActionResult } from '@/server/actions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -26,72 +34,90 @@ interface Props {
 export function NewAccount({ kinds, baseCurrency, role }: Props) {
   const t = useTranslations('accounts');
   const kindLabel = useTranslations('accountKind');
-  const form = useRef<HTMLFormElement>(null);
+  const notify = useTranslations('toast');
+  const [open, setOpen] = useState(false);
 
+  // Closed here rather than from an effect: calling setState synchronously in
+  // an effect triggers a cascading render, which the React compiler rejects.
+  // A failure leaves it open, so the message stays with the form that caused it.
   const [state, action, pending] = useActionState(async (_prev: ActionResult, data: FormData) => {
     const result = await createAccountAction(data);
-    // Cleared only on success, so a rejected submission keeps what was typed.
-    if (result.error === undefined) form.current?.reset();
+    if (result.error === undefined) {
+      setOpen(false);
+      toast.success(notify('accountCreated'));
+    } else {
+      toast.error(result.error);
+    }
     return result;
   }, {});
 
-  // Controlled, with the label passed to SelectValue explicitly: the trigger
-  // cannot resolve an item's text while SelectContent is unmounted, and would
-  // otherwise render the raw value.
   const [kind, setKind] = useState(kinds[0] ?? 'cash');
 
-  // The server refuses these roles regardless. Hiding the form is courtesy,
+  // The server refuses these roles regardless. Hiding the control is courtesy,
   // not security, and the two must never be confused for one another.
   if (role === 'viewer' || role === 'child') return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t('newTitle')}</CardTitle>
-        <CardDescription>{t('newDescription')}</CardDescription>
-      </CardHeader>
+    <>
+      <Button type="button" size="sm" onClick={() => setOpen(true)}>
+        <Plus className="size-4" aria-hidden />
+        {t('newTitle')}
+      </Button>
 
-      <CardContent>
-        <form ref={form} action={action} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">{t('name')}</Label>
-            <Input id="name" name="name" placeholder={t('namePlaceholder')} required />
-          </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('newTitle')}</DialogTitle>
+            <DialogDescription>{t('newDescription')}</DialogDescription>
+          </DialogHeader>
 
-          <div className="grid gap-2">
-            <Label htmlFor="kind">{t('kind')}</Label>
-            <Select name="kind" value={kind} onValueChange={(v) => setKind(v ?? kind)}>
-              <SelectTrigger id="kind" className="w-full">
-                <SelectValue>{kindLabel(kind)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {kinds.map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {kindLabel(k)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <form action={action} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">{t('name')}</Label>
+              <Input id="name" name="name" placeholder={t('namePlaceholder')} required />
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="institution">{t('institution')}</Label>
-            <Input id="institution" name="institution" placeholder={t('institutionPlaceholder')} />
-          </div>
+            <div className="grid gap-2">
+              <Label htmlFor="kind">{t('kind')}</Label>
+              {/* Controlled, with the label passed explicitly: the trigger cannot
+                  resolve an item's text while SelectContent is unmounted. */}
+              <Select name="kind" value={kind} onValueChange={(v) => setKind(v ?? kind)}>
+                <SelectTrigger id="kind" className="w-full">
+                  <SelectValue>{kindLabel(kind)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {kinds.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {kindLabel(k)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <input type="hidden" name="currency" value={baseCurrency} />
+            <div className="grid gap-2">
+              <Label htmlFor="institution">{t('institution')}</Label>
+              <Input
+                id="institution"
+                name="institution"
+                placeholder={t('institutionPlaceholder')}
+              />
+            </div>
 
-          {state.error !== undefined && (
-            <Alert variant="destructive">
-              <AlertDescription>{state.error}</AlertDescription>
-            </Alert>
-          )}
+            <input type="hidden" name="currency" value={baseCurrency} />
 
-          <Button type="submit" disabled={pending}>
-            {t('create')}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            {state.error !== undefined && (
+              <Alert variant="destructive" role="alert">
+                <AlertDescription>{state.error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" disabled={pending}>
+              {t('create')}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -27,7 +27,7 @@
   },
   "dashboard": {
     "netWorth": "Patrimoine net",
-    "netWorthHint": "Actifs uniquement. Un virement interne ne change pas ce montant.",
+    "netWorthHint": "Ce que vous possédez, moins ce que vous devez. Un virement interne ne change rien.",
     "accounts": "Comptes",
     "greeting": "Bonjour, {name}",
     "assets": "Actifs",
@@ -40,7 +40,10 @@
     "equityNote": "Solde d'ouverture, hors patrimoine net",
     "emptyTitle": "Aucun mouvement",
     "emptyBody": "Enregistrez une première transaction et les chiffres ci-dessus prennent vie.",
-    "accountCount": "{count, plural, =1 {# compte} other {# comptes}}"
+    "accountCount": "{count, plural, =1 {# compte} other {# comptes}}",
+    "title": "Vue d'ensemble",
+    "manageAccounts": "Gérer les comptes",
+    "sharePlain": "{percent} %"
   },
   "quickAdd": {
     "title": "Déplacer de l'argent",
@@ -118,6 +121,16 @@
     "equity": "Solde d'ouverture",
     "equityNote": "Créé avec le foyer. C'est la contrepartie de votre premier dépôt, pas quelque chose que vous possédez.",
     "empty": "Aucun compte dans ce groupe.",
-    "closeHint": "Un compte doit être vide avant d'être clôturé."
+    "closeHint": "Un compte doit être vide avant d'être clôturé.",
+    "edit": "Renommer",
+    "cancel": "Annuler",
+    "equityShort": "Hors patrimoine net"
+  },
+  "toast": {
+    "transactionRecorded": "Transaction enregistrée",
+    "accountCreated": "Compte créé",
+    "accountRenamed": "Compte renommé",
+    "accountClosed": "Compte clôturé",
+    "accountReopened": "Compte rouvert"
   }
 }

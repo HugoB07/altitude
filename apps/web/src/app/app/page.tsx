@@ -1,12 +1,12 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { ArrowDownRight, ArrowUpRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { accountBalances, netWorth, type AccountBalance } from '@altitude/core';
 import { Money } from '@altitude/shared';
 import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { AccountIcon } from '@/components/account-icon';
 import { Allocation, type AllocationSegment } from './allocation';
 import { QuickAdd } from './quick-add';
 
@@ -29,7 +29,6 @@ function format(amount: string, currency: string, locale: string): string {
   }).format(Number(amount));
 }
 
-/** Sums one class of account, in one currency. */
 function totalOf(
   balances: readonly AccountBalance[],
   currency: string,
@@ -50,21 +49,17 @@ export default async function DashboardPage() {
 
   const t = await getTranslations();
   const locale = await getLocale();
-  // Widened to string on purpose: balances arrive as Money<string>, and the
-  // literal type would make every sum with one a mismatch. Multi-currency is
-  // phase 3, and this is the variable that becomes a lookup then.
+  // Widened on purpose: balances arrive as Money<string>, and the literal type
+  // would make every sum with one a mismatch. Multi-currency is phase 3.
   const base: string = 'EUR';
 
   const all = await scoped((tx) => accountBalances(tx, ctx.actor));
-
-  // Closed accounts leave the dashboard entirely. They are guaranteed empty -
-  // closeAccount refuses otherwise - so dropping them changes no total, only
-  // the length of the list.
+  // Closed accounts leave the dashboard. closeAccount refuses a non-empty one,
+  // so dropping them changes no total, only the length of the list.
   const balances = all.filter((b) => b.closedOn === null);
 
   const assets = balances.filter((b) => b.classification === 'asset');
   const debts = balances.filter((b) => b.classification === 'liability');
-  const equity = balances.filter((b) => b.classification === 'equity');
 
   const total = netWorth(balances, base);
   const assetTotal = totalOf(balances, base, (b) => b.classification === 'asset');
@@ -77,10 +72,9 @@ export default async function DashboardPage() {
   /**
    * Assets by kind, largest first.
    *
-   * Only positive holdings are charted. A cash account overdrawn into the
-   * negative is an asset with a negative balance, and a bar segment cannot be
-   * negative - it would either vanish or, worse, render as a positive share of
-   * something the household does not have.
+   * Only positive holdings are charted. An overdrawn cash account is an asset
+   * with a negative balance, and an arc cannot be negative: it would either
+   * vanish or render as a positive share of something nobody has.
    */
   const byKind = new Map<string, Money>();
   for (const account of assets) {
@@ -96,164 +90,207 @@ export default async function DashboardPage() {
         key: kind,
         label: t(`accountKind.${kind}`),
         amount: format(value.amount.toFixed(), base, locale),
-        // Divided as a Decimal, then read as a number for a CSS width.
         share: Number(value.amount.div(chartTotal.amount).times(100).toFixed(4)),
+        shareText: t('dashboard.share', {
+          percent: value.amount.div(chartTotal.amount).times(100).toFixed(1),
+        }),
       }))
     : [];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
-      <div className="grid gap-6 lg:col-span-2">
-        <Card>
-          <CardHeader className="pb-1">
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              {t('dashboard.netWorth')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-5">
-            <div>
-              <p className="text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">
-                {format(total.amount.toFixed(), base, locale)}
-              </p>
-              <p className="text-muted-foreground mt-2 text-sm">{t('dashboard.netWorthHint')}</p>
-            </div>
+    <div className="grid gap-6">
+      {/* The headline sits on the page, unboxed. A figure that matters more than
+          everything else on the screen should not be inside the same kind of
+          container as everything else on the screen. */}
+      <section className="flex flex-wrap items-start justify-between gap-x-6 gap-y-5 pt-2 pb-1">
+        <div>
+          <p className="text-muted-foreground text-[13px] font-medium">{t('dashboard.netWorth')}</p>
+          <p className="mt-1.5 text-5xl font-semibold tracking-tight tabular-nums">
+            {format(total.amount.toFixed(), base, locale)}
+          </p>
+          <p className="text-muted-foreground mt-2.5 max-w-prose text-sm">
+            {t('dashboard.netWorthHint')}
+          </p>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Stat
-                label={t('dashboard.assets')}
-                value={format(assetTotal.amount.toFixed(), base, locale)}
-                tone="up"
-              />
-              <Stat
-                label={t('dashboard.liabilities')}
-                value={format(debtTotal.amount.toFixed(), base, locale)}
-                tone="down"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('dashboard.allocation')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Allocation
-              segments={segments}
-              emptyLabel={t('dashboard.allocationEmpty')}
-              shareLabel={(percent) => t('dashboard.share', { percent })}
+          <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-4">
+            <Stat
+              label={t('dashboard.assets')}
+              value={format(assetTotal.amount.toFixed(), base, locale)}
             />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between gap-3">
-            <CardTitle className="text-base">{t('dashboard.assetAccounts')}</CardTitle>
-            <span className="text-muted-foreground text-xs">
-              {t('dashboard.accountCount', { count: assets.length })}
-            </span>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <AccountList accounts={assets} locale={locale} />
-          </CardContent>
-        </Card>
-
-        {debts.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('dashboard.liabilityAccounts')}</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <AccountList accounts={debts} locale={locale} />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Equity, shown rather than hidden. It is plumbing, not something the
-            household owns, but an account list that quietly omitted where the
-            money came from would not add up for anyone who looked. */}
-        {equity.length > 0 && (
-          <div className="text-muted-foreground grid gap-1.5 px-1 text-xs">
-            {equity.map((account) => (
-              <div key={account.accountId} className="flex items-center justify-between gap-3">
-                <span className="truncate">
-                  {account.name} · {t('dashboard.equityNote')}
-                </span>
-                <span className="shrink-0 tabular-nums">
-                  {format(account.balance.amount.toFixed(), account.currency, locale)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-6 lg:sticky lg:top-22">
-        {!hasMovement && (
-          <Card className="border-dashed shadow-none">
-            <CardContent className="flex gap-3 py-5">
-              <Sparkles className="text-muted-foreground mt-0.5 size-4 shrink-0" aria-hidden />
-              <div className="grid gap-1">
-                <p className="text-sm font-medium">{t('dashboard.emptyTitle')}</p>
-                <p className="text-muted-foreground text-sm">{t('dashboard.emptyBody')}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            <Stat
+              label={t('dashboard.liabilities')}
+              value={format(debtTotal.amount.toFixed(), base, locale)}
+            />
+            <Stat
+              label={t('dashboard.accounts')}
+              value={t('dashboard.accountCount', { count: balances.length })}
+            />
+          </dl>
+        </div>
 
         <QuickAdd
           accounts={balances.map((a) => ({ id: a.accountId, name: a.name }))}
           role={ctx.actor.role}
         />
+      </section>
+
+      {!hasMovement && (
+        <div className="rounded-2xl border border-dashed p-5">
+          <p className="text-sm font-medium">{t('dashboard.emptyTitle')}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{t('dashboard.emptyBody')}</p>
+        </div>
+      )}
+
+      {/* Panels, not the flat page. The complaint about cards was that they all
+          weighed the same and boxed the headline in with the detail; a quiet
+          surface under the detail while the headline stays on the page is the
+          hierarchy that was missing. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <Panel title={t('dashboard.allocation')}>
+          <Allocation
+            segments={segments}
+            total={format(chartTotal.amount.toFixed(), base, locale)}
+            totalLabel={t('dashboard.assets')}
+            emptyLabel={t('dashboard.allocationEmpty')}
+          />
+        </Panel>
+
+        <div className="grid gap-6">
+          <Panel
+            title={t('dashboard.assetAccounts')}
+            action={
+              <Link
+                href="/app/accounts"
+                className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs font-medium transition-colors"
+              >
+                {t('dashboard.manageAccounts')}
+                <ArrowRight className="size-3.5" aria-hidden />
+              </Link>
+            }
+          >
+            <AccountRows
+              accounts={assets}
+              locale={locale}
+              scale={assetTotal}
+              labelOf={(kind) => t(`accountKind.${kind}`)}
+              shareOf={(percent) => t('dashboard.sharePlain', { percent })}
+            />
+          </Panel>
+
+          {debts.length > 0 && (
+            <Panel title={t('dashboard.liabilityAccounts')}>
+              <AccountRows
+                accounts={debts}
+                locale={locale}
+                scale={debtTotal}
+                labelOf={(kind) => t(`accountKind.${kind}`)}
+                shareOf={(percent) => t('dashboard.sharePlain', { percent })}
+              />
+            </Panel>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone: 'up' | 'down' }) {
-  const Icon = tone === 'up' ? ArrowUpRight : ArrowDownRight;
+function Panel({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="bg-muted/50 rounded-lg px-3.5 py-3">
-      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
-        <Icon className="size-3.5" aria-hidden />
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-semibold tracking-tight tabular-nums">{value}</p>
+    <section className="bg-card/60 rounded-2xl border p-5 sm:p-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-[13px] font-semibold tracking-wide uppercase">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
+      <dd className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{value}</dd>
     </div>
   );
 }
 
-async function AccountList({
+/**
+ * Accounts as rows with a glyph, a weight and an amount.
+ *
+ * The bar repeats the percentage next to it on purpose: a column of numbers
+ * gives the ranking only after you have read every one, and the shape of a
+ * household is legible from the bars at a glance. The percentage is bare here
+ * rather than "x % of assets" - the panel heading already said which.
+ */
+function AccountRows({
   accounts,
   locale,
+  scale,
+  labelOf,
+  shareOf,
 }: {
   accounts: readonly AccountBalance[];
   locale: string;
+  /** What a full bar means. Zero when there is nothing to compare against. */
+  scale: Money;
+  labelOf: (kind: string) => string;
+  shareOf: (percent: string) => string;
 }) {
-  const t = await getTranslations();
+  const reference = scale.abs();
 
   return (
-    <ul>
-      {accounts.map((account, index) => (
-        <li key={account.accountId}>
-          {index > 0 && <Separator />}
-          <div className="flex items-center justify-between gap-4 py-3">
-            <span className="grid min-w-0">
-              <span className="truncate text-sm font-medium">{account.name}</span>
-              <span className="text-muted-foreground truncate text-xs capitalize">
-                {t(`accountKind.${account.kind}`)}
-              </span>
+    <ul className="grid gap-0.5">
+      {accounts.map((account) => {
+        const share = reference.isZero()
+          ? 0
+          : Number(account.balance.abs().amount.div(reference.amount).times(100).toFixed(2));
+
+        return (
+          <li
+            key={account.accountId}
+            className="hover:bg-muted/50 -mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors"
+          >
+            <AccountIcon kind={account.kind} />
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] leading-tight font-medium">{account.name}</p>
+              <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                {labelOf(account.kind)}
+              </p>
+            </div>
+
+            <span className="bg-muted hidden h-1.5 w-14 shrink-0 overflow-hidden rounded-full sm:block">
+              <span
+                className="bg-foreground/40 block h-full rounded-full"
+                style={{ width: `${Math.min(share, 100)}%` }}
+              />
             </span>
+
+            <span className="text-muted-foreground hidden w-14 shrink-0 text-right text-xs tabular-nums sm:block">
+              {shareOf(share.toFixed(1))}
+            </span>
+
             <span
-              className={`shrink-0 text-sm tabular-nums ${
-                account.balance.isNegative() ? 'text-destructive' : ''
+              className={`w-32 shrink-0 text-right text-[15px] font-semibold tabular-nums ${
+                account.classification === 'asset' && account.balance.isNegative()
+                  ? 'text-destructive'
+                  : ''
               }`}
             >
               {format(account.balance.amount.toFixed(), account.currency, locale)}
             </span>
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { CREATABLE_KINDS, accountBalances, type AccountBalance } from '@altitude/core';
+import { Money } from '@altitude/shared';
 import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { AccountRow } from './account-row';
 import { NewAccount } from './new-account';
 
@@ -33,76 +32,85 @@ export default async function AccountsPage() {
   const locale = await getLocale();
   const balances = await scoped((tx) => accountBalances(tx, ctx.actor));
 
+  // Widened to string: balances arrive as Money<string>, and the literal type
+  // would make every sum with one a mismatch.
+  const base: string = 'EUR';
+  const groupTotal = (kept: readonly AccountBalance[]) =>
+    format(
+      kept
+        .reduce((sum, b) => sum.plus(b.balance), Money.zero(base))
+        .abs()
+        .amount.toFixed(),
+      base,
+      locale,
+    );
+
+  const assets = balances.filter((b) => b.classification === 'asset');
+  const debts = balances.filter((b) => b.classification === 'liability');
+  const equity = balances.filter((b) => b.classification === 'equity');
   const groups = [
-    { key: 'assets', accounts: balances.filter((b) => b.classification === 'asset') },
-    { key: 'liabilities', accounts: balances.filter((b) => b.classification === 'liability') },
+    { key: 'assets', accounts: assets, total: groupTotal(assets) },
+    { key: 'liabilities', accounts: debts, total: groupTotal(debts) },
   ] as const;
 
-  const equity = balances.filter((b) => b.classification === 'equity');
+  const editable = ctx.actor.role !== 'viewer' && ctx.actor.role !== 'child';
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
-      <div className="grid gap-6 lg:col-span-2">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t('description')}</p>
+    <div className="grid gap-10">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('description')}</p>
         </div>
+        <NewAccount kinds={CREATABLE_KINDS} baseCurrency={base} role={ctx.actor.role} />
+      </div>
 
+      <div className="grid gap-6 xl:grid-cols-2">
         {groups.map((group) => (
-          <Card key={group.key}>
-            <CardHeader>
-              <CardTitle className="text-base">{t(group.key)}</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {group.accounts.length === 0 ? (
-                <p className="text-muted-foreground py-2 text-sm">{t('empty')}</p>
-              ) : (
-                <div>
-                  {group.accounts.map((account, index) => (
-                    <div key={account.accountId}>
-                      {index > 0 && <Separator />}
-                      <Row
-                        account={account}
-                        locale={locale}
-                        editable={editableBy(ctx.actor.role)}
-                      />
-                    </div>
-                  ))}
-                </div>
+          <section key={group.key} className="bg-card/60 rounded-2xl border p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-[13px] font-semibold tracking-wide uppercase">{t(group.key)}</h2>
+              {group.accounts.length > 0 && (
+                <span className="shrink-0 text-sm font-semibold tabular-nums">{group.total}</span>
               )}
-            </CardContent>
-          </Card>
+            </div>
+
+            {group.accounts.length === 0 ? (
+              <p className="text-muted-foreground text-sm">{t('empty')}</p>
+            ) : (
+              <ul className="grid gap-0.5">
+                {group.accounts.map((account) => (
+                  <li key={account.accountId}>
+                    <Row account={account} locale={locale} editable={editable} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         ))}
-
-        {equity.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('equity')}</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {/* Never editable, by anyone. Renaming or closing the counterpart
-                  of every deposit would break transactions nobody is looking at
-                  from this screen. */}
-              {equity.map((account) => (
-                <Row key={account.accountId} account={account} locale={locale} editable={false} />
-              ))}
-              <p className="text-muted-foreground px-2 pt-1 text-xs">{t('equityNote')}</p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
-      <div className="grid gap-4 lg:sticky lg:top-22">
-        <NewAccount kinds={CREATABLE_KINDS} baseCurrency="EUR" role={ctx.actor.role} />
-        <p className="text-muted-foreground px-1 text-xs">{t('closeHint')}</p>
-      </div>
+      {/* Never editable, by anyone, and deliberately not a section of its own:
+          renaming or closing the counterpart of every deposit would break
+          transactions invisible from this screen, and a heading would weigh it
+          more than the accounts it exists to balance. */}
+      {equity.length > 0 && (
+        <div className="text-muted-foreground grid max-w-prose gap-1 text-xs">
+          {equity.map((account) => (
+            <div key={account.accountId} className="flex items-center justify-between gap-3">
+              <span className="truncate">
+                {account.name} · {t('equityShort')}
+              </span>
+              <span className="shrink-0 tabular-nums">
+                {format(account.balance.amount.toFixed(), account.currency, locale)}
+              </span>
+            </div>
+          ))}
+          <p className="mt-1">{t('equityNote')}</p>
+        </div>
+      )}
     </div>
   );
-}
-
-/** Who may rename and close. The service refuses the rest regardless. */
-function editableBy(role: string): boolean {
-  return role !== 'viewer' && role !== 'child';
 }
 
 function Row({
@@ -120,7 +128,10 @@ function Row({
       name={account.name}
       kind={account.kind}
       balance={format(account.balance.amount.toFixed(), account.currency, locale)}
-      negative={account.balance.isNegative()}
+      // An asset in the red is worth flagging. A liability is negative by
+      // definition and the opening balance by arithmetic - painting either as an
+      // alert says "something is wrong" about the two cases where nothing is.
+      alarming={account.classification === 'asset' && account.balance.isNegative()}
       closedOn={account.closedOn}
       editable={editable}
     />

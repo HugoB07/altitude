@@ -27,7 +27,7 @@
   },
   "dashboard": {
     "netWorth": "Net worth",
-    "netWorthHint": "Assets only. Internal transfers do not change this figure.",
+    "netWorthHint": "What you own, less what you owe. An internal transfer changes nothing.",
     "accounts": "Accounts",
     "greeting": "Hello, {name}",
     "assets": "Assets",
@@ -40,7 +40,10 @@
     "equityNote": "Opening balance, excluded from net worth",
     "emptyTitle": "No movement yet",
     "emptyBody": "Record a first transaction and the numbers above start working.",
-    "accountCount": "{count, plural, =1 {# account} other {# accounts}}"
+    "accountCount": "{count, plural, =1 {# account} other {# accounts}}",
+    "title": "Overview",
+    "manageAccounts": "Manage accounts",
+    "sharePlain": "{percent} %"
   },
   "quickAdd": {
     "title": "Move money",
@@ -118,6 +121,16 @@
     "equity": "Opening balance",
     "equityNote": "Created with the household. It is the counterpart of your first deposit, not something you own.",
     "empty": "No accounts in this group yet.",
-    "closeHint": "An account has to be empty before it can be closed."
+    "closeHint": "An account has to be empty before it can be closed.",
+    "edit": "Rename",
+    "cancel": "Cancel",
+    "equityShort": "Not part of net worth"
+  },
+  "toast": {
+    "transactionRecorded": "Transaction recorded",
+    "accountCreated": "Account created",
+    "accountRenamed": "Account renamed",
+    "accountClosed": "Account closed",
+    "accountReopened": "Account reopened"
   }
 }
