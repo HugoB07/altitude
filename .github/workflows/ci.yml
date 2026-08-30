@@ -88,6 +88,40 @@ jobs:
       - name: Database tests
         run: pnpm test:db
 
+      # The application is rendered, in a browser, against a real database.
+      #
+      # It is here because a server-to-client boundary error reached a person:
+      # a function passed as a prop, which compiles, typechecks, lints and
+      # builds, and throws on the first render. Every other step in this file
+      # passed it. Nothing short of rendering the page could have caught it.
+      - name: Start the database
+        run: pnpm db:up
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @altitude/web exec playwright install chromium --with-deps
+
+      # Generated per run rather than read from a repository secret. The value
+      # only has to be a secret from the outside world, and this run has no
+      # outside world - so there is nothing to store, rotate, or leak, and no
+      # default sitting in the file waiting to be used in production.
+      - name: Session secret for this run
+        run: echo "AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: End-to-end
+        run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgres://altitude_app:altitude_app@localhost:55432/altitude
+          MIGRATE_DATABASE_URL: postgres://altitude_migrate:altitude_migrate@localhost:55432/altitude
+          E2E_ADMIN_DATABASE_URL: postgres://altitude:altitude@localhost:55432/altitude
+
+      - name: Upload the Playwright report
+        if: failure() && hashFiles('apps/web/playwright-report/**') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 14
+
       - name: Upload coverage
         if: always() && hashFiles('coverage/**') != ''
         uses: actions/upload-artifact@v7
@@ -97,8 +131,7 @@ jobs:
           retention-days: 14
 # Deliberately not here yet, each waiting on the code it would test:
 #
-#   build       next build + worker build          - needs apps/web (phase 0, day 4)
-#   test:e2e    Playwright                         - needs a running application
+#   build       next build + worker build          - needs a worker to build
 #   sbom        CycloneDX                          - worth generating per release, not per commit
 #   docker      buildx amd64/arm64 + cosign        - needs a Dockerfile (phase 6)
 #

@@ -18,7 +18,7 @@
     "db:check": "pnpm --filter @altitude/db exec drizzle-kit check",
     "db:down": "docker compose -f docker/docker-compose.dev.yml down",
     "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && pnpm db:up",
-    "db:up": "docker compose -f docker/docker-compose.dev.yml up -d",
+    "db:up": "docker compose -f docker/docker-compose.dev.yml up -d --wait",
     "dev": "turbo run dev",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yaml,yml}\"",
@@ -29,6 +29,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run packages/shared packages/core --exclude \"**/*.db.test.ts\" --coverage",
     "test:db": "vitest run packages/db .db.test.ts",
+    "test:e2e": "pnpm --filter @altitude/web test:e2e",
     "test:unit": "vitest run packages/shared packages/core --exclude \"**/*.db.test.ts\"",
     "test:watch": "vitest",
     "typecheck": "turbo run typecheck"

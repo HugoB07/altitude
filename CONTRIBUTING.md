@@ -175,7 +175,20 @@ pnpm db:check       # migration collisions
 pnpm typecheck      # tsc --noEmit across every package
 pnpm test           # vitest, including the property-based tests
 pnpm build          # next build
+pnpm test:e2e       # playwright, in a browser, against a real database
 ```
+
+`pnpm test:e2e` builds the application, starts it on port 3100 so it never
+fights a dev server on 3000, and runs one journey through it: sign up, create a
+household, add an account, move money, read the number back. It needs Chromium
+once (`pnpm --filter @altitude/web exec playwright install chromium`) and
+`E2E_ADMIN_DATABASE_URL` from `.env.example` - a role that may CREATE DATABASE,
+since it builds `altitude_e2e` from the migrations on every run and drops it
+first. Your development database is never touched.
+
+It exists because a function passed from a server component to a client one
+compiled, typechecked, linted and built, then threw on the first render. Every
+other check above passed it.
 
 `pnpm lint` runs two different questions and reports them separately in CI:
 `lint:boundaries` asks whether the architecture moved, `lint:code` whether the
