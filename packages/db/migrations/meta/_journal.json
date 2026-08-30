@@ -85,6 +85,13 @@
       "when": 1788100107826,
       "tag": "0011_entries_tenant_covering",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788112096764,
+      "tag": "0012_transactions_kind_index",
+      "breakpoints": true
     }
   ]
 }

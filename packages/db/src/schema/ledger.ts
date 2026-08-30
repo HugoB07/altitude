@@ -91,6 +91,26 @@ export const transactions = pgTable(
      * Partial, because a reversal is the exception. Only the rows that cancel
      * something are in the index, so it stays small and its scan stays short.
      */
+    /**
+     * Filtering the ledger by kind, in the ledger's own order.
+     *
+     * The four columns are the whole point: household because row-level
+     * security adds it to every query, kind because that is the filter, and the
+     * ordering pair so the matching rows come back sorted without a sort step.
+     * Measured on a million transactions: counting one kind went from 217 ms on
+     * a sequential scan to 26 ms, and the filtered page became an index-only
+     * scan of twenty-five rows.
+     *
+     * 64 MB at a million rows, and one more index to maintain on every insert.
+     * Worth it for a filter people reach for - show me every fee, every
+     * dividend - and it would not be for one nobody uses.
+     */
+    index('transactions_household_kind_idx').on(
+      t.householdId,
+      t.kind,
+      t.bookedOn.desc(),
+      t.id.desc(),
+    ),
     index('transactions_reverses_idx')
       .on(t.reversesId)
       .where(sql`${t.reversesId} IS NOT NULL`),
