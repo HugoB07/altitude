@@ -1,10 +1,20 @@
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowRight, Undo2 } from 'lucide-react';
-import { listTransactions, type LedgerEntry, type LedgerLine } from '@altitude/core';
+import {
+  TRANSACTION_STATUSES,
+  accountBalances,
+  listTransactions,
+  type LedgerEntry,
+  type LedgerLine,
+  type TransactionStatus,
+} from '@altitude/core';
+import { TRANSACTION_KINDS } from '@altitude/db';
+import { accountId as toAccountId, ledgerDate } from '@altitude/shared';
 import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
 import { Pagination } from '@/components/pagination';
+import { TransactionFilters, type FilterValues } from './filters';
 import { ReverseButton } from './reverse-button';
 
 export const metadata = { title: 'Altitude' };
@@ -12,6 +22,7 @@ export const metadata = { title: 'Altitude' };
 export const dynamic = 'force-dynamic';
 
 const PER_PAGE = 25;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The one place a Decimal becomes a number, for display only (ADR-0006). */
 function money(amount: string, currency: string, locale: string, signed = false): string {
@@ -60,15 +71,62 @@ export default async function TransactionsPage({
   const locale = await getLocale();
   const params = await searchParams;
 
-  // The page number travels in the URL, so this stays a server component, a
-  // reload lands where the reader was, and a page is a thing that can be linked
-  // to. Anything unparseable is page one rather than an error.
+  // The page number and every filter travel in the URL, so this stays a server
+  // component, a reload lands where the reader was, and a filtered view is a
+  // thing that can be linked to. Anything unparseable is ignored rather than
+  // raised: a hand-edited address should narrow the list or not, never break it.
   const asked = Number.parseInt(typeof params['page'] === 'string' ? params['page'] : '', 10);
   const requested = Number.isFinite(asked) && asked > 0 ? asked : 1;
 
+  const raw = (key: string): string => {
+    const value = params[key];
+    return typeof value === 'string' ? value : '';
+  };
+
+  const DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const filters: FilterValues = {
+    accountId: UUID.test(raw('accountId')) ? raw('accountId') : '',
+    kind: (TRANSACTION_KINDS as readonly string[]).includes(raw('kind')) ? raw('kind') : '',
+    status: (TRANSACTION_STATUSES as readonly string[]).includes(raw('status'))
+      ? raw('status')
+      : 'all',
+    from: DATE.test(raw('from')) ? raw('from') : '',
+    to: DATE.test(raw('to')) ? raw('to') : '',
+  };
+
+  const active =
+    filters.accountId !== '' ||
+    filters.kind !== '' ||
+    filters.status !== 'all' ||
+    filters.from !== '' ||
+    filters.to !== '';
+
+  const accounts = await scoped((tx) => accountBalances(tx, ctx.actor));
+
   const page = await scoped((tx) =>
-    listTransactions(tx, ctx.actor, { page: requested, perPage: PER_PAGE }),
+    listTransactions(tx, ctx.actor, {
+      page: requested,
+      perPage: PER_PAGE,
+      status: filters.status as TransactionStatus,
+      ...(filters.accountId === '' ? {} : { accountId: toAccountId(filters.accountId) }),
+      ...(filters.kind === '' ? {} : { kind: filters.kind }),
+      ...(filters.from === '' ? {} : { from: ledgerDate(filters.from) }),
+      ...(filters.to === '' ? {} : { to: ledgerDate(filters.to) }),
+    }),
   );
+
+  // Every filter is carried into the page links, and only the page number
+  // changes. A pagination that dropped the filters would send the reader from
+  // page 2 of their search to page 3 of everything.
+  const hrefFor = (n: number) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== '' && !(key === 'status' && value === 'all')) query.set(key, value);
+    }
+    if (n > 1) query.set('page', String(n));
+    const search = query.toString();
+    return search === '' ? '/app/transactions' : `/app/transactions?${search}`;
+  };
 
   const dates = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const canReverse = ctx.actor.role !== 'viewer' && ctx.actor.role !== 'child';
@@ -82,8 +140,26 @@ export default async function TransactionsPage({
         </p>
       </div>
 
+      {/* Keyed on the filters themselves, so following a link that changes them
+          remounts the form.
+          Every control here holds its choice in useState, initialised from the
+          URL. React keeps that state across a client-side navigation because
+          the component never unmounts - so "clear filters" changed the address
+          and the query, and left every field showing what had just been
+          cleared. The key makes the URL the single source of truth. */}
+      <TransactionFilters
+        key={`${filters.accountId}|${filters.kind}|${filters.status}|${filters.from}|${filters.to}`}
+        accounts={accounts.map((a) => ({ id: a.accountId, name: a.name }))}
+        kinds={TRANSACTION_KINDS}
+        statuses={TRANSACTION_STATUSES}
+        value={filters}
+        active={active}
+      />
+
       {page.transactions.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t('transactions.empty')}</p>
+        <p className="text-muted-foreground text-sm">
+          {t(active ? 'transactions.emptyFiltered' : 'transactions.empty')}
+        </p>
       ) : (
         <>
           <ul className="grid gap-3">
@@ -114,14 +190,13 @@ export default async function TransactionsPage({
                 pageCount: page.pageCount,
                 total: page.total,
               })}
+              {active && ` · ${t('transactions.filtered')}`}
             </p>
 
             <Pagination
               page={page.page}
               pageCount={page.pageCount}
-              hrefFor={(n) =>
-                n <= 1 ? '/app/transactions' : `/app/transactions?page=${String(n)}`
-              }
+              hrefFor={hrefFor}
               labels={{
                 previous: t('transactions.previous'),
                 next: t('transactions.next'),

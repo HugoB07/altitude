@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useLocale } from 'next-intl';
 import { enGB, fr } from 'date-fns/locale';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -12,6 +14,11 @@ interface Props {
   readonly id?: string;
   readonly describedBy?: string;
   readonly placeholder: string;
+  /** `YYYY-MM-DD`, for a field arriving with a value - a filter read back from the URL. */
+  readonly defaultValue?: string;
+  /** Whether the field can be emptied again. A filter can; a booking date cannot. */
+  readonly clearable?: boolean;
+  readonly clearLabel?: string;
 }
 
 /**
@@ -35,6 +42,20 @@ function toLedgerDate(date: Date): string {
 }
 
 /**
+ * `YYYY-MM-DD` back to a Date, in local time.
+ *
+ * `new Date('2026-03-01')` parses as UTC midnight, which west of Greenwich is
+ * the 28th of February locally - the same off-by-one-day this component exists
+ * to prevent, arriving from the other direction. Built from the parts instead,
+ * so the date that went into the URL is the date that comes back out.
+ */
+function fromLedgerDate(value: string | undefined): Date | undefined {
+  if (value === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year!, month! - 1, day!);
+}
+
+/**
  * date-fns locales, keyed by the application's.
  *
  * The calendar and the field label have to agree: "August 2026" above
@@ -44,8 +65,16 @@ function toLedgerDate(date: Date): string {
  */
 const CALENDAR_LOCALES = { en: enGB, fr } as const;
 
-export function DateField({ name, id, describedBy, placeholder }: Props) {
-  const [selected, setSelected] = useState<Date | undefined>(undefined);
+export function DateField({
+  name,
+  id,
+  describedBy,
+  placeholder,
+  defaultValue,
+  clearable = false,
+  clearLabel,
+}: Props) {
+  const [selected, setSelected] = useState<Date | undefined>(fromLedgerDate(defaultValue));
   const [open, setOpen] = useState(false);
   const locale = useLocale();
   const calendarLocale = CALENDAR_LOCALES[locale as keyof typeof CALENDAR_LOCALES] ?? enGB;
@@ -61,64 +90,90 @@ export function DateField({ name, id, describedBy, placeholder }: Props) {
         value={selected === undefined ? '' : toLedgerDate(selected)}
       />
 
-      <Popover open={open} onOpenChange={setOpen}>
-        {/* Base UI composes with `render`, not Radix's `asChild`. */}
-        <PopoverTrigger
-          render={
-            <Button
-              id={id}
-              type="button"
-              variant="outline"
-              aria-describedby={describedBy}
-              className="w-full justify-start font-normal"
-            />
-          }
-        >
-          {selected === undefined ? (
-            <span className="text-muted-foreground">{placeholder}</span>
-          ) : (
-            label.format(selected)
-          )}
-        </PopoverTrigger>
+      {/* The clear control sits inside the field rather than beside it: a
+          second button in the row reads as a second control, and it pushed the
+          field out of its column. Absolutely positioned over the trigger rather
+          than nested inside it, because a button inside a button is neither
+          valid nor clickable. */}
+      <div className="relative w-full">
+        <Popover open={open} onOpenChange={setOpen}>
+          {/* Base UI composes with `render`, not Radix's `asChild`. */}
+          <PopoverTrigger
+            render={
+              <Button
+                id={id}
+                type="button"
+                variant="outline"
+                aria-describedby={describedBy}
+                className={cn(
+                  'w-full justify-start font-normal',
+                  // Room for the clear control, so a long date never runs
+                  // underneath it.
+                  clearable && selected !== undefined && 'pr-9',
+                )}
+              />
+            }
+          >
+            {selected === undefined ? (
+              <span className="text-muted-foreground">{placeholder}</span>
+            ) : (
+              label.format(selected)
+            )}
+          </PopoverTrigger>
 
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            locale={calendarLocale}
-            selected={selected}
-            defaultMonth={selected}
-            // Month and year as a plain label, navigated with the arrows.
-            //
-            // The dropdown layout was tried and abandoned. react-day-picker's
-            // own dropdowns are native selects, which look nothing like the
-            // rest of the application; replacing them with shadcn Selects put
-            // one popup inside another, and the outer closed on the click that
-            // opened the inner. Making that hold needed the nested list
-            // portalled into the popover element - a fix resting on two
-            // libraries continuing to agree about where things render.
-            //
-            // A label and two arrows have none of that, and the range below
-            // keeps the arrows from wandering anywhere useless.
-            captionLayout="label"
-            // The dropdown range, not left to the default. react-day-picker
-            // offers a hundred years either side, which puts 1926 in a list of
-            // transaction dates and makes the native picker a scroll rather
-            // than a choice.
-            //
-            // Ten years back covers what an import can reasonably reach; the
-            // upper bound is today, because a transaction cannot be booked in
-            // the future - it has not happened. Backdating stays easy, since
-            // that is most of what importing history is.
-            startMonth={new Date(new Date().getFullYear() - 10, 0)}
-            endMonth={new Date()}
-            disabled={{ after: new Date() }}
-            onSelect={(date) => {
-              setSelected(date);
-              setOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              locale={calendarLocale}
+              selected={selected}
+              defaultMonth={selected}
+              // Month and year as a plain label, navigated with the arrows.
+              //
+              // The dropdown layout was tried and abandoned. react-day-picker's
+              // own dropdowns are native selects, which look nothing like the
+              // rest of the application; replacing them with shadcn Selects put
+              // one popup inside another, and the outer closed on the click that
+              // opened the inner. Making that hold needed the nested list
+              // portalled into the popover element - a fix resting on two
+              // libraries continuing to agree about where things render.
+              //
+              // A label and two arrows have none of that, and the range below
+              // keeps the arrows from wandering anywhere useless.
+              captionLayout="label"
+              // The dropdown range, not left to the default. react-day-picker
+              // offers a hundred years either side, which puts 1926 in a list of
+              // transaction dates and makes the native picker a scroll rather
+              // than a choice.
+              //
+              // Ten years back covers what an import can reasonably reach; the
+              // upper bound is today, because a transaction cannot be booked in
+              // the future - it has not happened. Backdating stays easy, since
+              // that is most of what importing history is.
+              startMonth={new Date(new Date().getFullYear() - 10, 0)}
+              endMonth={new Date()}
+              disabled={{ after: new Date() }}
+              onSelect={(date) => {
+                setSelected(date);
+                setOpen(false);
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Only where emptying is a real answer. A booking date has to be
+            something; a filter's upper bound does not. */}
+        {clearable && selected !== undefined && (
+          <button
+            type="button"
+            aria-label={clearLabel ?? ''}
+            title={clearLabel ?? ''}
+            onClick={() => setSelected(undefined)}
+            className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-ring absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        )}
+      </div>
     </>
   );
 }

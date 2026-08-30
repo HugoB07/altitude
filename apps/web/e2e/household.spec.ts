@@ -137,6 +137,48 @@ test('a mistake is corrected by adding its opposite, not by editing it', async (
     await expect(page.getByText('reversed').first()).toBeVisible();
     await expect(page.getByText('reverses an earlier transaction')).toBeVisible();
 
+    // --- Filters ------------------------------------------------------------
+    // Reversals only: the pair just created is what should come back, and the
+    // deposit that was not reversed should not.
+    await page.goto('/app/transactions?status=reversal');
+    await expect(page.getByText('reverses an earlier transaction')).toBeVisible();
+    await expect(page.getByText('A mistake')).toHaveCount(0);
+
+    // The other end of the same pair.
+    await page.goto('/app/transactions?status=reversed');
+    await expect(page.getByText('A mistake')).toBeVisible();
+
+    // A period that excludes everything, to prove the count follows the filter
+    // rather than reporting the whole ledger.
+    await page.goto('/app/transactions?from=2000-01-01&to=2000-01-02');
+    await expect(page.getByText('No transaction matches these filters.')).toBeVisible();
+
+    // The date filter through the calendar rather than the address bar. The
+    // popover is the component this application has argued with most, and a
+    // filter that only works when the date is typed into the URL is not one.
+    await page.goto('/app/transactions');
+    await page.getByLabel('From').click();
+    await page
+      .getByRole('button', { name: /today/i })
+      .or(page.locator('[data-today]'))
+      .first()
+      .click();
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}/);
+
+    // Clearing has to empty the fields, not only the address. Every control
+    // holds its choice in React state, and a client-side navigation does not
+    // unmount them - so this once changed the URL and left the dates on screen.
+    await page.getByRole('link', { name: 'Clear filters' }).click();
+    await expect(page).toHaveURL(/\/app\/transactions$/);
+    await expect(page.getByLabel('From')).toHaveText('Any date');
+
+    // A filter nobody could have typed correctly is ignored, not an error: a
+    // hand-edited address should narrow the list or not, never break it.
+    await page.goto('/app/transactions?kind=not-a-kind&status=nonsense&from=yesterday');
+    await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible();
+    await expect(page.getByText('A mistake')).toBeVisible();
+
     // A page number past the end is an empty page, not a crash. That is the
     // path a stale bookmark takes after a reversal shortens the ledger.
     await page.goto('/app/transactions?page=99');
@@ -164,6 +206,14 @@ async function deposit(page: Page, from: string, to: string, amount: string, des
   if (description !== undefined) await dialog.getByLabel('Description').fill(description);
   await dialog.getByRole('button', { name: 'Record' }).click();
 
-  await expect(page.getByText('Transaction recorded')).toBeVisible();
+  // The dialog closing is the reliable signal and is asserted first. A toast
+  // lingers for seconds, so a second call to this helper could match the
+  // previous one's toast and carry on while its own dialog was still open -
+  // which is how this test failed once and passed on the next run.
   await expect(dialog).toBeHidden();
+  // `.first()`, because a toast outlives the action that raised it: a second
+  // deposit puts a second one on screen while the first is still fading, and a
+  // strict locator then matches two. What matters is that a confirmation
+  // appeared, not that exactly one is on screen.
+  await expect(page.getByText('Transaction recorded').first()).toBeVisible();
 }
