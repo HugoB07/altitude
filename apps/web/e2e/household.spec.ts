@@ -105,8 +105,52 @@ test('money moved between accounts leaves net worth alone', async ({ page }) => 
   });
 });
 
+test('a mistake is corrected by adding its opposite, not by editing it', async ({ page }) => {
+  await expectNoConsoleErrors(page, async () => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(EMAIL);
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.waitForURL('**/app');
+
+    const worth = '€1,000.00';
+
+    // A transaction that should not have happened.
+    await deposit(page, 'Opening balances', 'Current account', '250', 'A mistake');
+    await expect(page.getByText('€1,250.00').first()).toBeVisible();
+
+    await page.goto('/app/transactions');
+    const mistake = page.locator('li', { hasText: 'A mistake' }).first();
+    await expect(mistake).toBeVisible();
+    // A two-sided movement is shown as the sentence it is, with both accounts
+    // named: the money came from somewhere, which is the point of ADR-0002.
+    await expect(mistake.getByText('€250.00')).toBeVisible();
+    await expect(mistake.getByText('Opening balances')).toBeVisible();
+    await expect(mistake.getByText('Current account')).toBeVisible();
+
+    await mistake.getByRole('button', { name: 'Reverse' }).click();
+    await expect(page.getByText('Transaction reversed')).toBeVisible();
+
+    // Nothing was deleted. The original is still there, now marked, and the
+    // entry that cancelled it sits beside it.
+    await expect(page.getByText('A mistake')).toBeVisible();
+    await expect(page.getByText('reversed').first()).toBeVisible();
+    await expect(page.getByText('reverses an earlier transaction')).toBeVisible();
+
+    // A page number past the end is an empty page, not a crash. That is the
+    // path a stale bookmark takes after a reversal shortens the ledger.
+    await page.goto('/app/transactions?page=99');
+    await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible();
+
+    // And the number went back to where it was.
+    await page.goto('/app');
+    await expect(page.getByText(worth).first()).toBeVisible();
+    await expect(page.getByText('€1,250.00')).toHaveCount(0);
+  });
+});
+
 /** Opens the dialog, fills it, and waits for the confirmation. */
-async function deposit(page: Page, from: string, to: string, amount: string) {
+async function deposit(page: Page, from: string, to: string, amount: string, description?: string) {
   await page.getByRole('button', { name: 'Move money' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -117,6 +161,7 @@ async function deposit(page: Page, from: string, to: string, amount: string) {
   await page.getByRole('option', { name: to, exact: true }).click();
 
   await dialog.getByLabel('Amount').fill(amount);
+  if (description !== undefined) await dialog.getByLabel('Description').fill(description);
   await dialog.getByRole('button', { name: 'Record' }).click();
 
   await expect(page.getByText('Transaction recorded')).toBeVisible();

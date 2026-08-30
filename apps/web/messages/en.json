@@ -131,6 +131,39 @@
     "accountCreated": "Account created",
     "accountRenamed": "Account renamed",
     "accountClosed": "Account closed",
-    "accountReopened": "Account reopened"
+    "accountReopened": "Account reopened",
+    "transactionReversed": "Transaction reversed"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "description": "Every movement, newest first. Nothing here is ever edited or deleted.",
+    "empty": "No transactions yet.",
+    "reverse": "Reverse",
+    "reversed": "reversed",
+    "isReversal": "reverses an earlier transaction",
+    "reverseHint": "A ledger is corrected by adding the opposite, never by editing. Both entries stay.",
+    "allAccounts": "All accounts",
+    "filterLabel": "Account",
+    "showing": "Page {page} of {pageCount} · {total} transactions",
+    "movedTo": "to",
+    "lines": "Entries",
+    "previous": "Previous page",
+    "next": "Next page",
+    "pageLabel": "Page"
+  },
+  "transactionKind": {
+    "buy": "purchase",
+    "sell": "sale",
+    "dividend": "dividend",
+    "interest": "interest",
+    "fee": "fee",
+    "tax": "tax",
+    "deposit": "deposit",
+    "withdrawal": "withdrawal",
+    "transfer": "transfer",
+    "fx": "currency exchange",
+    "revaluation": "revaluation",
+    "split": "split",
+    "adjustment": "adjustment"
   }
 }

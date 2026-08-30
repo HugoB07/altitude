@@ -131,6 +131,39 @@
     "accountCreated": "Compte créé",
     "accountRenamed": "Compte renommé",
     "accountClosed": "Compte clôturé",
-    "accountReopened": "Compte rouvert"
+    "accountReopened": "Compte rouvert",
+    "transactionReversed": "Transaction contrepassée"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "description": "Tous les mouvements, du plus récent au plus ancien. Rien ici n'est jamais modifié ni supprimé.",
+    "empty": "Aucune transaction pour le moment.",
+    "reverse": "Contrepasser",
+    "reversed": "contrepassée",
+    "isReversal": "contrepasse une transaction antérieure",
+    "reverseHint": "Un grand livre se corrige en ajoutant l'inverse, jamais en modifiant. Les deux écritures restent.",
+    "allAccounts": "Tous les comptes",
+    "filterLabel": "Compte",
+    "showing": "Page {page} sur {pageCount} · {total} transactions",
+    "movedTo": "vers",
+    "lines": "Écritures",
+    "previous": "Page précédente",
+    "next": "Page suivante",
+    "pageLabel": "Page"
+  },
+  "transactionKind": {
+    "buy": "achat",
+    "sell": "vente",
+    "dividend": "dividende",
+    "interest": "intérêts",
+    "fee": "frais",
+    "tax": "impôt",
+    "deposit": "dépôt",
+    "withdrawal": "retrait",
+    "transfer": "virement",
+    "fx": "change",
+    "revaluation": "réévaluation",
+    "split": "division",
+    "adjustment": "ajustement"
   }
 }

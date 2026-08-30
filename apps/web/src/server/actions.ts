@@ -11,6 +11,7 @@ import {
   postTransaction,
   renameAccount,
   reopenAccount,
+  reverseTransactionById,
 } from '@altitude/core';
 import { withHousehold } from '@altitude/db';
 import {
@@ -215,5 +216,36 @@ export async function reopenAccountAction(formData: FormData): Promise<ActionRes
 
   revalidatePath('/app/accounts');
   revalidatePath('/app');
+  return {};
+}
+
+/**
+ * Undo, the only way a ledger allows one: by adding the opposite.
+ *
+ * The reversal's id is minted here rather than by the database, for the same
+ * reason every other write does it - the domain builds the transaction before
+ * anything is inserted, and it needs the id to do that.
+ */
+export async function reverseTransactionAction(formData: FormData): Promise<ActionResult> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  try {
+    await scoped((tx) =>
+      reverseTransactionById(
+        tx,
+        actor,
+        transactionId(String(formData.get('id'))),
+        transactionId(randomUUID()),
+        todayIn(),
+      ),
+    );
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+
+  revalidatePath('/app/transactions');
+  revalidatePath('/app');
+  revalidatePath('/app/accounts');
   return {};
 }

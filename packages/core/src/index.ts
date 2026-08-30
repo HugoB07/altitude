@@ -30,10 +30,18 @@ export {
 } from './auth/policy';
 export {
   postTransaction,
+  listTransactions,
+  reverseTransactionById,
+  AlreadyReversedError,
+  TransactionNotFoundError,
   accountBalances,
   netWorth,
   type PostTransactionResult,
   type AccountBalance,
+  type LedgerEntry,
+  type LedgerLine,
+  type ListOptions,
+  type TransactionPage,
   TenantScopeError,
 } from './services/transactions';
 export { createHousehold, type NewHousehold, type CreatedHousehold } from './services/household';

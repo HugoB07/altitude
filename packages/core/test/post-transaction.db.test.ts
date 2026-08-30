@@ -14,12 +14,16 @@ import {
 } from '@altitude/shared';
 import { createClient, withHousehold, type Client } from '@altitude/db';
 import {
+  AlreadyReversedError,
   ForbiddenError,
   TenantScopeError,
+  TransactionNotFoundError,
   UnbalancedTransactionError,
   accountBalances,
+  listTransactions,
   netWorth,
   postTransaction,
+  reverseTransactionById,
   type Actor,
 } from '../src/index';
 
@@ -366,5 +370,192 @@ describe('postTransaction - the checks it must not skip', () => {
     expect(after.map((b) => b.balance.amount.toFixed())).toEqual(
       before.map((b) => b.balance.amount.toFixed()),
     );
+  });
+});
+
+describe('listTransactions', () => {
+  it('returns the ledger newest first, with every line of each transaction', async () => {
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, {}),
+    );
+
+    expect(page.transactions.length).toBeGreaterThan(0);
+
+    const dates = page.transactions.map((entry) => entry.bookedOn);
+    expect([...dates].sort().reverse()).toEqual(dates);
+
+    // Every transaction in this ledger balances, so every line of every one of
+    // them sums to nothing. This is the invariant of ADR-0002, read back out of
+    // the shape the screen will render rather than out of the database.
+    for (const entry of page.transactions) {
+      const base: string = 'EUR';
+      const sum = entry.lines.reduce((total, line) => total.plus(line.amount), Money.zero(base));
+      expect(sum.isZero(), `${entry.id} does not balance`).toBe(true);
+      expect(entry.lines.length).toBeGreaterThanOrEqual(2);
+      // Names, not identifiers: the screen shows accounts, and resolving them
+      // one query per row is how a list of twenty becomes forty-one queries.
+      expect(entry.lines.every((line) => line.accountName !== '')).toBe(true);
+    }
+  });
+
+  it('numbers its pages, and counts what it did not return', async () => {
+    const first = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 2, page: 1 }),
+    );
+    expect(first.transactions).toHaveLength(2);
+    expect(first.page).toBe(1);
+    // The count is of everything matching, not of what came back - it is what
+    // lets a reader be told "1 of 4" rather than only "there is more".
+    expect(first.total).toBeGreaterThan(2);
+    expect(first.pageCount).toBe(Math.ceil(first.total / 2));
+
+    const second = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 2, page: 2 }),
+    );
+    const firstIds = first.transactions.map((entry) => entry.id);
+    const secondIds = second.transactions.map((entry) => entry.id);
+    expect(firstIds.filter((id) => secondIds.includes(id))).toEqual([]);
+    expect(second.total).toBe(first.total);
+  });
+
+  it('clamps a page number past the end instead of skipping a billion rows', async () => {
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 2, page: 9999 }),
+    );
+    // Clamped, not honoured. An unbounded page number is an OFFSET anyone can
+    // make arbitrarily large from the address bar.
+    expect(page.page).toBe(page.pageCount);
+    expect(page.transactions.length).toBeGreaterThan(0);
+  });
+
+  it('counts every match, not only the page it returned', async () => {
+    const paged = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 2 }),
+    );
+    const everything = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 200 }),
+    );
+    // The count is what makes "page 3 of 40" possible, so it has to be the real
+    // number rather than a floor - the version that capped it made every page
+    // past 400 unreachable.
+    expect(paged.total).toBe(everything.transactions.length);
+    expect(paged.pageCount).toBe(Math.ceil(paged.total / 2));
+  });
+
+  it('filters to one account', async () => {
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { accountId: mortgage, perPage: 50 }),
+    );
+    expect(page.transactions.length).toBeGreaterThan(0);
+    for (const entry of page.transactions) {
+      expect(entry.lines.some((line) => line.accountId === mortgage)).toBe(true);
+    }
+  });
+
+  it('refuses an actor from another household', async () => {
+    const stranger: Actor = { userId: USER, householdId: OTHER, role: 'owner' };
+    await expect(
+      withHousehold(client, { householdId: HOUSE }, (tx) => listTransactions(tx, stranger, {})),
+    ).rejects.toThrow(TenantScopeError);
+  });
+});
+
+describe('reverseTransactionById', () => {
+  it('cancels a transaction by adding to the ledger, never by editing it', async () => {
+    const before = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      accountBalances(tx, owner),
+    );
+    const beforeWorth = netWorth(before, 'EUR');
+
+    const id = transactionId('cccccccc-0000-4000-8000-000000000001');
+    await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      postTransaction(tx, owner, {
+        id,
+        bookedOn: ledgerDate('2026-04-01'),
+        kind: 'deposit',
+        description: 'A mistake',
+        entries: [
+          { accountId: current, amount: Money.of('500', 'EUR') },
+          { accountId: opening, amount: Money.of('-500', 'EUR') },
+        ],
+      }),
+    );
+
+    await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      reverseTransactionById(
+        tx,
+        owner,
+        id,
+        transactionId('cccccccc-0000-4000-8000-000000000002'),
+        ledgerDate('2026-04-02'),
+      ),
+    );
+
+    const after = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      accountBalances(tx, owner),
+    );
+    expect(netWorth(after, 'EUR').equals(beforeWorth)).toBe(true);
+
+    // Both rows survive. Correcting a ledger adds to it; the original stays
+    // readable and what cancelled it sits beside it (ADR-0002).
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 50 }),
+    );
+    const original = page.transactions.find((t) => t.id === id);
+    const reversal = page.transactions.find((t) => t.reversesId === id);
+
+    expect(original?.description).toBe('A mistake');
+    expect(original?.reversedById).toBe(reversal?.id);
+    expect(reversal?.reversesId).toBe(id);
+  });
+
+  it('refuses to reverse the same transaction twice', async () => {
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 50 }),
+    );
+    const reversed = page.transactions.find((t) => t.reversedById !== null)!;
+
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        reverseTransactionById(
+          tx,
+          owner,
+          reversed.id,
+          transactionId('cccccccc-0000-4000-8000-000000000003'),
+          ledgerDate('2026-04-03'),
+        ),
+      ),
+    ).rejects.toThrow(AlreadyReversedError);
+  });
+
+  it('refuses an id from another household the same way as one that does not exist', async () => {
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        reverseTransactionById(
+          tx,
+          owner,
+          transactionId('dddddddd-0000-4000-8000-000000000009'),
+          transactionId('cccccccc-0000-4000-8000-000000000004'),
+          ledgerDate('2026-04-03'),
+        ),
+      ),
+    ).rejects.toThrow(TransactionNotFoundError);
+  });
+
+  it('refuses a viewer', async () => {
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 1 }),
+    );
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        reverseTransactionById(
+          tx,
+          viewer,
+          page.transactions[0]!.id,
+          transactionId('cccccccc-0000-4000-8000-000000000005'),
+          ledgerDate('2026-04-03'),
+        ),
+      ),
+    ).rejects.toThrow(ForbiddenError);
   });
 });
