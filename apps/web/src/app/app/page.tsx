@@ -55,7 +55,12 @@ export default async function DashboardPage() {
   // phase 3, and this is the variable that becomes a lookup then.
   const base: string = 'EUR';
 
-  const balances = await scoped((tx) => accountBalances(tx, ctx.actor));
+  const all = await scoped((tx) => accountBalances(tx, ctx.actor));
+
+  // Closed accounts leave the dashboard entirely. They are guaranteed empty -
+  // closeAccount refuses otherwise - so dropping them changes no total, only
+  // the length of the list.
+  const balances = all.filter((b) => b.closedOn === null);
 
   const assets = balances.filter((b) => b.classification === 'asset');
   const debts = balances.filter((b) => b.classification === 'liability');

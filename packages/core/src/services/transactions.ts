@@ -3,6 +3,10 @@ import { entries as entriesTable, transactions as transactionsTable } from '@alt
 import type { AccountClass, Database } from '@altitude/db';
 import { Money, type AccountId, type TransactionId } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
+import { assertActorMatchesTenant, TenantScopeError } from './tenant';
+
+// Re-exported so the move out of this file is invisible to importers.
+export { TenantScopeError };
 import { createTransaction } from '../ledger/create-transaction';
 import type { Transaction, TransactionInput } from '../ledger/types';
 
@@ -14,45 +18,6 @@ import type { Transaction, TransactionInput } from '../ledger/types';
  * in `scoped()`; a service that could open its own connection would be a
  * service that could forget which household it is acting for.
  */
-
-/**
- * Verifies the actor belongs to the household this transaction is bound to.
- *
- * `assertCan` compares the actor's household to the resource's, which for a
- * whole-household query means comparing it to itself - it checks the role and
- * nothing about tenancy. The tenancy that matters here is the connection's:
- * `withHousehold` set it, and an actor from a different household reaching this
- * point means a caller scoped to one and authorised against another.
- *
- * Row-level security would still return the right rows, so nothing would look
- * wrong - the caller would simply be acting for a household it did not intend.
- * That is a bug worth failing on rather than serving.
- */
-async function assertActorMatchesTenant(tx: Database, actor: Actor): Promise<void> {
-  const [row] = await tx.execute<{ tenant: string | null }>(
-    sql`SELECT current_setting('app.current_household', true) AS tenant`,
-  );
-  const tenant = row?.tenant ?? '';
-
-  if (tenant === '') {
-    throw new TenantScopeError(
-      'This work is not bound to a household. Wrap it in withHousehold().',
-    );
-  }
-  if (tenant !== actor.householdId) {
-    throw new TenantScopeError(
-      `Actor belongs to household ${actor.householdId} but this work is bound to ${tenant}.`,
-    );
-  }
-}
-
-export class TenantScopeError extends Error {
-  readonly code = 'TENANT_SCOPE_MISMATCH';
-  constructor(message: string) {
-    super(message);
-    this.name = 'TenantScopeError';
-  }
-}
 
 export interface PostTransactionResult {
   readonly transaction: Transaction;
@@ -124,6 +89,8 @@ export interface AccountBalance {
   readonly currency: string;
   /** Derived from `kind` in the database, so it cannot disagree with it. */
   readonly classification: AccountClass;
+  /** Null while the account is open. A closed account keeps its history. */
+  readonly closedOn: string | null;
   readonly balance: Money;
 }
 
@@ -155,6 +122,7 @@ export async function accountBalances(
     kind: string;
     currency: string;
     classification: AccountClass;
+    closed_on: string | null;
     balance: string;
   }>(sql`
     SELECT a.id,
@@ -162,10 +130,11 @@ export async function accountBalances(
            a.kind,
            a.currency,
            a.classification,
+           a.closed_on,
            COALESCE(sum(e.amount), 0)::text AS balance
       FROM accounts a
       LEFT JOIN entries e ON e.account_id = a.id
-     GROUP BY a.id, a.name, a.kind, a.currency, a.classification
+     GROUP BY a.id, a.name, a.kind, a.currency, a.classification, a.closed_on
      ORDER BY a.name
   `);
 
@@ -175,6 +144,7 @@ export async function accountBalances(
     kind: row.kind,
     currency: row.currency,
     classification: row.classification,
+    closedOn: row.closed_on,
     balance: Money.of(row.balance, row.currency),
   }));
 }

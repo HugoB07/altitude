@@ -27,9 +27,9 @@
     "lint:code": "pnpm --filter @altitude/web exec eslint --max-warnings 0",
     "plan": "cd docs/plan && node build-html.mjs && node build-pdf.mjs",
     "test": "vitest run",
-    "test:coverage": "vitest run packages/shared packages/core --exclude \"**/post-transaction.test.ts\" --coverage",
-    "test:db": "vitest run packages/db packages/core/test/post-transaction.test.ts",
-    "test:unit": "vitest run packages/shared packages/core --exclude \"**/post-transaction.test.ts\"",
+    "test:coverage": "vitest run packages/shared packages/core --exclude \"**/*.db.test.ts\" --coverage",
+    "test:db": "vitest run packages/db .db.test.ts",
+    "test:unit": "vitest run packages/shared packages/core --exclude \"**/*.db.test.ts\"",
     "test:watch": "vitest",
     "typecheck": "turbo run typecheck"
   },

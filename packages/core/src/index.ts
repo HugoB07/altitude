@@ -37,3 +37,15 @@ export {
   TenantScopeError,
 } from './services/transactions';
 export { createHousehold, type NewHousehold, type CreatedHousehold } from './services/household';
+export {
+  CREATABLE_KINDS,
+  createAccount,
+  renameAccount,
+  closeAccount,
+  reopenAccount,
+  AccountError,
+  InvalidAccountError,
+  AccountNotFoundError,
+  AccountNotEmptyError,
+  type NewAccount,
+} from './services/accounts';

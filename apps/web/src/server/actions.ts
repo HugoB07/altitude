@@ -4,7 +4,14 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
-import { createHousehold, postTransaction } from '@altitude/core';
+import {
+  closeAccount,
+  createAccount,
+  createHousehold,
+  postTransaction,
+  renameAccount,
+  reopenAccount,
+} from '@altitude/core';
 import { withHousehold } from '@altitude/db';
 import {
   Money,
@@ -124,6 +131,89 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
     return { error: await toMessage(error) };
   }
 
+  revalidatePath('/app');
+  return {};
+}
+
+/**
+ * Account management, one service call each.
+ *
+ * The id arrives from a hidden field, which sounds like a way to reach another
+ * household's account. It is not: the service runs inside `scoped`, so
+ * row-level security narrows every statement to the caller's household, and an
+ * id from elsewhere matches no row and comes back as not-found (ADR-0007).
+ */
+export async function createAccountAction(formData: FormData): Promise<ActionResult> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  const t = await getTranslations('accounts');
+  const name = String(formData.get('name') ?? '').trim();
+  if (name === '') return { error: t('nameRequired') };
+
+  try {
+    await scoped((tx) =>
+      createAccount(tx, actor, {
+        name,
+        kind: String(formData.get('kind') ?? ''),
+        currency: String(formData.get('currency') ?? 'EUR'),
+        institution: String(formData.get('institution') ?? ''),
+      }),
+    );
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+
+  revalidatePath('/app/accounts');
+  revalidatePath('/app');
+  return {};
+}
+
+export async function renameAccountAction(formData: FormData): Promise<ActionResult> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  const t = await getTranslations('accounts');
+  const name = String(formData.get('name') ?? '').trim();
+  if (name === '') return { error: t('nameRequired') };
+
+  try {
+    await scoped((tx) => renameAccount(tx, actor, accountId(String(formData.get('id'))), name));
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+
+  revalidatePath('/app/accounts');
+  revalidatePath('/app');
+  return {};
+}
+
+export async function closeAccountAction(formData: FormData): Promise<ActionResult> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  try {
+    await scoped((tx) => closeAccount(tx, actor, accountId(String(formData.get('id'))), todayIn()));
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+
+  revalidatePath('/app/accounts');
+  revalidatePath('/app');
+  return {};
+}
+
+export async function reopenAccountAction(formData: FormData): Promise<ActionResult> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  try {
+    await scoped((tx) => reopenAccount(tx, actor, accountId(String(formData.get('id')))));
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+
+  revalidatePath('/app/accounts');
   revalidatePath('/app');
   return {};
 }

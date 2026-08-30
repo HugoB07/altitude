@@ -94,5 +94,30 @@
     "sectionManage": "Manage",
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
+  },
+  "accounts": {
+    "title": "Accounts",
+    "description": "Everything the household owns or owes. Balances come from the ledger.",
+    "newTitle": "New account",
+    "newDescription": "It starts at zero. Record a transaction to put something in it.",
+    "name": "Name",
+    "namePlaceholder": "Livret A",
+    "kind": "Kind",
+    "currency": "Currency",
+    "institution": "Institution",
+    "institutionPlaceholder": "optional",
+    "create": "Add account",
+    "nameRequired": "An account needs a name.",
+    "save": "Save",
+    "close": "Close",
+    "reopen": "Reopen",
+    "closedBadge": "closed",
+    "closedOn": "Closed on {date}",
+    "assets": "Assets",
+    "liabilities": "Debt",
+    "equity": "Opening balance",
+    "equityNote": "Created with the household. It is the counterpart of your first deposit, not something you own.",
+    "empty": "No accounts in this group yet.",
+    "closeHint": "An account has to be empty before it can be closed."
   }
 }

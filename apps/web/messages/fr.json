@@ -94,5 +94,30 @@
     "sectionManage": "Gestion",
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu"
+  },
+  "accounts": {
+    "title": "Comptes",
+    "description": "Tout ce que le foyer possède ou doit. Les soldes viennent du grand livre.",
+    "newTitle": "Nouveau compte",
+    "newDescription": "Il démarre à zéro. Enregistrez une transaction pour y mettre quelque chose.",
+    "name": "Nom",
+    "namePlaceholder": "Livret A",
+    "kind": "Type",
+    "currency": "Devise",
+    "institution": "Établissement",
+    "institutionPlaceholder": "facultatif",
+    "create": "Ajouter le compte",
+    "nameRequired": "Un compte a besoin d'un nom.",
+    "save": "Enregistrer",
+    "close": "Clôturer",
+    "reopen": "Rouvrir",
+    "closedBadge": "clôturé",
+    "closedOn": "Clôturé le {date}",
+    "assets": "Actifs",
+    "liabilities": "Dettes",
+    "equity": "Solde d'ouverture",
+    "equityNote": "Créé avec le foyer. C'est la contrepartie de votre premier dépôt, pas quelque chose que vous possédez.",
+    "empty": "Aucun compte dans ce groupe.",
+    "closeHint": "Un compte doit être vide avant d'être clôturé."
   }
 }

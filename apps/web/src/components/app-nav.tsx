@@ -33,7 +33,7 @@ interface NavItem {
 
 const MAIN: readonly NavItem[] = [
   { key: 'dashboard', href: '/app', icon: LayoutDashboard, compact: true },
-  { key: 'accounts', icon: Wallet, compact: true },
+  { key: 'accounts', href: '/app/accounts', icon: Wallet, compact: true },
   { key: 'transactions', icon: CreditCard, compact: true },
   { key: 'holdings', icon: ChartPie },
   { key: 'realEstate', icon: Building2 },
