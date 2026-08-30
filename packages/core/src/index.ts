@@ -60,3 +60,11 @@ export {
   type NewAccount,
 } from './services/accounts';
 export { parseDelimited, parseRecords } from './import/csv';
+export { EXTERNAL, looksLikeTradeRepublic, readTradeRepublic } from './import/trade-republic';
+export type {
+  Candidate,
+  CandidateEntry,
+  CandidateInstrument,
+  ImportProblem,
+  ImportReading,
+} from './import/types';
