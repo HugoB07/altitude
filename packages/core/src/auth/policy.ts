@@ -41,6 +41,13 @@ export type Action = (typeof ACTIONS)[number];
  * `portfolioScope` is undefined for household-wide roles and a concrete list
  * for the scoped ones. Undefined means "the whole household", never "nothing":
  * the roles that carry a scope are the ones restricted by it.
+ *
+ * Nothing fills it yet. `memberships` has no column for a scope, so every actor
+ * built from a session arrives with it undefined - which means a `child` today
+ * reads the whole household rather than one subtree. The check below is real and
+ * tested; what is missing is somewhere to store the list, and that lands with
+ * child portfolios in phase 4 (ADR-0003). Said here because a reader of `can()`
+ * would otherwise reasonably assume the scoping is in force.
  */
 export interface Actor {
   readonly userId: UserId;

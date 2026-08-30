@@ -25,11 +25,11 @@ Numbering follows the development plan (`docs/plan/`, §3), so these numbers are
 even before the files exist. They are written when the code that depends on them is
 about to be built.
 
-| #    | Decision                                            | Written when         |
-| ---- | --------------------------------------------------- | -------------------- |
-| 0003 | Owners are distinct from users                      | phase 4 (household)  |
-| 0004 | Bank connectors: external, optional, off by default | phase 7 (connectors) |
-| 0008 | Valued history: materialised daily snapshots        | phase 3 (history)    |
+| #    | Decision                                               | Written when         |
+| ---- | ------------------------------------------------------ | -------------------- |
+| 0003 | Owners are distinct from users, and members are scoped | phase 4 (household)  |
+| 0004 | Bank connectors: external, optional, off by default    | phase 7 (connectors) |
+| 0008 | Valued history: materialised daily snapshots           | phase 3 (history)    |
 
 0008 was reserved for phase 1 and has moved to phase 3, deliberately. Phase 1 shipped
 without it because a balance derived from the ledger is fast enough on its own: measured
