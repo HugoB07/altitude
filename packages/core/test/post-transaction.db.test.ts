@@ -452,6 +452,99 @@ describe('listTransactions', () => {
     }
   });
 
+  it('filters by period, inclusive at both ends', async () => {
+    const all = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 200 }),
+    );
+    const day = all.transactions[0]!.bookedOn;
+
+    const onlyThatDay = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 200, from: ledgerDate(day), to: ledgerDate(day) }),
+    );
+
+    expect(onlyThatDay.transactions.length).toBeGreaterThan(0);
+    expect(onlyThatDay.transactions.every((e) => e.bookedOn === day)).toBe(true);
+    // Inclusive: a range whose ends are the same day still contains that day.
+    expect(onlyThatDay.total).toBeLessThan(all.total);
+  });
+
+  it('filters by kind', async () => {
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 200, kind: 'transfer' }),
+    );
+    expect(page.transactions.length).toBeGreaterThan(0);
+    expect(page.transactions.every((e) => e.kind === 'transfer')).toBe(true);
+  });
+
+  it('filters to reversals, and to what they reversed', async () => {
+    // Makes its own pair rather than relying on another test having run. Tests
+    // that depend on the order of the file fail in a way that blames the wrong
+    // one, and this file already shares a database between its cases.
+    const original = transactionId('eeeeeeee-0000-4000-8000-000000000001');
+    await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      postTransaction(tx, owner, {
+        id: original,
+        bookedOn: ledgerDate('2026-05-01'),
+        kind: 'deposit',
+        description: 'To be undone',
+        entries: [
+          { accountId: current, amount: Money.of('40', 'EUR') },
+          { accountId: opening, amount: Money.of('-40', 'EUR') },
+        ],
+      }),
+    );
+    await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      reverseTransactionById(
+        tx,
+        owner,
+        original,
+        transactionId('eeeeeeee-0000-4000-8000-000000000002'),
+        ledgerDate('2026-05-02'),
+      ),
+    );
+
+    const reversals = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 200, status: 'reversal' }),
+    );
+    const reversed = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 200, status: 'reversed' }),
+    );
+
+    expect(reversals.transactions.length).toBeGreaterThan(0);
+    expect(reversals.transactions.every((e) => e.reversesId !== null)).toBe(true);
+    expect(reversed.transactions.every((e) => e.reversedById !== null)).toBe(true);
+
+    // The two are opposite ends of the same pairs, so they match one for one.
+    expect(reversals.total).toBe(reversed.total);
+    expect(reversals.transactions.map((e) => e.reversesId).sort()).toEqual(
+      reversed.transactions.map((e) => e.id).sort(),
+    );
+  });
+
+  it('counts what the filter matches, not what the table holds', async () => {
+    const everything = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 1 }),
+    );
+    const reversals = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 1, status: 'reversal' }),
+    );
+    // The count and the page share one predicate. If they ever drifted apart,
+    // the page numbers would point at rows the list cannot show.
+    expect(reversals.total).toBeGreaterThan(0);
+    expect(reversals.total).toBeLessThan(everything.total);
+    expect(reversals.pageCount).toBe(reversals.total);
+  });
+
+  it('combines filters rather than picking one', async () => {
+    const page = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      listTransactions(tx, owner, { perPage: 200, kind: 'transfer', accountId: mortgage }),
+    );
+    for (const entry of page.transactions) {
+      expect(entry.kind).toBe('transfer');
+      expect(entry.lines.some((line) => line.accountId === mortgage)).toBe(true);
+    }
+  });
+
   it('refuses an actor from another household', async () => {
     const stranger: Actor = { userId: USER, householdId: OTHER, role: 'owner' };
     await expect(

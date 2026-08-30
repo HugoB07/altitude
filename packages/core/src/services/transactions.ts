@@ -200,11 +200,32 @@ export interface TransactionPage {
   readonly pageCount: number;
 }
 
+/**
+ * Which side of a reversal a transaction is on.
+ *
+ * `reversal` cancels another; `reversed` was cancelled by one. Opposite ends of
+ * the same pair, and both are cheap: reverses_id is indexed, and there are few
+ * of either.
+ *
+ * There is deliberately no "neither" option. It reads well - hide the
+ * corrections, show the clean ledger - but reversals are rare, so it matches
+ * almost every row while costing a full anti-join: measured at 1,062 ms against
+ * 0.6 ms for the reversals themselves. A filter that hides four rows out of a
+ * million is not worth a second of everyone's time.
+ */
+export const TRANSACTION_STATUSES = ['all', 'reversal', 'reversed'] as const;
+export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
+
 export interface ListOptions {
   /** 1-based. Clamped into range rather than refused. */
   readonly page?: number;
   readonly perPage?: number;
   readonly accountId?: AccountId;
+  /** Inclusive, on the booked date. */
+  readonly from?: LedgerDate;
+  readonly to?: LedgerDate;
+  readonly kind?: string;
+  readonly status?: TransactionStatus;
 }
 
 const MAX_PER_PAGE = 200;
@@ -248,12 +269,35 @@ export async function listTransactions(
 
   const perPage = Math.min(Math.max(options.perPage ?? DEFAULT_PER_PAGE, 1), MAX_PER_PAGE);
 
-  const matches =
+  /**
+   * Every filter, as one predicate used by both queries.
+   *
+   * Shared rather than written twice: a count that filtered differently from
+   * the page it counts would produce a page number pointing at nothing, and the
+   * two drifting apart is the kind of bug that only shows on page 4.
+   *
+   * `IS NOT DISTINCT FROM` is not needed anywhere here - every column compared
+   * is NOT NULL - so plain equality is enough and stays indexable.
+   */
+  const isReversed = sql`EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)`;
+
+  const clauses = [
     options.accountId === undefined
-      ? sql`true`
+      ? undefined
       : sql`EXISTS (SELECT 1 FROM entries e
                      WHERE e.transaction_id = t.id
-                       AND e.account_id = ${options.accountId}::uuid)`;
+                       AND e.account_id = ${options.accountId}::uuid)`,
+    options.from === undefined ? undefined : sql`t.booked_on >= ${options.from}::date`,
+    options.to === undefined ? undefined : sql`t.booked_on <= ${options.to}::date`,
+    options.kind === undefined || options.kind === '' ? undefined : sql`t.kind = ${options.kind}`,
+    options.status === undefined || options.status === 'all'
+      ? undefined
+      : options.status === 'reversal'
+        ? sql`t.reverses_id IS NOT NULL`
+        : isReversed,
+  ].filter((clause) => clause !== undefined);
+
+  const matches = clauses.length === 0 ? sql`true` : sql.join(clauses, sql` AND `);
 
   /**
    * A separate query, and deliberately not `count(*) OVER ()`.

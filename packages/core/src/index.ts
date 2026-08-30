@@ -40,7 +40,9 @@ export {
   type AccountBalance,
   type LedgerEntry,
   type LedgerLine,
+  TRANSACTION_STATUSES,
   type ListOptions,
+  type TransactionStatus,
   type TransactionPage,
   TenantScopeError,
 } from './services/transactions';
