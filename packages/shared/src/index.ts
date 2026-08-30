@@ -11,6 +11,7 @@ export {
   instrumentId,
   transactionId,
   categoryId,
+  importId,
   type Brand,
   type AccountId,
   type PortfolioId,
@@ -20,6 +21,7 @@ export {
   type InstrumentId,
   type TransactionId,
   type CategoryId,
+  type ImportId,
 } from './brand';
 
 // Deliberately NOT re-exported here: see './env.js'. Reading process.env makes a

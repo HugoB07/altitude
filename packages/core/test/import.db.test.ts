@@ -15,11 +15,15 @@ import {
 import { createClient, withHousehold, type Client } from '@altitude/db';
 import {
   bindAccounts,
+  commitImport,
   findDuplicates,
+  listTransactions,
   postTransaction,
+  readTradeRepublic,
   type Actor,
   type Candidate,
 } from '../src/index';
+import { importId as toImportId } from '@altitude/shared';
 
 /**
  * Deduplication, against a real ledger.
@@ -238,5 +242,168 @@ describe('findDuplicates', () => {
     };
     const { bound } = bindAccounts([candidate('2026-03-01', '10')], binding());
     await expect(scoped((tx) => findDuplicates(tx, stranger, bound))).rejects.toThrow();
+  });
+});
+
+/**
+ * The whole chain, on the shape of a real broker export.
+ *
+ * Read, bind, deduplicate, write - then do it again with the same file, which
+ * is what a person actually does two weeks later when they export a period that
+ * overlaps the last one.
+ */
+describe('an import, end to end', () => {
+  const HEADER = [
+    'datetime',
+    'date',
+    'account_type',
+    'category',
+    'type',
+    'asset_class',
+    'name',
+    'symbol',
+    'shares',
+    'price',
+    'amount',
+    'fee',
+    'tax',
+    'currency',
+    'original_amount',
+    'original_currency',
+    'fx_rate',
+    'description',
+    'transaction_id',
+    'counterparty_name',
+    'counterparty_iban',
+    'payment_reference',
+    'mcc_code',
+  ].join(';');
+
+  const rowOf = (fields: Record<string, string>) =>
+    HEADER.split(';')
+      .map((name) => fields[name] ?? '')
+      .join(';');
+
+  const FILE = [
+    HEADER,
+    rowOf({
+      date: '2026-04-01'.split('-').reverse().join('/'),
+      account_type: 'CASH',
+      type: 'TRANSFER_INSTANT_INBOUND',
+      amount: '300.000000',
+      currency: 'EUR',
+      description: 'Salary',
+      transaction_id: 'tr-1',
+    }),
+    rowOf({
+      date: '02/04/2026',
+      account_type: 'CASH',
+      type: 'TRANSFER_OUT',
+      amount: '-120.00',
+      currency: 'EUR',
+      description: 'To savings',
+      transaction_id: 'tr-2',
+    }),
+    rowOf({
+      date: '02/04/2026',
+      account_type: 'SAVINGS',
+      type: 'TRANSFER_IN',
+      amount: '120.00',
+      currency: 'EUR',
+      description: 'To savings',
+      transaction_id: 'tr-3',
+    }),
+    '',
+  ].join(String.fromCharCode(10));
+
+  async function run(file: string, ids: string[]) {
+    const reading = readTradeRepublic(file);
+    const { bound } = bindAccounts(reading.candidates, {
+      CASH: cash,
+      SAVINGS: savings,
+      EXTERNAL: opening,
+    });
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bound));
+
+    // Only what is not already there. `certain` is decided; `probable` would be
+    // a question for a person, and this file carries identifiers so none arise.
+    const keep = bound.filter((_, i) => verdicts[i]?.kind === 'new');
+
+    if (keep.length > 0) {
+      await scoped((tx) =>
+        commitImport(tx, owner, {
+          importId: toImportId(ids[0]!),
+          source: 'trade-republic',
+          filename: 'export.csv',
+          candidates: keep,
+          transactionIds: keep.map((_, i) => transactionId(ids[i + 1]!)),
+        }),
+      );
+    }
+    return { verdicts, written: keep.length };
+  }
+
+  it('writes what the file says, once', async () => {
+    const first = await run(FILE, [
+      'aaaaaaaa-1111-4000-8000-000000000000',
+      'aaaaaaaa-1111-4000-8000-000000000001',
+      'aaaaaaaa-1111-4000-8000-000000000002',
+    ]);
+
+    expect(first.written).toBe(2);
+
+    const page = await scoped((tx) =>
+      listTransactions(tx, owner, {
+        perPage: 50,
+        from: ledgerDate('2026-04-01'),
+        to: ledgerDate('2026-04-30'),
+      }),
+    );
+    expect(page.total).toBe(2);
+
+    // The transfer is one transaction with both sides, not two halves needing a
+    // counterpart invented for each.
+    const transfer = page.transactions.find((e) => e.description === 'To savings');
+    expect(transfer?.lines).toHaveLength(2);
+    expect(transfer?.lines.map((l) => l.accountId).sort()).toEqual([cash, savings].sort());
+
+    // And money from outside got the counterpart the preview chose for it.
+    const salary = page.transactions.find((e) => e.description === 'Salary');
+    expect(salary?.lines.some((l) => l.accountId === opening)).toBe(true);
+  });
+
+  it('adds nothing when the same file is imported again', async () => {
+    const second = await run(FILE, [
+      'bbbbbbbb-1111-4000-8000-000000000000',
+      'bbbbbbbb-1111-4000-8000-000000000001',
+      'bbbbbbbb-1111-4000-8000-000000000002',
+    ]);
+
+    // Every candidate is recognised by the identifier the provider gave it, so
+    // nothing is written and nothing had to be judged.
+    expect(second.verdicts.every((v) => v.kind === 'certain')).toBe(true);
+    expect(second.written).toBe(0);
+
+    const page = await scoped((tx) =>
+      listTransactions(tx, owner, {
+        perPage: 50,
+        from: ledgerDate('2026-04-01'),
+        to: ledgerDate('2026-04-30'),
+      }),
+    );
+    expect(page.total).toBe(2);
+  });
+
+  it('records which import wrote each row, so undoing one is possible', async () => {
+    const [row] = await admin<{ import_id: string | null; source: string }[]>`
+      SELECT import_id, source FROM transactions
+       WHERE description = 'Salary' AND household_id = ${HOUSE}`;
+    expect(row?.import_id).toBe('aaaaaaaa-1111-4000-8000-000000000000');
+    expect(row?.source).toBe('import');
+
+    const [batch] = await admin<{ filename: string; source: string }[]>`
+      SELECT filename, source FROM imports WHERE household_id = ${HOUSE}`;
+    expect(batch?.filename).toBe('export.csv');
+    expect(batch?.source).toBe('trade-republic');
   });
 });

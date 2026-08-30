@@ -1,5 +1,6 @@
 import type {
   AccountId,
+  ImportId,
   CategoryId,
   CurrencyCode,
   Decimal,
@@ -75,6 +76,15 @@ export interface TransactionInput {
   readonly externalId?: string;
   /** Set when this transaction reverses another; the ledger is append-only. */
   readonly reversesId?: TransactionId;
+  /**
+   * The import run that produced this, when one did.
+   *
+   * Provenance, alongside `source` and `externalId`, rather than a service
+   * concern bolted on: undoing an import has to be able to find its rows, and a
+   * transaction that cannot say where it came from cannot be found by anything
+   * but a date.
+   */
+  readonly importId?: ImportId;
   readonly entries: readonly EntryInput[];
 }
 
@@ -94,6 +104,7 @@ export interface Transaction {
   readonly source: TransactionSource;
   readonly externalId: string | undefined;
   readonly reversesId: TransactionId | undefined;
+  readonly importId: ImportId | undefined;
   readonly entries: readonly Entry[];
   /** Currencies this transaction touches, each of which balances to zero. */
   readonly currencies: readonly CurrencyCode[];

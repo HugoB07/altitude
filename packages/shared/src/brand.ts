@@ -18,6 +18,7 @@ export type UserId = Brand<string, 'UserId'>;
 export type InstrumentId = Brand<string, 'InstrumentId'>;
 export type TransactionId = Brand<string, 'TransactionId'>;
 export type CategoryId = Brand<string, 'CategoryId'>;
+export type ImportId = Brand<string, 'ImportId'>;
 
 /**
  * Shape only: 8-4-4-4-12 hexadecimal.
@@ -57,3 +58,4 @@ export const userId = makeId<UserId>('UserId');
 export const instrumentId = makeId<InstrumentId>('InstrumentId');
 export const transactionId = makeId<TransactionId>('TransactionId');
 export const categoryId = makeId<CategoryId>('CategoryId');
+export const importId = makeId<ImportId>('ImportId');

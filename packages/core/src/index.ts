@@ -71,4 +71,5 @@ export type {
 export { bindAccounts } from './import/bind';
 export type { AccountBinding, BindResult, BoundCandidate, BoundEntry } from './import/bind';
 export { findDuplicates } from './services/import';
-export type { DuplicateReport, Verdict } from './services/import';
+export { commitImport } from './services/import';
+export type { CommitInput, CommitResult, DuplicateReport, Verdict } from './services/import';

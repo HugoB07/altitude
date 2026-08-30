@@ -59,6 +59,7 @@ export async function postTransaction(
     source: transaction.source,
     externalId: transaction.externalId ?? null,
     reversesId: transaction.reversesId ?? null,
+    importId: transaction.importId ?? null,
     createdBy: actor.userId,
   });
 

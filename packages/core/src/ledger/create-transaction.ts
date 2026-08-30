@@ -100,6 +100,7 @@ export function createTransaction(input: TransactionInput): Transaction {
     source: input.source ?? 'manual',
     externalId: input.externalId,
     reversesId: input.reversesId,
+    importId: input.importId,
     entries: boundEntries,
     currencies: [...totals.keys()].sort(),
   };

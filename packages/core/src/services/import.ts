@@ -1,8 +1,11 @@
-import { sql } from 'drizzle-orm';
-import type { Database } from '@altitude/db';
-import { dec, type TransactionId } from '@altitude/shared';
+import { inArray, sql } from 'drizzle-orm';
+import { imports, instruments, type Database } from '@altitude/db';
+import { Money, dec, instrumentId, type ImportId, type TransactionId } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
 import type { BoundCandidate } from '../import/bind';
+import type { CandidateInstrument } from '../import/types';
+import type { TransactionInput } from '../ledger/types';
+import { postTransaction } from './transactions';
 import { assertActorMatchesTenant } from './tenant';
 
 /**
@@ -145,4 +148,155 @@ function shapeOf(candidate: BoundCandidate): string {
     .map((entry) => `${entry.accountId}:${dec(entry.amount).toFixed()}`)
     .sort()
     .join('|');
+}
+
+export interface CommitInput {
+  readonly importId: ImportId;
+  readonly source: string;
+  readonly filename: string;
+  readonly candidates: readonly BoundCandidate[];
+  /** One id per candidate, minted by the caller: the domain builds before anything is written. */
+  readonly transactionIds: readonly TransactionId[];
+}
+
+export interface CommitResult {
+  readonly importId: ImportId;
+  readonly written: number;
+  readonly instrumentsCreated: number;
+}
+
+/**
+ * Writes a reviewed import.
+ *
+ * Everything or nothing: the caller wraps this in one unit of work, so a file
+ * that fails halfway leaves no half-imported month behind. That matters more
+ * here than anywhere else in the application - a partial import is invisible,
+ * and the person who runs it again gets duplicates of the part that succeeded.
+ *
+ * Takes only what a person approved. Deduplication produced verdicts and the
+ * preview turned them into a decision; nothing here reconsiders it, because a
+ * service that filtered again would be a second opinion able to disagree with
+ * the one shown on screen.
+ *
+ * Every transaction goes through `postTransaction`, which validates the balance
+ * and checks the actor, rather than being inserted directly. An import is not a
+ * privileged path into the ledger: a file cannot write something a person could
+ * not have typed.
+ */
+export async function commitImport(
+  tx: Database,
+  actor: Actor,
+  input: CommitInput,
+): Promise<CommitResult> {
+  assertCan(actor, 'import:run', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  await tx.insert(imports).values({
+    id: input.importId,
+    householdId: actor.householdId,
+    source: input.source,
+    filename: input.filename,
+    createdBy: actor.userId,
+  });
+
+  const resolved = await resolveInstruments(tx, input.candidates);
+
+  for (const [index, candidate] of input.candidates.entries()) {
+    const id = input.transactionIds[index];
+    if (id === undefined) throw new Error(`No id given for candidate ${String(index)}`);
+
+    await postTransaction(tx, actor, {
+      id,
+      bookedOn: candidate.bookedOn,
+      kind: candidate.kind as TransactionInput['kind'],
+      source: 'import',
+      importId: input.importId,
+      ...(candidate.description === undefined ? {} : { description: candidate.description }),
+      ...(candidate.externalId === undefined ? {} : { externalId: candidate.externalId }),
+      entries: candidate.entries.map((entry) => ({
+        accountId: entry.accountId,
+        amount: Money.of(entry.amount, entry.currency),
+        ...(entry.memo === undefined ? {} : { memo: entry.memo }),
+        ...(entry.quantity === undefined ? {} : { quantity: dec(entry.quantity) }),
+        ...(entry.unitPrice === undefined
+          ? {}
+          : { unitPrice: Money.of(entry.unitPrice, entry.currency) }),
+        ...(entry.instrument === undefined
+          ? {}
+          : {
+              instrumentId: instrumentId(resolved.byKey.get(instrumentKey(entry.instrument))!),
+            }),
+      })),
+    });
+  }
+
+  return {
+    importId: input.importId,
+    written: input.candidates.length,
+    instrumentsCreated: resolved.created,
+  };
+}
+
+/**
+ * Finds every instrument the batch mentions, creating the ones that are new.
+ *
+ * Matched on ISIN where there is one, because that is what identifies an
+ * instrument to the world. A holding with no ISIN falls back to its name, which
+ * is weaker - two brokers spell the same fund differently - and is why an
+ * import of unlisted holdings will eventually need a person to say "these two
+ * are the same thing".
+ */
+async function resolveInstruments(
+  tx: Database,
+  candidates: readonly BoundCandidate[],
+): Promise<{ byKey: Map<string, string>; created: number }> {
+  const wanted = new Map<string, CandidateInstrument>();
+  for (const candidate of candidates) {
+    for (const entry of candidate.entries) {
+      if (entry.instrument !== undefined)
+        wanted.set(instrumentKey(entry.instrument), entry.instrument);
+    }
+  }
+
+  const byKey = new Map<string, string>();
+  if (wanted.size === 0) return { byKey, created: 0 };
+
+  const isins = [...wanted.values()].map((i) => i.isin).filter((i) => i !== undefined);
+  const existing =
+    isins.length === 0
+      ? []
+      : await tx
+          .select({ id: instruments.id, isin: instruments.isin, name: instruments.name })
+          .from(instruments)
+          .where(inArray(instruments.isin, isins));
+
+  for (const row of existing) {
+    if (row.isin !== null) byKey.set(`isin:${row.isin}`, row.id);
+  }
+
+  let created = 0;
+  for (const [key, instrument] of wanted) {
+    if (byKey.has(key)) continue;
+    const [row] = await tx
+      .insert(instruments)
+      .values({
+        ...(instrument.isin === undefined ? {} : { isin: instrument.isin }),
+        ...(instrument.symbol === undefined ? {} : { symbol: instrument.symbol }),
+        name: instrument.name,
+        currency: instrument.currency,
+        kind: instrument.kind,
+      })
+      .returning({ id: instruments.id });
+    byKey.set(key, row!.id);
+    created += 1;
+  }
+
+  return { byKey, created };
+}
+
+/** ISIN when there is one, name otherwise. See `resolveInstruments`. */
+function instrumentKey(instrument: CandidateInstrument): string {
+  return instrument.isin === undefined
+    ? `name:${instrument.name.toLowerCase()}`
+    : `isin:${instrument.isin}`;
 }
