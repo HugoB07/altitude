@@ -11,8 +11,8 @@
     "signIn": "Se connecter",
     "signOut": "Se déconnecter",
     "createAccount": "Créer un compte",
-    "switchToSignIn": "J'ai déjà un compte",
-    "switchToSignUp": "Créer un compte",
+    "switchToSignIn": "Déjà un compte ? Se connecter",
+    "switchToSignUp": "Pas encore de compte ? S'inscrire",
     "genericError": "Connexion impossible."
   },
   "setup": {

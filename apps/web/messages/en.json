@@ -11,8 +11,8 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "createAccount": "Create account",
-    "switchToSignIn": "I already have an account",
-    "switchToSignUp": "Create an account",
+    "switchToSignIn": "Already have an account? Sign in",
+    "switchToSignUp": "New here? Sign up",
     "genericError": "Could not sign in."
   },
   "setup": {

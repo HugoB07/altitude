@@ -22,7 +22,9 @@ export default async function SetupPage() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">{t('title')}</CardTitle>
+          <CardTitle className="text-2xl tracking-tight">
+            <h1>{t('title')}</h1>
+          </CardTitle>
           <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent>
