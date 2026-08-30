@@ -4,17 +4,19 @@ Thanks for looking. This document says what is useful right now, what the conven
 are, and what will not be accepted - so nobody spends an evening on a pull request that
 was never going to land.
 
-## Current phase: phase 0, foundations
+## Current phase: phase 2, import
 
-Foundations are in place: `packages/shared` (money, dates, identifiers),
-`packages/core` (the double-entry ledger and the authorisation policy), `packages/db`
-(schema, migrations, row-level security) and `apps/web` - sign-in, household creation and
-a quick-add form, in English and French.
+The ledger works. You can sign in, create a household, manage accounts, record and
+reverse transactions, and read a net worth that an internal transfer does not inflate.
+It is in English and French, and an end-to-end test walks that whole journey on every
+commit.
 
-That is deliberately not a wealth tracker yet. There is no account management, no import,
-no market data and no history. Contributions to the two domain packages are welcome now;
-everything above them is still being laid down, so check the roadmap in `README.md`
-before starting on anything else.
+What it cannot do is fill itself. Every figure in it has been typed by hand, which is
+why import is what comes next and where help is most useful. There is no market data and
+no history either; those are phases 3 and after.
+
+Contributions are welcome across the domain packages and the importer. Check the roadmap
+in `README.md` before starting anything above them.
 
 ### What is useful today
 

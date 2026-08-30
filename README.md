@@ -15,10 +15,11 @@ real estate and liabilities - on your server, in your database.
 
 ---
 
-> **⚠️ Status: phase 0, foundations.** The ledger, the schema with its row-level
-> security, authentication and the first screens exist and are tested. You can sign in,
-> create a household and record a transaction; that is all. It is not yet a wealth
-> tracker. See the [roadmap](#roadmap).
+> **⚠️ Status: phase 1, the ledger.** Sign in, create a household, manage accounts,
+> record and reverse transactions, and read a net worth that internal transfers do not
+> inflate. Everything is typed by hand: there is no import, no market data and no
+> history yet, so it is a correct ledger rather than a wealth tracker. See the
+> [roadmap](#roadmap).
 
 ## Why
 
@@ -58,7 +59,7 @@ node build-html.mjs && node build-pdf.mjs
 | Phase | Scope                                               | Status      |
 | ----- | --------------------------------------------------- | ----------- |
 | 0     | Foundations - monorepo, Docker, auth, schema        | done        |
-| 1     | Ledger - accounts, transactions, net worth          | in progress |
+| 1     | Ledger - accounts, transactions, net worth          | done        |
 | 2     | Import - CSV/XLSX/OFX, presets, deduplication       | not started |
 | 3     | Market data - quotes, FX, positions, TWR/MWR, globe | not started |
 | 4     | Household - owners, roles, child portfolios         | not started |

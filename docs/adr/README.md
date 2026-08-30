@@ -29,4 +29,15 @@ about to be built.
 | ---- | --------------------------------------------------- | -------------------- |
 | 0003 | Owners are distinct from users                      | phase 4 (household)  |
 | 0004 | Bank connectors: external, optional, off by default | phase 7 (connectors) |
-| 0008 | Valued history: materialised daily snapshots        | phase 1              |
+| 0008 | Valued history: materialised daily snapshots        | phase 3 (history)    |
+
+0008 was reserved for phase 1 and has moved to phase 3, deliberately. Phase 1 shipped
+without it because a balance derived from the ledger is fast enough on its own: measured
+on a million transactions, the dashboard reads in around half a second, and a household
+the plan actually sizes for (ADR-0001) is two orders of magnitude smaller than that.
+
+What will force it is history, not the current balance. A net worth chart over a year
+means computing that figure at 365 dates, and half a second each is three minutes. That
+is the point at which storing balances stops being an optimisation and becomes the only
+way the feature exists - and it is also the point at which the shape of what to store is
+known. A cache written before its queries is a cache written twice.

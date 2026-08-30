@@ -6,8 +6,11 @@ accounts. We treat security reports accordingly.
 
 ## Project status
 
-Altitude is in **design phase**. There is no code, no release, and no deployed instance.
-This policy is published now so that it is already in place when the first line ships.
+Altitude is **pre-release**. The ledger, the schema with its row-level security,
+authentication and the first screens exist and are tested; there is no release and no
+instance anyone but a developer runs. The isolation guarantees described below are
+implemented and covered by tests, so a report against them is a real report, not a
+report against a plan.
 
 | Version                   | Supported                            |
 | ------------------------- | ------------------------------------ |
