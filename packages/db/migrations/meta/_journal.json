@@ -92,6 +92,13 @@
       "when": 1788112096764,
       "tag": "0012_transactions_kind_index",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788126071011,
+      "tag": "0013_instruments",
+      "breakpoints": true
     }
   ]
 }

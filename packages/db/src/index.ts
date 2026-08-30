@@ -34,4 +34,5 @@ export {
   type LiabilityKind,
 } from './schema/structure';
 export { TRANSACTION_KINDS, TRANSACTION_SOURCES, entries, transactions } from './schema/ledger';
+export { INSTRUMENT_KINDS, instruments, type InstrumentKind } from './schema/instruments';
 export { findMemberships, type MembershipRow } from './queries/memberships';

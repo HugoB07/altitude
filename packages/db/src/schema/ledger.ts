@@ -11,6 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { households, users } from './identity';
+import { instruments } from './instruments';
 import { accounts } from './structure';
 
 export const TRANSACTION_KINDS = [
@@ -139,7 +140,8 @@ export const entries = pgTable(
     // what Money expects at the boundary (ADR-0006).
     amount: numeric('amount', { precision: 28, scale: 10 }).notNull(),
     currency: text('currency').notNull(),
-    instrumentId: uuid('instrument_id'),
+    /** References `instruments`, which is shared reference data outside any household. */
+    instrumentId: uuid('instrument_id').references(() => instruments.id),
     quantity: numeric('quantity', { precision: 38, scale: 18 }),
     unitPrice: numeric('unit_price', { precision: 24, scale: 12 }),
     /** Rate to the household base currency, frozen at booking time. */
