@@ -1,0 +1,5 @@
+"datetime","date","account_type","category","type","asset_class","name","symbol","shares","price","amount","fee","tax","currency","original_amount","original_currency","fx_rate","description","transaction_id","counterparty_name","counterparty_iban","payment_reference","mcc_code"
+"2026-05-12T08:00:00.000000Z","2026-05-12","DEFAULT","CASH","TRANSFER_INSTANT_INBOUND","","","","","","500.000000","","","EUR","","","","Virement recu","e2e-in-1","","","",""
+"2026-05-18T10:00:00.000000Z","2026-05-18","DEFAULT","CASH","TRANSFER_OUT","","","","","","-100.000000","","","EUR","","","","Versement epargne","e2e-out-2","","","",""
+"2026-05-18T10:00:01.000000Z","2026-05-18","PEA","CASH","TRANSFER_IN","","","","","","100.000000","","","EUR","","","","Versement epargne","e2e-in-2","","","",""
+"2026-05-31T23:00:00.000000Z","2026-05-31","DEFAULT","CASH","INTEREST_PAYMENT","","","","","","1.250000","","-0.190000","EUR","","","","Interets","e2e-int-1","","","",""
