@@ -68,3 +68,7 @@ export type {
   ImportProblem,
   ImportReading,
 } from './import/types';
+export { bindAccounts } from './import/bind';
+export type { AccountBinding, BindResult, BoundCandidate, BoundEntry } from './import/bind';
+export { findDuplicates } from './services/import';
+export type { DuplicateReport, Verdict } from './services/import';
