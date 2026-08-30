@@ -27,6 +27,23 @@ services:
       # machine keeps 5432 and there is never any doubt about which database a
       # client is talking to. Override with ALTITUDE_DB_PORT if it clashes.
       - '127.0.0.1:${ALTITUDE_DB_PORT:-55432}:5432'
+    # Planner costs for storage that is not a spinning disk.
+    #
+    # random_page_cost defaults to 4, which says a random read costs four times
+    # a sequential one. That was true of the hardware it was chosen for and is
+    # not true of an SSD. The gap is not academic: counting a million
+    # transactions, the planner rejected an index-only scan and read the whole
+    # table instead - 548 ms where the index took 95.
+    #
+    # 1.1 rather than 1.0 so sequential access keeps a slight edge, which it
+    # still deserves. Set here so that what a developer measures resembles what
+    # a deployment does; a real deployment should set it too.
+    command:
+      - postgres
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_cache_size=1GB
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d:ro
