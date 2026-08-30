@@ -28,6 +28,16 @@ export type InstrumentKind = (typeof INSTRUMENT_KINDS)[number];
  * this table holds no household data. Knowing that FR0011550193 exists tells
  * you nothing about who owns it - that lives in `entries`, which is scoped.
  *
+ * The cost of that, named rather than left implicit: on an instance shared by
+ * two households, this table is the union of what both hold, so a member of one
+ * can learn that somebody here owns a particular ETF. Not who, not how much -
+ * that is in `entries`, which is scoped - but the row's existence is evidence.
+ *
+ * Accepted, because phase 3 seeds this table with a catalogue of known ISINs for
+ * quotes to hang off. Once a row's presence no longer implies anyone owns it,
+ * there is nothing left to infer. Scoping the table per household would trade
+ * that small leak for duplicated reference data that drifts, which is worse.
+ *
  * Nothing here is a price, a valuation, or a provider identifier. See ADR-0011.
  */
 export const instruments = pgTable(

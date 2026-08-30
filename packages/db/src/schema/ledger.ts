@@ -11,6 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { households, users } from './identity';
+import { imports } from './imports';
 import { instruments } from './instruments';
 import { accounts } from './structure';
 
@@ -56,6 +57,14 @@ export const transactions = pgTable(
     dedupeHash: text('dedupe_hash'),
     /** Set when this transaction cancels another: the ledger is append-only. */
     reversesId: uuid('reverses_id'),
+    /**
+     * The import run that created this row, when one did.
+     *
+     * Null for anything typed by hand. Set on rows an import wrote, so undoing
+     * that import is a question the database can answer rather than a guess
+     * from dates.
+     */
+    importId: uuid('import_id').references(() => imports.id, { onDelete: 'set null' }),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
