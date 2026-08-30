@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Named explicitly rather than relying on app/icon.svg, so the file lives in
+  // public/ where it can be looked at, and so nothing about it is implicit.
+  icons: { icon: '/favicon.svg' },
   title: 'Altitude',
   description: 'Self-hosted wealth tracking.',
 };

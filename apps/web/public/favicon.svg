@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Altitude">
+  <!--
+    A summit, which is what the name says.
+
+    Drawn rather than fetched: a disconnected instance has to render perfectly,
+    so nothing here points at a CDN, a font or a hosted icon set.
+
+    It carries its own background because a favicon sits on browser chrome the
+    page does not control - a transparent glyph disappears on whichever of light
+    or dark it was not drawn for. Two peaks rather than one, and a gap under the
+    snow line, because at sixteen pixels a single triangle reads as an arrow.
+  -->
+  <rect width="32" height="32" rx="7" fill="#18181b" />
+  <path d="M4.5 24 L12 10.5 L16.4 18.4 L18.9 14 L27.5 24 Z" fill="#fafafa" />
+  <path d="M12 10.5 L9.1 15.7 L12 14.4 L14.6 15.8 Z" fill="#18181b" opacity="0.55" />
+</svg>
