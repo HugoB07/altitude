@@ -57,6 +57,34 @@
       "when": 1788042640988,
       "tag": "0007_drop_is_liability",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788098375049,
+      "tag": "0008_transactions_reverses_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788099120114,
+      "tag": "0009_ledger_order_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788099803412,
+      "tag": "0010_entries_balance_covering",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788100107826,
+      "tag": "0011_entries_tenant_covering",
+      "breakpoints": true
     }
   ]
 }

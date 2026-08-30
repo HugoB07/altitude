@@ -64,7 +64,36 @@ export const transactions = pgTable(
     uniqueIndex('transactions_external_id_key')
       .on(t.householdId, t.externalId)
       .where(sql`${t.externalId} IS NOT NULL`),
-    index('transactions_household_booked_idx').on(t.householdId, t.bookedOn.desc()),
+    /**
+     * The ledger's reading order, in full.
+     *
+     * `id` is part of the key, not decoration: the list orders by
+     * `booked_on DESC, id DESC` - the tiebreak is what keeps paging stable when
+     * several transactions share a day - and an index that stops at `booked_on`
+     * cannot supply that order. Measured on a million rows in one household, the
+     * planner abandoned the index and sorted the whole table for twenty-five
+     * rows: 190 ms, against 1.5 ms once the index covers the tiebreak.
+     *
+     * The household column stays first even though it is not selective on a
+     * single-household instance. It is the RLS predicate, so it is in every
+     * query, and dropping it would make this index unusable the moment a second
+     * household exists.
+     */
+    index('transactions_household_booked_idx').on(t.householdId, t.bookedOn.desc(), t.id.desc()),
+    /**
+     * Answering "was this reversed?" without reading the table.
+     *
+     * The ledger screen asks it once per row. Without this index each question
+     * is a sequential scan: measured at a million transactions, twenty-five rows
+     * cost 1.65 seconds and examined twenty-five million. With it, the same page
+     * is a few milliseconds.
+     *
+     * Partial, because a reversal is the exception. Only the rows that cancel
+     * something are in the index, so it stays small and its scan stays short.
+     */
+    index('transactions_reverses_idx')
+      .on(t.reversesId)
+      .where(sql`${t.reversesId} IS NOT NULL`),
   ],
 );
 
@@ -99,7 +128,35 @@ export const entries = pgTable(
     memo: text('memo'),
   },
   (t) => [
-    index('entries_account_idx').on(t.accountId, t.transactionId),
+    /**
+     * Balances without touching the table.
+     *
+     * `amount` rides along so summing an account is an index-only scan: the
+     * dashboard adds up every entry an account has ever had, and reading two
+     * million rows out of the heap to sum one column is most of what that costs.
+     * Measured on two million entries, seven accounts: 939 ms against 445 ms,
+     * with heap fetches dropping from all of them to sixty-nine.
+     *
+     * `household_id` leads, and that is the part that was learned the hard way.
+     * Every query against this table runs under row-level security, which adds
+     * `household_id = current_household()` to it - so an index without that
+     * column cannot answer on its own, and PostgreSQL falls back to reading the
+     * heap to check it. Measured as the application role, which is the only
+     * role that matters:
+     *
+     *   without household_id   1,912 ms, 108,797 blocks read
+     *   with it                    433 ms, 69 heap fetches
+     *
+     * `amount` is a key column rather than INCLUDE, which would be the better
+     * shape since it is never filtered or ordered on. Drizzle 0.45 cannot
+     * express INCLUDE, and a hand-written migration would leave the schema
+     * describing an index the database does not have. Measured, the two forms
+     * are the same size and the same speed.
+     *
+     * 551 ms is still linear in the number of entries. Making it constant means
+     * storing balances rather than deriving them, which is ADR-0008.
+     */
+    index('entries_account_idx').on(t.householdId, t.accountId, t.transactionId, t.amount),
     index('entries_transaction_idx').on(t.transactionId),
   ],
 );
