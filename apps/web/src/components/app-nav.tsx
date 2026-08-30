@@ -22,6 +22,10 @@ import { cn } from '@/lib/utils';
  * see what it is going to be. Marking the unbuilt ones rather than linking to an
  * empty page is the honest half of that: they are visibly inert, and nothing
  * here pretends to work.
+ *
+ * They are marked with a badge, not by being faded. Fading them read at 2.3:1
+ * against the sidebar, which fails AA - and "too faint to read" is a poor way to
+ * say "not ready yet" to anyone, not only to someone with low vision.
  */
 interface NavItem {
   readonly key: 'dashboard' | 'accounts' | 'transactions' | 'holdings' | 'realEstate' | 'settings';
@@ -71,7 +75,7 @@ function SidebarItem({ item }: { item: NavItem }) {
 
   if (!available) {
     return (
-      <span aria-disabled className={cn(shape, 'text-muted-foreground/60 cursor-default')}>
+      <span aria-disabled className={cn(shape, 'text-muted-foreground cursor-default')}>
         {content}
       </span>
     );
@@ -84,8 +88,8 @@ function SidebarItem({ item }: { item: NavItem }) {
       className={cn(
         shape,
         active
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-          : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+          : 'text-sidebar-foreground hover:bg-sidebar-accent',
       )}
     >
       {content}
@@ -128,7 +132,7 @@ export function AppBarNav() {
   const items = [...MAIN, ...MANAGE].filter((item) => item.compact === true);
 
   return (
-    <nav className="bg-background/95 supports-[backdrop-filter]:bg-background/80 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur lg:hidden">
+    <nav className="bg-background/95 supports-[backdrop-filter]:bg-background/80 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur md:hidden">
       <ul className="mx-auto grid max-w-lg grid-cols-4">
         {items.map((item) => (
           <li key={item.key}>
@@ -155,7 +159,7 @@ function BarItem({ item }: { item: NavItem }) {
 
   if (!available) {
     return (
-      <span aria-disabled className={cn(shape, 'text-muted-foreground/50')}>
+      <span aria-disabled className={cn(shape, 'text-muted-foreground')}>
         {label}
       </span>
     );

@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { Mountain } from 'lucide-react';
 import { getContext, getSessionUser } from '@/server/context';
 import { AppBarNav, AppSidebarNav } from '@/components/app-nav';
+import { Toaster } from '@/components/ui/sonner';
 import { SignOut } from './sign-out';
 
 // Per-user by definition: this reads a session, so it can never be static.
@@ -43,7 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="bg-muted/40 min-h-screen">
       {/* Fixed rather than sticky: the column keeps its own scroll, so a long
           account list never pushes the navigation out of reach. */}
-      <aside className="bg-sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r lg:flex">
+      <aside className="bg-sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r md:flex">
         <div className="flex h-16 items-center gap-2.5 border-b px-5">
           <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
             <Mountain className="size-4" aria-hidden />
@@ -70,10 +71,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="lg:pl-64">
-        <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b px-5 backdrop-blur sm:px-8">
+      <div className="md:pl-64">
+        {/* Same surface as the sidebar, not the page. The chrome is one
+            continuous plane wrapping the content; two different darks meeting
+            at the corner of the sidebar read as a rendering fault. */}
+        <header className="bg-sidebar sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b px-5 sm:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg lg:hidden">
+            <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg md:hidden">
               <Mountain className="size-4" aria-hidden />
             </span>
             <div className="min-w-0">
@@ -83,14 +87,21 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               </p>
             </div>
           </div>
-          <SignOut className="lg:hidden" />
+          <SignOut className="md:hidden" />
         </header>
 
         {/* Bottom padding on small screens so the bar never covers the last row. */}
-        <main className="mx-auto max-w-6xl px-5 pt-6 pb-24 sm:px-8 lg:pb-10">{children}</main>
+        <main className="w-full px-5 pt-6 pb-24 sm:px-8 md:pb-10">{children}</main>
       </div>
 
       <AppBarNav />
+      {/* Above the bottom bar on small screens, so a confirmation is never
+          hidden behind the navigation that is always on top of it. */}
+      <Toaster
+        position="bottom-right"
+        offset={{ bottom: '5rem' }}
+        mobileOffset={{ bottom: '5rem' }}
+      />
     </div>
   );
 }
