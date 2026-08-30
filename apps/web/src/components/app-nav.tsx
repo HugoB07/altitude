@@ -7,6 +7,7 @@ import {
   Building2,
   ChartPie,
   CreditCard,
+  FileUp,
   LayoutDashboard,
   Settings,
   Wallet,
@@ -28,7 +29,8 @@ import { cn } from '@/lib/utils';
  * say "not ready yet" to anyone, not only to someone with low vision.
  */
 interface NavItem {
-  readonly key: 'dashboard' | 'accounts' | 'transactions' | 'holdings' | 'realEstate' | 'settings';
+  readonly key:
+    'dashboard' | 'accounts' | 'transactions' | 'holdings' | 'realEstate' | 'import' | 'settings';
   readonly href?: string;
   readonly icon: LucideIcon;
   /** Shown in the bottom bar on small screens, where there is room for four. */
@@ -43,7 +45,10 @@ const MAIN: readonly NavItem[] = [
   { key: 'realEstate', icon: Building2 },
 ];
 
-const MANAGE: readonly NavItem[] = [{ key: 'settings', icon: Settings, compact: true }];
+const MANAGE: readonly NavItem[] = [
+  { key: 'import', href: '/app/import', icon: FileUp },
+  { key: 'settings', icon: Settings, compact: true },
+];
 
 function useItemState(item: NavItem) {
   const pathname = usePathname();

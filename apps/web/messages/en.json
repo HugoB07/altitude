@@ -96,7 +96,8 @@
     "sectionMain": "Wealth",
     "sectionManage": "Manage",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "import": "Import"
   },
   "accounts": {
     "title": "Accounts",
@@ -182,5 +183,52 @@
     "revaluation": "revaluation",
     "split": "split",
     "adjustment": "adjustment"
+  },
+  "import": {
+    "title": "Import",
+    "description": "Read a file from your bank, see what it would add, then decide.",
+    "chooseBank": "Choose your bank",
+    "chooseFile": "Choose a file",
+    "custom": "Other bank",
+    "customSoon": "Map the columns yourself",
+    "soon": "soon",
+    "step1": "Bank",
+    "step2": "File",
+    "step3": "Accounts",
+    "step4": "Review",
+    "accountsTitle": "Which of your accounts is which",
+    "accountsHint": "The file names its own accounts. Say which of yours each one is.",
+    "externalExplained": "Your file does not say where money arriving from outside came from, and double entry needs the other side. Choose what it usually is - your opening balance account, for a salary - and change it on any line where it was something else, like a transfer from an account of yours at another bank.",
+    "reviewTitle": "What would be added",
+    "unselectAll": "Select none",
+    "selectAll": "Select all",
+    "verdictNew": "new",
+    "verdictCertain": "already imported",
+    "verdictProbable": "looks like a duplicate",
+    "notCheckedYet": "Duplicates are checked once every account is chosen.",
+    "problems": "Rows that could not be read",
+    "commit": "Import {count, plural, =1 {# transaction} other {# transactions}}",
+    "imported": "{count, plural, =1 {# transaction imported} other {# transactions imported}}",
+    "unknownPreset": "Unknown bank.",
+    "emptyFile": "That file is empty.",
+    "nothingToImport": "Nothing in that file could be read.",
+    "nothingSelected": "Nothing selected.",
+    "accountMissing": "No account chosen for {label}.",
+    "genericError": "Something went wrong.",
+    "wrongShape": "This does not look like a {name} export. Import it anyway?",
+    "startOver": "Start over",
+    "sourceLines": "from {count, plural, =1 {line} other {lines}} {lines}",
+    "searchBank": "Search a bank",
+    "noBank": "No bank called \"{query}\" yet.",
+    "counterpartTitle": "Money from outside",
+    "counterpartDefault": "Usually",
+    "counterpartFor": "Where the money for \"{description}\" came from",
+    "clearSearch": "Clear the search",
+    "role": {
+      "gross": "Gross",
+      "withholdingTax": "Withholding tax",
+      "netCredited": "Net credited"
+    },
+    "securitiesHint": "A purchase moves cash out and shares in, and your broker calls both by the same name. Choose the account that holds the shares - not the cash account beside it."
   }
 }

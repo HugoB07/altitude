@@ -96,7 +96,8 @@
     "sectionMain": "Patrimoine",
     "sectionManage": "Gestion",
     "openMenu": "Ouvrir le menu",
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "import": "Import"
   },
   "accounts": {
     "title": "Comptes",
@@ -182,5 +183,52 @@
     "revaluation": "réévaluation",
     "split": "division",
     "adjustment": "ajustement"
+  },
+  "import": {
+    "title": "Import",
+    "description": "Lisez un fichier de votre banque, voyez ce qu'il ajouterait, puis décidez.",
+    "chooseBank": "Choisissez votre banque",
+    "chooseFile": "Choisissez un fichier",
+    "custom": "Autre banque",
+    "customSoon": "Associer les colonnes vous-même",
+    "soon": "bientôt",
+    "step1": "Banque",
+    "step2": "Fichier",
+    "step3": "Comptes",
+    "step4": "Vérification",
+    "accountsTitle": "Quel compte correspond à quoi",
+    "accountsHint": "Le fichier nomme ses propres comptes. Dites lequel des vôtres correspond.",
+    "externalExplained": "Votre fichier ne dit pas d'où vient l'argent arrivé de l'extérieur, et la partie double exige une contrepartie. Choisissez ce que c'est en général - votre solde d'ouverture, pour un salaire - et changez-le sur chaque ligne où c'était autre chose, comme un virement depuis un compte à vous dans une autre banque.",
+    "reviewTitle": "Ce qui serait ajouté",
+    "unselectAll": "Tout décocher",
+    "selectAll": "Tout cocher",
+    "verdictNew": "nouveau",
+    "verdictCertain": "déjà importé",
+    "verdictProbable": "ressemble à un doublon",
+    "notCheckedYet": "Les doublons sont vérifiés une fois tous les comptes choisis.",
+    "problems": "Lignes illisibles",
+    "commit": "Importer {count, plural, =1 {# transaction} other {# transactions}}",
+    "imported": "{count, plural, =1 {# transaction importée} other {# transactions importées}}",
+    "unknownPreset": "Banque inconnue.",
+    "emptyFile": "Ce fichier est vide.",
+    "nothingToImport": "Rien dans ce fichier n'a pu être lu.",
+    "nothingSelected": "Rien de sélectionné.",
+    "accountMissing": "Aucun compte choisi pour {label}.",
+    "genericError": "Une erreur est survenue.",
+    "wrongShape": "Ce fichier ne ressemble pas à un export {name}. L'importer quand même ?",
+    "startOver": "Recommencer",
+    "sourceLines": "depuis {count, plural, =1 {la ligne} other {les lignes}} {lines}",
+    "searchBank": "Chercher une banque",
+    "noBank": "Aucune banque nommée « {query} » pour le moment.",
+    "counterpartTitle": "L'argent venu de l'extérieur",
+    "counterpartDefault": "En général",
+    "counterpartFor": "D'où vient l'argent de « {description} »",
+    "clearSearch": "Effacer la recherche",
+    "role": {
+      "gross": "Brut",
+      "withholdingTax": "Impôt retenu à la source",
+      "netCredited": "Net versé"
+    },
+    "securitiesHint": "Un achat fait sortir des espèces et entrer des titres, et votre courtier appelle les deux du même nom. Choisissez le compte qui détient les titres, pas le compte espèces à côté."
   }
 }
