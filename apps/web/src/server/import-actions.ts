@@ -4,8 +4,11 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import {
+  SECURITIES_SUFFIX,
+  accountBalances,
   bindAccounts,
   commitImport,
+  createAccount,
   findDuplicates,
   type AccountBinding,
   type BoundCandidate,
@@ -14,7 +17,7 @@ import {
   type Verdict,
 } from '@altitude/core';
 import { accountId as toAccountId, importId, transactionId } from '@altitude/shared';
-import { presetById } from '@/lib/import-presets';
+import { presetById, type Preset } from '@/lib/import-presets';
 import { requireContext, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
 
@@ -54,14 +57,38 @@ export interface PreviewLine {
   }[];
 }
 
+/**
+ * An account the file needs, described well enough to answer without guessing.
+ *
+ * One shape for all three kinds, because the screen was showing three lists of
+ * raw codes - `DEFAULT`, `PEA:SECURITIES`, `EXTERNAL` - and asking which of
+ * your accounts each one was. That is the exporter's vocabulary; nobody has to
+ * learn it to import their own statement.
+ */
+export interface RequestedAccount {
+  /** What the file calls it. Still shown, small, so a person can match it up. */
+  readonly label: string;
+  /** What it is, in the reader's language. */
+  readonly name: string;
+  readonly nature: 'cash' | 'securities' | 'counterpart';
+  /** The kind to create it as, if nobody has one for it yet. */
+  readonly kind: string;
+  /** The account chosen so far, or null. */
+  readonly accountId: string | null;
+  /**
+   * True when nobody chose this: it is an account of yours that already has the
+   * name, offered so a second import lands where the first one did.
+   *
+   * The screen materialises it as a real choice on the next round, so nothing
+   * downstream has to know the difference between a suggestion and an answer.
+   */
+  readonly suggested?: boolean;
+}
+
 export interface PreviewResult {
   readonly error?: string;
-  /** The file's own accounts, each of which has one answer for the whole file. */
-  readonly accounts?: readonly string[];
-  /** Where a trade's shares land, as opposed to the cash beside them. */
-  readonly securities?: readonly string[];
-  /** Labels standing for the outside world. See `ImportReading.counterparts`. */
-  readonly counterparts?: readonly string[];
+  /** Every account the file needs, named. Cash and securities first, then counterparts. */
+  readonly requested?: readonly RequestedAccount[];
   readonly lines?: readonly PreviewLine[];
   readonly problems?: readonly { line: number; reason: string }[];
   /** False until every label has an account, which is when duplicates can be looked for. */
@@ -104,7 +131,12 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
     };
   }
 
-  const { binding, overrides } = readBinding(formData, reading);
+  const { binding, overrides } = readBinding(formData, preset, reading);
+
+  // Accounts a person already has, so an account this file needs and a matching
+  // one of theirs are put together rather than asked about. The second import
+  // of a bank should not make anybody name the same accounts again.
+  const existing = await scoped((tx) => accountBalances(tx, actor));
 
   const { bound } = bindAccounts(reading.candidates, binding, overrides);
   const checked = bound.length === reading.candidates.length;
@@ -119,9 +151,7 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
   return {
     checked,
     looksWrong: !preset.matches(text),
-    accounts: reading.accounts,
-    securities: reading.securities,
-    counterparts: reading.counterparts,
+    requested: describeAccounts(preset, reading, binding, t, existing),
     problems: reading.problems.map((p) => ({ line: p.line, reason: p.reason })),
     lines: reading.candidates.map((candidate, index) => ({
       index,
@@ -143,6 +173,100 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
       })),
     })),
   };
+}
+
+/**
+ * Every account a file needs, named rather than coded.
+ *
+ * Three sources, in order. The preset's own dictionary, which is the point of a
+ * preset: it knows `DEFAULT` is the cash account. Then the shape of the label,
+ * which catches the securities side of any account including ones no dictionary
+ * lists. Then the label itself, unchanged, which is where a code nobody has
+ * seen lands - no worse than before, and it never blocks a file.
+ */
+function describeAccounts(
+  preset: Preset,
+  reading: {
+    accounts: readonly string[];
+    securities: readonly string[];
+    counterparts: readonly string[];
+  },
+  binding: AccountBinding,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+  /** What the household already holds, for the suggestion. Empty means no suggestions. */
+  existing: readonly { accountId: string; name: string; closedOn: string | null }[] = [],
+): RequestedAccount[] {
+  const named = (label: string): string => {
+    const known = preset.accounts?.[label];
+    if (known !== undefined) return t(`account.${known.nameKey}`);
+
+    // The securities side of an account is named after it, so a dictionary that
+    // lists `PEA` names `PEA:SECURITIES` too without listing it twice.
+    if (label.endsWith(SECURITIES_SUFFIX)) {
+      return t('account.securitiesOf', { name: named(label.slice(0, -SECURITIES_SUFFIX.length)) });
+    }
+    return label;
+  };
+
+  const describe = (label: string, nature: RequestedAccount['nature']): RequestedAccount => {
+    const name = nature === 'counterpart' ? t('account.outside') : named(label);
+    const chosen = binding[label];
+
+    // Matched on the name this screen would have given it, which is the same
+    // name `openAccountsAction` creates it under - so an account made by one
+    // import is found by the next without anybody touching a control.
+    const already =
+      chosen === undefined && nature !== 'counterpart'
+        ? existing.find(
+            (account) =>
+              account.closedOn === null && account.name.toLowerCase() === name.toLowerCase(),
+          )
+        : undefined;
+
+    return {
+      label,
+      name,
+      nature,
+      kind: preset.accounts?.[label]?.kind ?? (nature === 'securities' ? 'securities' : 'cash'),
+      accountId: chosen ?? already?.accountId ?? null,
+      ...(already === undefined ? {} : { suggested: true }),
+    };
+  };
+
+  const merged = mergedIntoTheirCash(preset, reading);
+
+  return [
+    ...reading.accounts.map((label) => describe(label, 'cash')),
+    // Not asked about when the account holds its own shares. Asking would make
+    // a person invent a "PEA securities" account that does not exist.
+    ...reading.securities
+      .filter((label) => merged[label] === undefined)
+      .map((label) => describe(label, 'securities')),
+    ...reading.counterparts.map((label) => describe(label, 'counterpart')),
+  ];
+}
+
+/**
+ * Securities labels that are not their own account, and whose they are.
+ *
+ * A reader splits every trade in two, because for most accounts the cash and
+ * the shares live in different places. A French PEA holds both, and Trade
+ * Republic's own accounts show all three cases at once: the current account and
+ * the CTO beside it are two accounts, and the PEA is one.
+ *
+ * Only a preset can know that, so only a preset says it. Where it does,
+ * `PEA:SECURITIES` follows `PEA` and never appears as a question.
+ */
+function mergedIntoTheirCash(
+  preset: Preset,
+  reading: { securities: readonly string[] },
+): Readonly<Record<string, string>> {
+  const merged: Record<string, string> = {};
+  for (const label of reading.securities) {
+    const cash = label.slice(0, -SECURITIES_SUFFIX.length);
+    if (preset.accounts?.[cash]?.holdsSharesToo === true) merged[label] = cash;
+  }
+  return merged;
 }
 
 /**
@@ -193,6 +317,7 @@ const ROLE_MESSAGES: Record<EntryRole, string> = {
  */
 function readBinding(
   formData: FormData,
+  preset: Preset,
   reading: {
     accounts: readonly string[];
     securities: readonly string[];
@@ -203,6 +328,14 @@ function readBinding(
   for (const label of [...reading.accounts, ...reading.securities, ...reading.counterparts]) {
     const chosen = String(formData.get(`account:${label}`) ?? '');
     if (chosen !== '') binding[label] = toAccountId(chosen);
+  }
+
+  // An account that holds its own shares answers for both sides, so the shares
+  // land where the cash is. Applied after reading, not instead of it, so a form
+  // that does name the label is not silently overruled by nothing.
+  for (const [shares, cash] of Object.entries(mergedIntoTheirCash(preset, reading))) {
+    const chosen = binding[cash];
+    if (chosen !== undefined) binding[shares] = chosen;
   }
 
   const overrides: Record<number, AccountBinding> = {};
@@ -250,9 +383,11 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
   // truth; the browser only says which of its lines a person approved.
   const reading = preset.read(text);
 
-  const { binding, overrides } = readBinding(formData, reading);
-  for (const label of [...reading.accounts, ...reading.securities]) {
-    if (binding[label] === undefined) return { error: t('accountMissing', { label }) };
+  const { binding, overrides } = readBinding(formData, preset, reading);
+  for (const account of describeAccounts(preset, reading, binding, t)) {
+    if (account.nature !== 'counterpart' && account.accountId === null) {
+      return { error: t('accountMissing', { label: account.name }) };
+    }
   }
 
   // Filtering renumbers the candidates, so the overrides have to be renumbered
@@ -297,6 +432,82 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
     revalidatePath('/app/accounts');
     revalidatePath('/app/transactions');
     return { written: result.written, instruments: result.instrumentsCreated };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : t('genericError') };
+  }
+}
+
+export interface OpenedAccounts {
+  readonly error?: string;
+  /** Label to account id, for every account the file needed and nobody had chosen. */
+  readonly bound?: Readonly<Record<string, string>>;
+  /** How many were created rather than matched to something that already existed. */
+  readonly created?: number;
+}
+
+/**
+ * Gives every unanswered account an answer, creating what is missing.
+ *
+ * The question "which of your accounts is PEA?" has no answer for somebody who
+ * has just installed this and holds no accounts at all, and asking it four
+ * times before showing a single transaction is most of what made this screen
+ * hard. So it can be answered in one press.
+ *
+ * An existing account of the same name is reused rather than duplicated. That
+ * is what makes the second import of the same bank land in the same place as
+ * the first instead of quietly building a parallel set of accounts.
+ *
+ * Counterparts are never created. `EXTERNAL` is not an account of yours, and
+ * the opening balance account already exists to stand for the outside world.
+ */
+export async function openAccountsAction(formData: FormData): Promise<OpenedAccounts> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+  const t = await getTranslations('import');
+
+  const preset = presetById(String(formData.get('preset') ?? ''));
+  if (preset === undefined) return { error: t('unknownPreset') };
+
+  const text = String(formData.get('text') ?? '');
+  if (text.trim() === '') return { error: t('emptyFile') };
+
+  const reading = preset.read(text);
+  const { binding } = readBinding(formData, preset, reading);
+  const wanted = describeAccounts(preset, reading, binding, t).filter(
+    (account) => account.nature !== 'counterpart' && account.accountId === null,
+  );
+  if (wanted.length === 0) return { bound: {}, created: 0 };
+
+  try {
+    return await scoped(async (tx) => {
+      const existing = await accountBalances(tx, actor);
+      const bound: Record<string, string> = {};
+      let created = 0;
+
+      for (const account of wanted) {
+        const match = existing.find(
+          (candidate) =>
+            candidate.closedOn === null &&
+            candidate.name.toLowerCase() === account.name.toLowerCase(),
+        );
+        if (match !== undefined) {
+          bound[account.label] = match.accountId;
+          continue;
+        }
+
+        const made = await createAccount(tx, actor, {
+          name: account.name,
+          kind: account.kind,
+          currency: 'EUR',
+          ...(preset.institution === undefined ? {} : { institution: preset.institution }),
+        });
+        bound[account.label] = made.id;
+        created += 1;
+      }
+
+      revalidatePath('/app/accounts');
+      return { bound, created };
+    });
   } catch (error) {
     return { error: error instanceof Error ? error.message : t('genericError') };
   }

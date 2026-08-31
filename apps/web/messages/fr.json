@@ -196,9 +196,8 @@
     "step2": "Fichier",
     "step3": "Comptes",
     "step4": "Vérification",
-    "accountsTitle": "Quel compte correspond à quoi",
-    "accountsHint": "Le fichier nomme ses propres comptes. Dites lequel des vôtres correspond.",
-    "externalExplained": "Votre fichier ne dit pas d'où vient l'argent arrivé de l'extérieur, et la partie double exige une contrepartie. Choisissez ce que c'est en général - votre solde d'ouverture, pour un salaire - et changez-le sur chaque ligne où c'était autre chose, comme un virement depuis un compte à vous dans une autre banque.",
+    "accountsTitle": "Les comptes dont ce fichier a besoin",
+    "accountsHint": "Un relevé couvre plusieurs comptes. Dites lequel des vôtres correspond, ou laissez Altitude les créer.",
     "reviewTitle": "Ce qui serait ajouté",
     "unselectAll": "Tout décocher",
     "selectAll": "Tout cocher",
@@ -220,8 +219,6 @@
     "sourceLines": "depuis {count, plural, =1 {la ligne} other {les lignes}} {lines}",
     "searchBank": "Chercher une banque",
     "noBank": "Aucune banque nommée « {query} » pour le moment.",
-    "counterpartTitle": "L'argent venu de l'extérieur",
-    "counterpartDefault": "En général",
     "counterpartFor": "D'où vient l'argent de « {description} »",
     "clearSearch": "Effacer la recherche",
     "role": {
@@ -229,6 +226,27 @@
       "withholdingTax": "Impôt retenu à la source",
       "netCredited": "Net versé"
     },
-    "securitiesHint": "Un achat fait sortir des espèces et entrer des titres, et votre courtier appelle les deux du même nom. Choisissez le compte qui détient les titres, pas le compte espèces à côté."
+    "account": {
+      "tradeRepublicCurrent": "Compte courant Trade Republic",
+      "tradeRepublicCto": "CTO Trade Republic",
+      "tradeRepublicPea": "PEA Trade Republic",
+      "securitiesOf": "Titres {name}",
+      "outside": "Hors du foyer"
+    },
+    "openAll": "Créer {count, plural, =1 {le compte manquant} other {les # comptes manquants}}",
+    "opened": "{count, plural, =0 {Tout existait déjà} =1 {# compte créé} other {# comptes créés}}",
+    "natureCash": "espèces",
+    "natureSecurities": "titres",
+    "counterpartSummary": "{count, plural, =1 {# mouvement franchit} other {# mouvements franchissent}} la frontière du foyer, rangés dans {account}.",
+    "counterpartOpen": "En changer certains",
+    "counterpartClose": "Terminé",
+    "monthCount": "{count, plural, =1 {# transaction} other {# transactions}}",
+    "needsLook": "à regarder",
+    "expand": "Afficher",
+    "collapse": "Masquer",
+    "counterpartDialogTitle": "D'où vient chacun de ces mouvements",
+    "counterpartDialogHint": "Voici les mouvements qui franchissent la frontière du foyer. La plupart sont ce qu'annonce le résumé ; changez ceux qui ne le sont pas.",
+    "scrollLeft": "Mouvements précédents",
+    "scrollRight": "Mouvements suivants"
   }
 }

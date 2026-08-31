@@ -1,17 +1,40 @@
 'use client';
 
 import { useEffect, useReducer, useRef, useState, useTransition } from 'react';
-import { useTranslations } from 'next-intl';
-import { AlertTriangle, ArrowLeft, Check, FileUp, Search, Upload, X } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileUp,
+  Pencil,
+  Search,
+  Sparkles,
+  Upload,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   commitImportAction,
+  openAccountsAction,
   previewImportAction,
+  type PreviewLine,
   type PreviewResult,
 } from '@/server/import-actions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -33,7 +56,7 @@ export interface PresetChoice {
 interface Props {
   readonly presets: readonly PresetChoice[];
   readonly accounts: readonly { id: string; name: string }[];
-  /** Chosen for EXTERNAL by default: money from outside has to land somewhere. */
+  /** Offered for the outside world, which no file names. */
   readonly openingAccountId: string | null;
 }
 
@@ -50,10 +73,14 @@ interface Run {
 
 const EMPTY: Run = { preset: null, filename: '', text: '', binding: {}, overrides: {} };
 
+/** Above this, the review is folded by month. Below it, everything fits on a screen. */
+const FOLD_ABOVE = 20;
+
 type Step =
   | { readonly type: 'pick'; readonly preset: PresetChoice }
   | { readonly type: 'file'; readonly filename: string; readonly text: string }
   | { readonly type: 'bind'; readonly label: string; readonly accountId: string }
+  | { readonly type: 'bindMany'; readonly binding: Readonly<Record<string, string>> }
   | { readonly type: 'counterpart'; readonly index: number; readonly accountId: string }
   | { readonly type: 'reset' };
 
@@ -77,6 +104,8 @@ function reduce(state: Run, step: Step): Run {
       return { ...state, filename: step.filename, text: step.text, binding: {}, overrides: {} };
     case 'bind':
       return { ...state, binding: { ...state.binding, [step.label]: step.accountId } };
+    case 'bindMany':
+      return { ...state, binding: { ...state.binding, ...step.binding } };
     case 'counterpart':
       return { ...state, overrides: { ...state.overrides, [step.index]: step.accountId } };
     case 'reset':
@@ -85,7 +114,7 @@ function reduce(state: Run, step: Step): Run {
 }
 
 /**
- * Choose a bank, read a file, bind its accounts, review, import.
+ * Choose a bank, hand over a file, name its accounts, review, import.
  *
  * The file's text is held here and sent with every action. The server re-reads
  * it each time rather than trusting anything about a transaction that came back
@@ -94,12 +123,26 @@ function reduce(state: Run, step: Step): Run {
  */
 export function Importer({ presets, accounts, openingAccountId }: Props) {
   const t = useTranslations('import');
+  const locale = useLocale();
 
   const [run, dispatch] = useReducer(reduce, EMPTY);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState('');
+  const [perLine, setPerLine] = useState(false);
+  /** Months whose folded state a person has changed. See `isOpen`. */
+  const [toggled, setToggled] = useState<Set<string>>(new Set());
   const [pending, start] = useTransition();
+
+  /** The counterpart rail, scrolled by its own buttons rather than by a bar. */
+  const rail = useRef<HTMLUListElement>(null);
+  const slide = (direction: 1 | -1) => {
+    const list = rail.current;
+    if (list === null) return;
+    // A card and its gap, so a press lands on the next card rather than part
+    // way through it - which is what snapping is for.
+    list.scrollBy({ left: direction * (list.clientWidth - 48), behavior: 'smooth' });
+  };
 
   // Only the newest reading may win. A binding chosen while an older preview is
   // still in flight would otherwise be answered by the older one.
@@ -154,14 +197,29 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
           );
         }
 
-        // EXTERNAL is offered the opening balance account, because that is what
-        // it is: the counterpart of money crossing the household's edge, and no
-        // file names it.
-        for (const label of result.counterparts ?? []) {
-          if (binding[label] === undefined && openingAccountId !== null) {
-            dispatch({ type: 'bind', label, accountId: openingAccountId });
+        // Two kinds of answer the server can give without being asked, taken
+        // together so they cost one round trip rather than two.
+        //
+        // A suggestion is an account of yours that already carries the name
+        // this account would be created under, which is how the second import
+        // of a bank asks nothing at all. The outside world gets the opening
+        // balance account, because that is what it is: the counterpart of money
+        // crossing the household's edge, and no file names it.
+        const offered: Record<string, string> = {};
+        for (const account of result.requested ?? []) {
+          if (account.suggested === true && account.accountId !== null) {
+            offered[account.label] = account.accountId;
+          } else if (
+            account.nature === 'counterpart' &&
+            account.accountId === null &&
+            openingAccountId !== null
+          ) {
+            offered[account.label] = openingAccountId;
           }
         }
+        // Dispatched only when there is something to say, or the effect that
+        // asked for this reading would ask for another one just like it.
+        if (Object.keys(offered).length > 0) dispatch({ type: 'bindMany', binding: offered });
       });
     });
   }, [preset, text, binding, overrides, openingAccountId]);
@@ -172,12 +230,34 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
     dispatch({ type: 'reset' });
     setPreview(null);
     setSelected(new Set());
+    setPerLine(false);
+    setToggled(new Set());
   }
 
   async function onFile(file: File) {
     const contents = await file.text();
     seededFrom.current = '';
     dispatch({ type: 'file', filename: file.name, text: contents });
+  }
+
+  /** Creates or matches every account nobody has chosen, in one press. */
+  function openAccounts() {
+    if (preset === null) return;
+    const form = new FormData();
+    form.set('preset', preset.id);
+    form.set('text', text);
+    for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
+
+    start(() => {
+      void openAccountsAction(form).then((result) => {
+        if (result.error !== undefined) {
+          toast.error(result.error);
+          return;
+        }
+        dispatch({ type: 'bindMany', binding: result.bound ?? {} });
+        toast.success(t('opened', { count: result.created ?? 0 }));
+      });
+    });
   }
 
   function commit() {
@@ -226,7 +306,9 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
             <Input
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
               placeholder={t('searchBank')}
               aria-label={t('searchBank')}
               // The browser draws its own clear button on a search field, in
@@ -317,10 +399,40 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
   }
 
   const lines = preview.lines ?? [];
-  const labels = preview.accounts ?? [];
-  const securities = preview.securities ?? [];
-  const counterparts = preview.counterparts ?? [];
-  const unbound = [...labels, ...securities].filter((label) => binding[label] === undefined);
+  const requested = preview.requested ?? [];
+  const own = requested.filter((account) => account.nature !== 'counterpart');
+  const counterparts = requested.filter((account) => account.nature === 'counterpart');
+  const missing = own.filter((account) => account.accountId === null);
+
+  const crossings = lines.filter((line) => line.entries.some((entry) => entry.counterpart));
+  const counterpartName = nameOf(counterparts[0]?.accountId ?? '');
+
+  const months = groupByMonth(lines);
+  /**
+   * Folded by month above twenty transactions, and never a month that needs a
+   * decision. A person's own toggle flips whichever it is: a short file opens
+   * everything, and clicking a month closes it.
+   */
+  const isOpen = (month: string, group: readonly PreviewLine[]) => {
+    const byDefault = lines.length <= FOLD_ABOVE || group.some((line) => line.verdict !== 'new');
+    return byDefault !== toggled.has(month);
+  };
+
+  const toggleMonth = (month: string) => {
+    const next = new Set(toggled);
+    if (next.has(month)) next.delete(month);
+    else next.add(month);
+    setToggled(next);
+  };
+
+  const setMany = (indices: readonly number[], on: boolean) => {
+    const next = new Set(selected);
+    for (const index of indices) {
+      if (on) next.add(index);
+      else next.delete(index);
+    }
+    setSelected(next);
+  };
 
   return (
     <section className="grid gap-6">
@@ -333,81 +445,95 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
         </Alert>
       )}
 
-      {/* --- Accounts ------------------------------------------------------ */}
+      {/* --- The accounts the file needs ----------------------------------- */}
       <div className="bg-card/60 grid gap-4 rounded-2xl border p-5">
-        <div>
-          <h2 className="text-[13px] font-semibold tracking-wide uppercase">
-            {t('accountsTitle')}
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">{t('accountsHint')}</p>
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <h2 className="text-[13px] font-semibold tracking-wide uppercase">
+              {t('accountsTitle')}
+            </h2>
+            <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('accountsHint')}</p>
+          </div>
+
+          {/* The whole panel answered at once. "Which of your accounts is PEA?"
+              has no answer for somebody who has just installed this, and asking
+              it four times before showing a transaction was most of what made
+              this screen hard. */}
+          {missing.length > 0 && (
+            <Button type="button" variant="secondary" onClick={openAccounts} disabled={pending}>
+              <Sparkles className="size-4" aria-hidden />
+              {t('openAll', { count: missing.length })}
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {labels.map((label) => (
-            <div key={label} className="grid gap-1.5">
-              <Label htmlFor={`bind-${label}`}>{label}</Label>
+          {own.map((account) => (
+            <div key={account.label} className="grid gap-1.5">
+              <Label
+                htmlFor={`bind-${account.label}`}
+                className="flex flex-wrap items-baseline gap-2"
+              >
+                {account.name}
+                {/* The exporter's own code, kept and made small. It is how a
+                    person checks this against the file they are holding, and
+                    it is not what they should have to read first. */}
+                <span className="text-muted-foreground text-[11px] font-normal">
+                  {account.label} ·{' '}
+                  {account.nature === 'securities' ? t('natureSecurities') : t('natureCash')}
+                </span>
+              </Label>
               <AccountSelect
-                id={`bind-${label}`}
+                id={`bind-${account.label}`}
                 accounts={accounts}
-                value={binding[label] ?? ''}
+                value={account.accountId ?? ''}
                 onChange={(accountId) => {
-                  dispatch({ type: 'bind', label, accountId });
+                  dispatch({ type: 'bind', label: account.label, accountId });
                 }}
               />
             </div>
           ))}
         </div>
 
-        {/* A broker names one account and means two. Asked in the same panel,
-            because it is the same kind of question - one answer for the file -
-            but set apart, because picking the cash account here is the mistake
-            this section exists to prevent. */}
-        {securities.length > 0 && (
+        {/* --- The outside world, folded ----------------------------------- */}
+        {counterparts.length > 0 && crossings.length > 0 && (
           <div className="grid gap-3 border-t pt-4">
-            <p className="text-muted-foreground max-w-prose text-sm">{t('securitiesHint')}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {securities.map((label) => (
-                <div key={label} className="grid gap-1.5">
-                  <Label htmlFor={`bind-${label}`}>{label}</Label>
-                  <AccountSelect
-                    id={`bind-${label}`}
-                    accounts={accounts}
-                    value={binding[label] ?? ''}
-                    onChange={(accountId) => {
-                      dispatch({ type: 'bind', label, accountId });
-                    }}
-                  />
-                </div>
-              ))}
+            <p className="text-muted-foreground max-w-prose text-sm">
+              {t('counterpartSummary', {
+                count: crossings.length,
+                account: counterpartName,
+              })}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="grid gap-1.5 sm:w-64">
+                <AccountSelect
+                  id={`bind-${counterparts[0]!.label}`}
+                  aria-label={counterparts[0]!.name}
+                  accounts={accounts}
+                  value={counterparts[0]!.accountId ?? ''}
+                  onChange={(accountId) => {
+                    dispatch({ type: 'bind', label: counterparts[0]!.label, accountId });
+                  }}
+                />
+              </div>
+              {/* The exceptions get a room of their own. Inline controls put
+                  the question on every line of a long review, where the four
+                  that need answering are the hardest to find. */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setPerLine(true);
+                }}
+              >
+                <Pencil className="size-3.5" aria-hidden />
+                {t('counterpartOpen')}
+              </Button>
             </div>
           </div>
         )}
       </div>
-
-      {/* --- The outside world --------------------------------------------- */}
-      {counterparts.map((label) => (
-        <div key={label} className="bg-card/60 grid gap-3 rounded-2xl border border-dashed p-5">
-          <div>
-            <h2 className="text-[13px] font-semibold tracking-wide uppercase">
-              {t('counterpartTitle')}
-            </h2>
-            <p className="text-muted-foreground mt-1 max-w-prose text-sm">
-              {t('externalExplained')}
-            </p>
-          </div>
-          <div className="grid gap-1.5 sm:max-w-sm">
-            <Label htmlFor={`bind-${label}`}>{t('counterpartDefault')}</Label>
-            <AccountSelect
-              id={`bind-${label}`}
-              accounts={accounts}
-              value={binding[label] ?? ''}
-              onChange={(accountId) => {
-                dispatch({ type: 'bind', label, accountId });
-              }}
-            />
-          </div>
-        </div>
-      ))}
 
       {(preview.problems ?? []).length > 0 && (
         <Alert variant="destructive">
@@ -425,18 +551,19 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
         </Alert>
       )}
 
-      {/* --- Review -------------------------------------------------------- */}
+      {/* --- Review, by month ---------------------------------------------- */}
       <div className="grid gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-[13px] font-semibold tracking-wide uppercase">{t('reviewTitle')}</h2>
           <button
             type="button"
             className="text-muted-foreground hover:text-foreground text-xs font-medium"
-            onClick={() =>
-              setSelected(
-                selected.size === lines.length ? new Set() : new Set(lines.map((l) => l.index)),
-              )
-            }
+            onClick={() => {
+              setMany(
+                lines.map((line) => line.index),
+                selected.size !== lines.length,
+              );
+            }}
           >
             {selected.size === lines.length ? t('unselectAll') : t('selectAll')}
           </button>
@@ -446,119 +573,188 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
           <p className="text-muted-foreground text-xs">{t('notCheckedYet')}</p>
         )}
 
-        <ul className="grid gap-2">
-          {lines.map((line) => (
-            <li key={line.index}>
-              <div
-                className={cn(
-                  'rounded-xl border p-3 transition-colors',
-                  selected.has(line.index)
-                    ? 'bg-card/60'
-                    : // Not faded. An unticked row is still one somebody has to
-                      // read to decide about, and 60% opacity put it at 2.7:1.
-                      'bg-muted/30 border-dashed',
-                )}
-              >
-                {/* The label covers the checkbox and the summary, and stops
-                    there. Wrapping the whole row in one put the counterpart
-                    control inside a label, where every click also toggled the
-                    tick beside it. */}
-                <label className="flex cursor-pointer items-start gap-3">
+        <div className="grid gap-2">
+          {months.map(([month, group]) => {
+            const indices = group.map((line) => line.index);
+            const ticked = indices.filter((index) => selected.has(index)).length;
+            const attention = group.some((line) => line.verdict !== 'new');
+            const open = isOpen(month, group);
+
+            return (
+              <div key={month} className="overflow-hidden rounded-xl border">
+                <div className="bg-card/60 flex items-center gap-3 p-3">
                   <Checkbox
-                    className="mt-0.5 shrink-0"
-                    checked={selected.has(line.index)}
+                    aria-label={monthName(month, locale)}
+                    checked={ticked === indices.length}
+                    indeterminate={ticked > 0 && ticked < indices.length}
                     onCheckedChange={(value) => {
-                      const next = new Set(selected);
-                      if (value === true) next.add(line.index);
-                      else next.delete(line.index);
-                      setSelected(next);
+                      setMany(indices, value === true);
                     }}
                   />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium">
-                        {line.description ?? line.kind}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleMonth(month);
+                    }}
+                    aria-expanded={open}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <span className="truncate text-sm font-medium">{monthName(month, locale)}</span>
+                    <span className="text-muted-foreground shrink-0 text-xs">
+                      {t('monthCount', { count: group.length })}
+                    </span>
+                    {attention && (
+                      <span className="bg-chart-4/20 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+                        {t('needsLook')}
                       </span>
-                      <Verdict kind={line.verdict} checked={preview.checked === true} />
-                    </span>
-                    <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {line.bookedOn} · {line.kind} ·{' '}
-                      {t('sourceLines', {
-                        count: line.sourceLines.length,
-                        lines: line.sourceLines.join(', '),
-                      })}
-                    </span>
-                  </span>
-                </label>
+                    )}
+                    <ChevronDown
+                      className={cn(
+                        'text-muted-foreground ml-auto size-4 shrink-0 transition-transform',
+                        open && 'rotate-180',
+                      )}
+                      aria-hidden
+                    />
+                  </button>
+                </div>
 
-                <div className="pl-7">
-                  <ul className="mt-1.5 grid gap-1">
-                    {line.entries.map((entry, index) => (
-                      <li
-                        key={`${entry.label}-${String(index)}`}
-                        className="flex items-center justify-between gap-3 text-xs"
-                      >
-                        {entry.counterpart &&
-                        // One control per transaction, on the first line that
-                        // needs it. Interest has two counterpart lines - the
-                        // income and the tax that went with it - and putting a
-                        // select on each asks the same question twice and lets
-                        // the two answers disagree.
-                        index === line.entries.findIndex((e) => e.counterpart) ? (
-                          <AccountSelect
-                            id={`counterpart-${String(line.index)}`}
-                            aria-label={t('counterpartFor', {
-                              description: line.description ?? line.kind,
-                            })}
-                            size="sm"
-                            accounts={accounts}
-                            value={entry.accountId ?? ''}
-                            onChange={(accountId) => {
-                              dispatch({ type: 'counterpart', index: line.index, accountId });
-                            }}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground truncate">
-                            {nameOf(entry.accountId ?? '') || entry.label}
-                          </span>
-                        )}
-
-                        <span className="flex shrink-0 items-baseline gap-2">
-                          {/* What this line is, when the reader had something to
-                              say: "Gross", "Withholding tax". Without it, an
-                              interest payment is four numbers against two
-                              account names and nobody can tell which is which. */}
-                          {(entry.memo ?? entry.instrument) !== null && (
-                            <span className="text-muted-foreground">
-                              {entry.memo ?? entry.instrument}
-                            </span>
-                          )}
-                          <span className="tabular-nums">
-                            {entry.amount} {entry.currency}
-                          </span>
-                        </span>
+                {open && (
+                  <ul className="grid gap-2 border-t p-2">
+                    {group.map((line) => (
+                      <li key={line.index}>
+                        <Row
+                          line={line}
+                          t={t}
+                          selected={selected.has(line.index)}
+                          checked={preview.checked === true}
+                          nameOf={nameOf}
+                          onToggle={(on) => {
+                            setMany([line.index], on);
+                          }}
+                        />
                       </li>
                     ))}
                   </ul>
-                </div>
+                )}
               </div>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+        </div>
       </div>
+
+      {/* --- The exceptions, one at a time --------------------------------- */}
+      <Dialog open={perLine} onOpenChange={setPerLine}>
+        {/* `grid-cols-1`, which Tailwind writes as `minmax(0, 1fr)`. The dialog's
+            implicit column is `auto`, meaning max-content, so `min-w-0` on the
+            child changes nothing: it is the track that grows, and a rail of ten
+            cards made the dialog 1,733 pixels wider than the window. */}
+        <DialogContent className="grid-cols-1 sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{t('counterpartDialogTitle')}</DialogTitle>
+            <DialogDescription>{t('counterpartDialogHint')}</DialogDescription>
+          </DialogHeader>
+
+          {/* A rail, not a scrolling list. A vertical list of fifteen puts a
+              scrollbar down the side of the dialog and squeezes every name and
+              every account into a truncated half-line. Sideways, each movement
+              gets a whole card: the description on two lines, the amount large
+              enough to read, and an account control the full width of it. */}
+          {/* `min-w-0`, and it is not decoration. The dialog is a grid, and a
+              grid item's default `min-width: auto` lets it grow to whatever it
+              contains - so a rail of fifteen cards stretched the row and the
+              cards ran out of the dialog and off the page. */}
+          <div className="min-w-0">
+            <ul
+              ref={rail}
+              className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {crossings.map((line) => {
+                const side = line.entries.find((entry) => entry.counterpart);
+                return (
+                  <li
+                    key={line.index}
+                    className="bg-card/60 flex w-60 shrink-0 snap-start flex-col justify-between gap-3 rounded-xl border p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 text-sm leading-snug font-medium">
+                        {line.description ?? line.kind}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs">{line.bookedOn}</p>
+                      <p className="mt-2 text-lg font-semibold tabular-nums">
+                        {side?.amount} {side?.currency}
+                      </p>
+                    </div>
+                    <AccountSelect
+                      id={`counterpart-${String(line.index)}`}
+                      aria-label={t('counterpartFor', {
+                        description: line.description ?? line.kind,
+                      })}
+                      size="sm"
+                      className="w-full"
+                      accounts={accounts}
+                      value={side?.accountId ?? ''}
+                      onChange={(accountId) => {
+                        dispatch({ type: 'counterpart', index: line.index, accountId });
+                      }}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <DialogFooter className="sm:justify-between">
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={t('scrollLeft')}
+                onClick={() => {
+                  slide(-1);
+                }}
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={t('scrollRight')}
+                onClick={() => {
+                  slide(1);
+                }}
+              >
+                <ChevronRight className="size-4" aria-hidden />
+              </Button>
+              <span className="text-muted-foreground ml-2 text-xs">
+                {t('monthCount', { count: crossings.length })}
+              </span>
+            </div>
+            <Button
+              type="button"
+              onClick={() => {
+                setPerLine(false);
+              }}
+            >
+              {t('counterpartClose')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="button"
           onClick={commit}
-          disabled={pending || selected.size === 0 || unbound.length > 0}
+          disabled={pending || selected.size === 0 || missing.length > 0}
         >
           <Check className="size-4" aria-hidden />
           {t('commit', { count: selected.size })}
         </Button>
-        {unbound.length > 0 && (
+        {missing.length > 0 && (
           <p className="text-muted-foreground text-xs">
-            {t('accountMissing', { label: unbound.join(', ') })}
+            {t('accountMissing', { label: missing.map((a) => a.name).join(', ') })}
           </p>
         )}
       </div>
@@ -566,13 +762,115 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
   );
 }
 
+/** One candidate transaction, with its entries and the choice it may still need. */
+function Row({
+  line,
+  t,
+  selected,
+  checked,
+  nameOf,
+  onToggle,
+}: {
+  line: PreviewLine;
+  t: ReturnType<typeof useTranslations<'import'>>;
+  selected: boolean;
+  checked: boolean;
+  nameOf: (id: string) => string;
+  onToggle: (on: boolean) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-xl border p-3 transition-colors',
+        selected
+          ? 'bg-card/60'
+          : // Not faded. An unticked row is still one somebody has to read to
+            // decide about, and 60% opacity put it at 2.7:1.
+            'bg-muted/30 border-dashed',
+      )}
+    >
+      {/* The label covers the checkbox and the summary, and stops there.
+          Wrapping the whole row in one put the counterpart control inside a
+          label, where every click also toggled the tick beside it. */}
+      <label className="flex cursor-pointer items-start gap-3">
+        <Checkbox
+          className="mt-0.5 shrink-0"
+          checked={selected}
+          onCheckedChange={(value) => {
+            onToggle(value === true);
+          }}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-sm font-medium">{line.description ?? line.kind}</span>
+            <Verdict kind={line.verdict} checked={checked} t={t} />
+          </span>
+          <span className="text-muted-foreground mt-0.5 block text-xs">
+            {line.bookedOn} · {line.kind} ·{' '}
+            {t('sourceLines', {
+              count: line.sourceLines.length,
+              lines: line.sourceLines.join(', '),
+            })}
+          </span>
+        </span>
+      </label>
+
+      <div className="pl-7">
+        <ul className="mt-1.5 grid gap-1">
+          {line.entries.map((entry, index) => (
+            <li
+              key={`${entry.label}-${String(index)}`}
+              className="flex items-center justify-between gap-3 text-xs"
+            >
+              <span className="text-muted-foreground truncate">
+                {nameOf(entry.accountId ?? '') || entry.label}
+              </span>
+
+              <span className="flex shrink-0 items-baseline gap-2">
+                {/* What this line is, when the reader had something to say:
+                    "Gross", "Withholding tax". Without it, an interest payment
+                    is three numbers against two names and nobody can tell
+                    which is which. */}
+                {(entry.memo ?? entry.instrument) !== null && (
+                  <span className="text-muted-foreground">{entry.memo ?? entry.instrument}</span>
+                )}
+                <span className="tabular-nums">
+                  {entry.amount} {entry.currency}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/** Candidates by `YYYY-MM`, newest first, keeping each month's own order. */
+function groupByMonth(lines: readonly PreviewLine[]): [string, PreviewLine[]][] {
+  const months = new Map<string, PreviewLine[]>();
+  for (const line of lines) {
+    const month = line.bookedOn.slice(0, 7);
+    const group = months.get(month);
+    if (group === undefined) months.set(month, [line]);
+    else group.push(line);
+  }
+  return [...months.entries()].sort(([a], [b]) => b.localeCompare(a));
+}
+
+function monthName(month: string, locale: string): string {
+  const [year, index] = month.split('-');
+  const date = new Date(Number(year), Number(index) - 1, 1);
+  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(date);
+}
+
 /**
  * One account, chosen from the household's.
  *
  * Extracted because the same control answers three different questions on this
- * screen - which of yours is `PEA`, what stands for the outside world by
- * default, and what it is for this one transaction - and three copies of it is
- * three places for the empty-value handling to drift.
+ * screen - which of yours is `PEA`, what stands for the outside world, and what
+ * it is for this one transaction - and three copies of it is three places for
+ * the empty-value handling to drift.
  */
 function AccountSelect({
   id,
@@ -580,6 +878,7 @@ function AccountSelect({
   value,
   onChange,
   size,
+  className,
   'aria-label': ariaLabel,
 }: {
   id: string;
@@ -587,6 +886,7 @@ function AccountSelect({
   value: string;
   onChange: (accountId: string) => void;
   size?: 'sm' | 'default';
+  className?: string;
   'aria-label'?: string;
 }) {
   return (
@@ -601,9 +901,11 @@ function AccountSelect({
         id={id}
         size={size}
         aria-label={ariaLabel}
-        className={size === 'sm' ? 'min-w-0 max-w-[60%]' : 'w-full'}
+        className={cn('w-full min-w-0', className)}
       >
-        <SelectValue>{accounts.find((a) => a.id === value)?.name ?? ''}</SelectValue>
+        <SelectValue className="truncate">
+          {accounts.find((a) => a.id === value)?.name ?? ''}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {accounts.map((account) => (
@@ -631,8 +933,15 @@ function Logo({ preset }: { preset: PresetChoice }) {
   );
 }
 
-function Verdict({ kind, checked }: { kind: string; checked: boolean }) {
-  const t = useTranslations('import');
+function Verdict({
+  kind,
+  checked,
+  t,
+}: {
+  kind: string;
+  checked: boolean;
+  t: ReturnType<typeof useTranslations<'import'>>;
+}) {
   if (!checked || kind === 'new') return null;
 
   return (

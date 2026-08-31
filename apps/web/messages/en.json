@@ -196,9 +196,8 @@
     "step2": "File",
     "step3": "Accounts",
     "step4": "Review",
-    "accountsTitle": "Which of your accounts is which",
-    "accountsHint": "The file names its own accounts. Say which of yours each one is.",
-    "externalExplained": "Your file does not say where money arriving from outside came from, and double entry needs the other side. Choose what it usually is - your opening balance account, for a salary - and change it on any line where it was something else, like a transfer from an account of yours at another bank.",
+    "accountsTitle": "The accounts this file needs",
+    "accountsHint": "A statement covers several accounts. Say which of yours each one is, or let Altitude create them.",
     "reviewTitle": "What would be added",
     "unselectAll": "Select none",
     "selectAll": "Select all",
@@ -220,8 +219,6 @@
     "sourceLines": "from {count, plural, =1 {line} other {lines}} {lines}",
     "searchBank": "Search a bank",
     "noBank": "No bank called \"{query}\" yet.",
-    "counterpartTitle": "Money from outside",
-    "counterpartDefault": "Usually",
     "counterpartFor": "Where the money for \"{description}\" came from",
     "clearSearch": "Clear the search",
     "role": {
@@ -229,6 +226,27 @@
       "withholdingTax": "Withholding tax",
       "netCredited": "Net credited"
     },
-    "securitiesHint": "A purchase moves cash out and shares in, and your broker calls both by the same name. Choose the account that holds the shares - not the cash account beside it."
+    "account": {
+      "tradeRepublicCurrent": "Trade Republic current account",
+      "tradeRepublicCto": "Trade Republic securities (CTO)",
+      "tradeRepublicPea": "Trade Republic PEA",
+      "securitiesOf": "{name} securities",
+      "outside": "Outside the household"
+    },
+    "openAll": "Create the {count, plural, =1 {missing account} other {# missing accounts}}",
+    "opened": "{count, plural, =0 {Everything was already there} =1 {# account created} other {# accounts created}}",
+    "natureCash": "cash",
+    "natureSecurities": "securities",
+    "counterpartSummary": "{count, plural, =1 {# movement crosses} other {# movements cross}} the edge of your household, filed under {account}.",
+    "counterpartOpen": "Change some of them",
+    "counterpartClose": "Done",
+    "monthCount": "{count, plural, =1 {# transaction} other {# transactions}}",
+    "needsLook": "needs a look",
+    "expand": "Show",
+    "collapse": "Hide",
+    "counterpartDialogTitle": "Where each of these came from",
+    "counterpartDialogHint": "These are the movements that cross the edge of your household. Most are what the summary says; change the ones that are not.",
+    "scrollLeft": "Earlier movements",
+    "scrollRight": "Later movements"
   }
 }
