@@ -96,7 +96,7 @@ test('a bank export is read, reviewed and written into the ledger', async () => 
 
     // --- The bank ------------------------------------------------------------
     await page.goto('/app/import');
-    await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Import', exact: true })).toBeVisible();
 
     // The path for a bank with no preset is shown and visibly inert, which is
     // the same promise the sidebar makes about the sections not built yet.
@@ -170,6 +170,7 @@ test('a bank export is read, reviewed and written into the ledger', async () => 
 test('importing the same file twice is refused line by line, not silently', async () => {
   await expectNoConsoleErrors(async () => {
     await open(FIXTURE);
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
 
     // Nothing to press. The accounts the first import created carry the names
     // this screen would give them, so they are matched on sight and the offer
@@ -204,6 +205,7 @@ test('the outside world is answered per transaction, not once for the file', asy
     await expect(dialog).toBeHidden();
 
     await open(TWO_SOURCES);
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Create the/ })).toHaveCount(0);
 
     // Two lines the file describes identically: both are money arriving from
@@ -252,6 +254,10 @@ test('the outside world is answered per transaction, not once for the file', asy
 test('a PEA holds its own shares, and a CTO does not', async () => {
   await expectNoConsoleErrors(async () => {
     await open(PEA);
+    // Waited for before counting anything. `toHaveCount(1)` on a control that
+    // only exists once the server has answered reads zero while the request is
+    // still in flight, and zero is a legitimate-looking answer.
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
 
     // Three accounts, not four. The current account and the CTO beside it are
     // two places; the PEA is one place holding cash and holdings together, so
@@ -292,6 +298,7 @@ test('the counterpart rail scrolls inside the dialog rather than out of it', asy
     // Ten movements, and nothing is imported: this is about the dialog holding
     // its shape, so the ledger is left exactly as the previous test left it.
     await open(MANY);
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
     await page.getByRole('button', { name: 'Change some of them' }).click();
 
     const dialogue = page.getByRole('dialog');
@@ -416,5 +423,55 @@ test('an account in another currency is left out of the totals, and said so', as
     // printed after it is what a person saw before `toMessage` stopped
     // relaying anything that was not written for them.
     await expect(page.getByText(/Failed query/)).toHaveCount(0);
+  });
+});
+
+test('an import can be undone, and the undoing is itself in the ledger', async () => {
+  await expectNoConsoleErrors(async () => {
+    // The dollar account from the previous test is not in the totals, so net
+    // worth here is what the euro accounts hold.
+    await page.goto('/app');
+    const before = '€2,501.06';
+    await expect(page.getByText(before).first()).toBeVisible();
+
+    await page.goto('/app/import');
+    await expect(page.getByRole('heading', { name: 'Previous imports' })).toBeVisible();
+
+    // The PEA file is the last one that was written, and undoing it should put
+    // every account it touched back where it was.
+    const run = page.locator('li', { hasText: 'trade-republic-pea.csv' }).first();
+    await expect(run).toBeVisible();
+    await run.getByRole('button', { name: 'Undo' }).click();
+
+    const confirm = page.getByRole('dialog');
+    // The dialog says what will happen. "Are you sure" is a question nobody can
+    // answer without being told the consequence.
+    await expect(confirm.getByText('will be cancelled by its opposite')).toBeVisible();
+    await confirm.getByRole('button', { name: 'Undo the import' }).click();
+
+    await expect(page.getByText('3 transactions reversed')).toBeVisible();
+    await expect(confirm).toBeHidden();
+
+    // Listed, and marked. A run that disappeared would answer "has this file
+    // been imported?" with no.
+    await expect(run.getByText('Undone')).toBeVisible();
+    await expect(run.getByText('3 transactions')).toBeVisible();
+
+    // The balances are back, by arithmetic rather than by deletion.
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€2,701.06')).toBeVisible();
+    await expect(page.getByText('€100.00').first()).toBeVisible();
+
+    // Nothing was deleted: the three transactions and the three that cancelled
+    // them are both in the list.
+    await page.goto('/app/transactions?status=reversal');
+    await expect(page.getByText('reverses an earlier transaction').first()).toBeVisible();
+    await page.goto('/app/transactions?status=reversed');
+    await expect(page.getByText('Achat PEA')).toBeVisible();
+
+    // And the same run cannot be undone twice - the control is gone, not merely
+    // guarded on the server.
+    await page.goto('/app/import');
+    await expect(run.getByRole('button', { name: 'Undo' })).toHaveCount(0);
   });
 });
