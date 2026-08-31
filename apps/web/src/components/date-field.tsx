@@ -95,7 +95,12 @@ export function DateField({
           field out of its column. Absolutely positioned over the trigger rather
           than nested inside it, because a button inside a button is neither
           valid nor clickable. */}
-      <div className="relative w-full">
+      {/* `flex`, not a plain block. The trigger is a button, which is
+          inline-flex, and an inline box in a block box sits on a text baseline
+          with the line's descender space underneath it. That made this field a
+          few pixels taller than the Input beside it, so the two hints below
+          them in a two-column form did not line up. */}
+      <div className="relative flex w-full">
         <Popover open={open} onOpenChange={setOpen}>
           {/* Base UI composes with `render`, not Radix's `asChild`. */}
           <PopoverTrigger
