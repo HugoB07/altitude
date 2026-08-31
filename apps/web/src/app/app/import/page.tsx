@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { accountBalances } from '@altitude/core';
+import { accountBalances, listImports } from '@altitude/core';
 import { PRESETS } from '@/lib/import-presets';
 import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
+import { ImportHistory } from './history';
 import { Importer } from './importer';
 
 export const metadata = { title: 'Altitude' };
@@ -20,6 +21,7 @@ export default async function ImportPage() {
 
   const t = await getTranslations('import');
   const balances = await scoped((tx) => accountBalances(tx, ctx.actor));
+  const runs = await scoped((tx) => listImports(tx, ctx.actor));
 
   // Only open accounts: importing into a closed one would reopen a period a
   // person deliberately shut.
@@ -47,6 +49,19 @@ export default async function ImportPage() {
         }))}
         accounts={accounts}
         openingAccountId={opening?.accountId ?? null}
+      />
+
+      {/* Dates cross to the client as strings. A Date would be serialised and
+          rebuilt anyway, and the component formats it in the reader's locale. */}
+      <ImportHistory
+        runs={runs.map((run) => ({
+          id: run.id,
+          source: run.source,
+          filename: run.filename,
+          createdAt: run.createdAt.toISOString(),
+          transactions: run.transactions,
+          rolledBack: run.rolledBackAt !== null,
+        }))}
       />
     </div>
   );

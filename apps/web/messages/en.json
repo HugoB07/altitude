@@ -250,6 +250,17 @@
     "counterpartDialogTitle": "Where each of these came from",
     "counterpartDialogHint": "These are the movements that cross the edge of your household. Most are what the summary says; change the ones that are not.",
     "scrollLeft": "Earlier movements",
-    "scrollRight": "Later movements"
+    "scrollRight": "Later movements",
+    "historyTitle": "Previous imports",
+    "historyEmpty": "Nothing has been imported into this household yet.",
+    "runLine": "{count, plural, =1 {# transaction} other {# transactions}} · {date}",
+    "undo": "Undo",
+    "undone": "Undone",
+    "undoTitle": "Undo this import?",
+    "undoBody": "Every transaction {filename} added will be cancelled by its opposite. Nothing is deleted: the import and the corrections both stay in the ledger, and you can import the file again afterwards.",
+    "undoConfirm": "Undo the import",
+    "cancel": "Cancel",
+    "rolledBack": "{count, plural, =1 {# transaction reversed} other {# transactions reversed}}",
+    "unknownImport": "That import no longer exists."
   }
 }

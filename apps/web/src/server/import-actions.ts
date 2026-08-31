@@ -8,15 +8,18 @@ import {
   accountBalances,
   bindAccounts,
   commitImport,
+  ImportNotFoundError,
   createAccount,
   findDuplicates,
+  listImports,
+  rollbackImport,
   type AccountBinding,
   type BoundCandidate,
   type CandidateOverrides,
   type EntryRole,
   type Verdict,
 } from '@altitude/core';
-import { accountId as toAccountId, importId, transactionId } from '@altitude/shared';
+import { accountId as toAccountId, importId, todayIn, transactionId } from '@altitude/shared';
 import { presetById, type Preset } from '@/lib/import-presets';
 import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
@@ -573,4 +576,51 @@ function currenciesByLabel(reading: {
   }
 
   return found;
+}
+
+export interface RollbackOutcome {
+  readonly error?: string;
+  readonly reversed?: number;
+}
+
+/**
+ * Undoes an import, from the screen.
+ *
+ * The reversal ids are minted here, one per transaction the run made, and the
+ * service uses as many as it needs - the ones already reversed by hand are
+ * skipped, so the count it wants is never more than this. Minting them at the
+ * edge is the same rule as everywhere else: the domain builds a transaction
+ * before anything is written, so it cannot depend on what the database hands
+ * back.
+ */
+export async function rollbackImportAction(formData: FormData): Promise<RollbackOutcome> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  const id = String(formData.get('id') ?? '');
+  if (id === '') return { error: (await getTranslations('import'))('unknownImport') };
+
+  try {
+    const result = await scoped(async (tx) => {
+      const runs = await listImports(tx, actor);
+      const run = runs.find((candidate) => candidate.id === id);
+      if (run === undefined) throw new ImportNotFoundError(importId(id));
+
+      return rollbackImport(tx, actor, {
+        importId: importId(id),
+        // Today, not the day the file covered. A correction happened when it
+        // happened; backdating one rewrites what a past month looked like.
+        on: todayIn(),
+        reversalIds: Array.from({ length: run.transactions }, () => transactionId(randomUUID())),
+      });
+    });
+
+    revalidatePath('/app');
+    revalidatePath('/app/accounts');
+    revalidatePath('/app/transactions');
+    revalidatePath('/app/import');
+    return { reversed: result.reversed };
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
 }

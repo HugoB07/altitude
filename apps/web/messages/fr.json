@@ -250,6 +250,17 @@
     "counterpartDialogTitle": "D'où vient chacun de ces mouvements",
     "counterpartDialogHint": "Voici les mouvements qui franchissent la frontière du foyer. La plupart sont ce qu'annonce le résumé ; changez ceux qui ne le sont pas.",
     "scrollLeft": "Mouvements précédents",
-    "scrollRight": "Mouvements suivants"
+    "scrollRight": "Mouvements suivants",
+    "historyTitle": "Imports précédents",
+    "historyEmpty": "Rien n'a encore été importé dans ce foyer.",
+    "runLine": "{count, plural, =1 {# transaction} other {# transactions}} · {date}",
+    "undo": "Annuler",
+    "undone": "Annulé",
+    "undoTitle": "Annuler cet import ?",
+    "undoBody": "Chaque transaction ajoutée par {filename} sera annulée par son opposée. Rien n'est supprimé : l'import et les corrections restent tous deux dans le grand livre, et vous pourrez réimporter le fichier ensuite.",
+    "undoConfirm": "Annuler l'import",
+    "cancel": "Fermer",
+    "rolledBack": "{count, plural, =1 {# transaction contrepassée} other {# transactions contrepassées}}",
+    "unknownImport": "Cet import n'existe plus."
   }
 }
