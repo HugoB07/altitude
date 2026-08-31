@@ -27,6 +27,17 @@ export const imports = pgTable(
     filename: text('filename').notNull(),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * When the run was undone, and by whom. Null while it still stands.
+     *
+     * The reversals are the truth - every transaction the run made has an
+     * opposite, and nothing is deleted. This is the answer to "has this already
+     * been undone?", which is otherwise a count of transactions and their
+     * reversals every time the list is drawn, and which two people pressing the
+     * button at the same moment could both get wrong.
+     */
+    rolledBackAt: timestamp('rolled_back_at', { withTimezone: true }),
+    rolledBackBy: uuid('rolled_back_by').references(() => users.id, { onDelete: 'set null' }),
   },
   (t) => [index('imports_household_idx').on(t.householdId, t.createdAt.desc())],
 );

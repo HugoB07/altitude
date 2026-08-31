@@ -53,6 +53,14 @@ export const transactions = pgTable(
     source: text('source').notNull().default('manual'),
     /** Provider identifier - the idempotency key for imports and sync. */
     externalId: text('external_id'),
+    /**
+     * When this transaction was cancelled by an opposite one. Null while it stands.
+     *
+     * Denormalised from `reverses_id`, and only because the unique index below
+     * needs it: whether a transaction is reversed is otherwise a correlated
+     * subquery, and a partial index cannot be written over one.
+     */
+    reversedAt: timestamp('reversed_at', { withTimezone: true }),
     /** sha256 over account, date, amount and normalised label (plan §8.5). */
     dedupeHash: text('dedupe_hash'),
     /** Set when this transaction cancels another: the ledger is append-only. */
@@ -71,9 +79,18 @@ export const transactions = pgTable(
   (t) => [
     // Partial: only rows that actually carry a provider id take part, so
     // manually entered transactions are not forced to invent one.
+    /**
+     * What makes re-importing a file add nothing: the provider's own id is
+     * unique per household, so a second import matches instead of duplicating.
+     *
+     * Reversed transactions are excluded, and that exclusion is the whole point
+     * of `reversed_at`. Without it, undoing an import made its file impossible
+     * to import again - the cancelled originals still held every id, so every
+     * row collided with a transaction that no longer counted for anything.
+     */
     uniqueIndex('transactions_external_id_key')
       .on(t.householdId, t.externalId)
-      .where(sql`${t.externalId} IS NOT NULL`),
+      .where(sql`${t.externalId} IS NOT NULL AND ${t.reversedAt} IS NULL`),
     /**
      * The ledger's reading order, in full.
      *
