@@ -1,11 +1,18 @@
-import { inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import {
   accounts as accountsTable,
   entries as entriesTable,
   transactions as transactionsTable,
 } from '@altitude/db';
 import type { AccountClass, Database } from '@altitude/db';
-import { Money, dec, type AccountId, type LedgerDate, type TransactionId } from '@altitude/shared';
+import {
+  Money,
+  dec,
+  instrumentId,
+  type AccountId,
+  type LedgerDate,
+  type TransactionId,
+} from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
 import { assertActorMatchesTenant, TenantScopeError } from './tenant';
 
@@ -84,6 +91,17 @@ export async function postTransaction(
       memo: entry.memo ?? null,
     })),
   );
+
+  // The original stops standing, and stops reserving its provider identifier.
+  // Written here rather than by whoever posts a reversal, so the two cannot
+  // drift: a reversal that did not mark its original would leave the ledger
+  // saying a cancelled transaction still counts.
+  if (transaction.reversesId !== undefined) {
+    await tx
+      .update(transactionsTable)
+      .set({ reversedAt: new Date() })
+      .where(eq(transactionsTable.id, transaction.reversesId));
+  }
 
   return { transaction, id: transaction.id };
 }
@@ -535,13 +553,22 @@ export async function reverseTransactionById(
   if (row === undefined) throw new TransactionNotFoundError(original);
   if (row.reversed_by_id !== null) throw new AlreadyReversedError(original);
 
+  // Every column an entry can carry, not the four a cash transfer needs. Read
+  // without `instrument_id`, a purchase came back as a quantity of nothing, and
+  // the domain refused to rebuild it: "a quantity was given without an
+  // instrument". Reversing a transfer worked, so the gap only appeared the day
+  // something reversed a trade - which is what undoing a broker import does.
   const lines = await tx.execute<{
     account_id: string;
     amount: string;
     currency: string;
     quantity: string | null;
+    unit_price: string | null;
+    instrument_id: string | null;
+    memo: string | null;
   }>(sql`
-    SELECT account_id, amount::text, currency, quantity::text
+    SELECT account_id, amount::text, currency, quantity::text,
+           unit_price::text, instrument_id, memo
       FROM entries
      WHERE transaction_id = ${original}::uuid
   `);
@@ -558,6 +585,9 @@ export async function reverseTransactionById(
       accountId: line.account_id as AccountId,
       amount: Money.of(line.amount, line.currency),
       ...(line.quantity === null ? {} : { quantity: dec(line.quantity) }),
+      ...(line.unit_price === null ? {} : { unitPrice: Money.of(line.unit_price, line.currency) }),
+      ...(line.instrument_id === null ? {} : { instrumentId: instrumentId(line.instrument_id) }),
+      ...(line.memo === null ? {} : { memo: line.memo }),
     })),
   });
 

@@ -3,10 +3,13 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import postgres from 'postgres';
+import { sql } from 'drizzle-orm';
 import {
   Money,
   accountId,
+  dec,
   householdId,
+  instrumentId,
   ledgerDate,
   transactionId,
   userId,
@@ -155,6 +158,9 @@ afterAll(async () => {
   await admin?.end();
   await container?.stop();
 });
+
+/** Raw SQL, for the one table no service exposes yet. */
+const sqlFor = (text: string) => sql.raw(text);
 
 describe('postTransaction - the week 1 number, through the database', () => {
   it('records a deposit and a transfer, and reports 1000 rather than 1300', async () => {
@@ -728,5 +734,64 @@ describe('an entry may only move the currency its account holds', () => {
         }),
       ),
     ).resolves.toBeDefined();
+  });
+});
+
+describe('reversing a transaction that holds an instrument', () => {
+  /**
+   * A purchase reversed came back as a quantity of nothing.
+   *
+   * The rebuild read four columns - account, amount, currency, quantity - and
+   * not `instrument_id`, so the domain was handed a holding line with a
+   * quantity and no instrument and refused it by name. Every cash transfer
+   * reversed fine, which is why this survived: the gap only shows the day
+   * something reverses a trade, and undoing a broker import does exactly that.
+   */
+  it('keeps the instrument, the quantity and the unit price', async () => {
+    const instrument = await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      tx.execute<{ id: string }>(
+        sqlFor(`INSERT INTO instruments (isin, name, currency, kind)
+                VALUES ('FR0000000042', 'A fund', 'EUR', 'fund') RETURNING id`),
+      ),
+    );
+    const held = instrumentId([...instrument][0]!.id);
+
+    const bought = transactionId('ffffffff-0000-4000-8000-000000000001');
+    await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      postTransaction(tx, owner, {
+        id: bought,
+        bookedOn: ledgerDate('2026-07-01'),
+        kind: 'buy',
+        entries: [
+          { accountId: current, amount: Money.of('-250', 'EUR') },
+          {
+            accountId: current,
+            amount: Money.of('250', 'EUR'),
+            quantity: dec('10'),
+            unitPrice: Money.of('25', 'EUR'),
+            instrumentId: held,
+          },
+        ],
+      }),
+    );
+
+    const reversalId = transactionId('ffffffff-0000-4000-8000-000000000002');
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        reverseTransactionById(tx, owner, bought, reversalId, ledgerDate('2026-07-02')),
+      ),
+    ).resolves.toBeDefined();
+
+    // And the opposite carries the holding too, so a position derived from the
+    // entries nets to zero rather than to ten shares of nothing.
+    const lines = await withHousehold(client, { householdId: HOUSE }, (tx) =>
+      tx.execute<{ quantity: string | null; instrument_id: string | null }>(
+        sqlFor(`SELECT quantity::text, instrument_id FROM entries
+                 WHERE transaction_id = '${reversalId}'::uuid AND quantity IS NOT NULL`),
+      ),
+    );
+    expect([...lines]).toHaveLength(1);
+    expect([...lines][0]?.instrument_id).toBe(held);
+    expect(Number([...lines][0]?.quantity)).toBe(-10);
   });
 });
