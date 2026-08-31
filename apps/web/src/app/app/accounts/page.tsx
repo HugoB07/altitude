@@ -2,8 +2,11 @@ import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { CREATABLE_KINDS, accountBalances, type AccountBalance } from '@altitude/core';
 import { Money } from '@altitude/shared';
+import { Coins } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
+import { PRESETS } from '@/lib/import-presets';
 import { AccountRow } from './account-row';
 import { NewAccount } from './new-account';
 
@@ -32,18 +35,30 @@ export default async function AccountsPage() {
   const locale = await getLocale();
   const balances = await scoped((tx) => accountBalances(tx, ctx.actor));
 
-  // Widened to string: balances arrive as Money<string>, and the literal type
-  // would make every sum with one a mismatch.
-  const base: string = 'EUR';
+  const base = ctx.baseCurrency;
+
+  /**
+   * Only what is in the household's own currency.
+   *
+   * `Money.plus` throws on a mismatch rather than adding dollars to euros, so
+   * without this filter a single foreign account took the whole page down. The
+   * ones left out are named below rather than dropped: a total that quietly
+   * omits an account is worse than one that says it did.
+   */
   const groupTotal = (kept: readonly AccountBalance[]) =>
     format(
       kept
+        .filter((b) => b.currency === base)
         .reduce((sum, b) => sum.plus(b.balance), Money.zero(base))
         .abs()
         .amount.toFixed(),
       base,
       locale,
     );
+
+  const foreign = balances.filter(
+    (b) => b.currency !== base && b.classification !== 'equity' && b.closedOn === null,
+  );
 
   const assets = balances.filter((b) => b.classification === 'asset');
   const debts = balances.filter((b) => b.classification === 'liability');
@@ -55,6 +70,12 @@ export default async function AccountsPage() {
 
   const editable = ctx.actor.role !== 'viewer' && ctx.actor.role !== 'child';
 
+  // Read here, on the server: the registry imports the readers, and they import
+  // the database driver.
+  const institutions = PRESETS.map((preset) => preset.institution ?? preset.name).sort((a, b) =>
+    a.localeCompare(b),
+  );
+
   return (
     <div className="grid gap-10">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
@@ -62,8 +83,29 @@ export default async function AccountsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('description')}</p>
         </div>
-        <NewAccount kinds={CREATABLE_KINDS} baseCurrency={base} role={ctx.actor.role} />
+        <NewAccount
+          kinds={CREATABLE_KINDS}
+          baseCurrency={base}
+          institutions={institutions}
+          role={ctx.actor.role}
+        />
       </div>
+
+      {/* Said out loud, because the alternative is a total that is wrong by an
+          account and looks exactly like one that is right. Converting them
+          needs a dated rate per account, which is phase 3. */}
+      {foreign.length > 0 && (
+        <Alert>
+          <Coins className="size-4" aria-hidden />
+          <AlertDescription>
+            {t('foreignExcluded', {
+              count: foreign.length,
+              base,
+              names: foreign.map((account) => `${account.name} (${account.currency})`).join(', '),
+            })}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-2">
         {groups.map((group) => (
@@ -81,7 +123,7 @@ export default async function AccountsPage() {
               <ul className="grid gap-0.5">
                 {group.accounts.map((account) => (
                   <li key={account.accountId}>
-                    <Row account={account} locale={locale} editable={editable} />
+                    <Row account={account} locale={locale} editable={editable} base={base} />
                   </li>
                 ))}
               </ul>
@@ -117,16 +159,22 @@ function Row({
   account,
   locale,
   editable,
+  base,
 }: {
   account: AccountBalance;
   locale: string;
   editable: boolean;
+  base: string;
 }) {
   return (
     <AccountRow
       id={account.accountId}
       name={account.name}
       kind={account.kind}
+      institution={account.institution}
+      // Only when it differs, so the common case stays quiet and the odd one
+      // out says why it is not in the total above it.
+      currency={account.currency === base ? null : account.currency}
       balance={format(account.balance.amount.toFixed(), account.currency, locale)}
       // An asset in the red is worth flagging. A liability is negative by
       // definition and the opening balance by arithmetic - painting either as an

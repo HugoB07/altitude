@@ -18,6 +18,10 @@ export interface AccountRowProps {
   readonly id: string;
   readonly name: string;
   readonly kind: string;
+  /** Who holds it, when somebody said so. */
+  readonly institution: string | null;
+  /** Shown beside the balance when it is not the household's own. */
+  readonly currency: string | null;
   /** Already formatted for the reader's locale. */
   readonly balance: string;
   /** Whether to render the amount as a warning. Equity is never negative news. */
@@ -126,7 +130,15 @@ export function AccountRow(props: AccountRowProps) {
               </span>
             )}
           </p>
-          <p className="text-muted-foreground mt-0.5 truncate text-xs">{kindLabel(props.kind)}</p>
+          {/* The institution earns its place here. It was a field people
+              filled in and nobody ever saw, which is a field nobody fills in
+              twice. Currency only when it is not the household's, where it
+              explains why this account is missing from the totals. */}
+          <p className="text-muted-foreground mt-0.5 truncate text-xs">
+            {[kindLabel(props.kind), props.institution, props.currency]
+              .filter((part) => part !== null && part !== '')
+              .join(' · ')}
+          </p>
         </div>
       )}
 

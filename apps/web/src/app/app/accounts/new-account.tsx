@@ -23,15 +23,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CURRENCIES, currencyLabel } from '@/lib/currencies';
 
 interface Props {
   /** The kinds the service will accept. Equity is not among them. */
   kinds: readonly string[];
   baseCurrency: string;
+  /**
+   * Banks Altitude can read, offered as suggestions.
+   *
+   * Passed in rather than imported. The preset registry pulls in the readers,
+   * which pull in `@altitude/core`, which pulls in `postgres` - and this is a
+   * client component, so the bundler followed all of it and stopped at
+   * "can't resolve 'fs'". A list of strings crosses that boundary; a module
+   * graph does not.
+   */
+  institutions: readonly string[];
   role: string;
 }
 
-export function NewAccount({ kinds, baseCurrency, role }: Props) {
+export function NewAccount({ kinds, baseCurrency, institutions, role }: Props) {
   const t = useTranslations('accounts');
   const kindLabel = useTranslations('accountKind');
   const notify = useTranslations('toast');
@@ -52,6 +63,7 @@ export function NewAccount({ kinds, baseCurrency, role }: Props) {
   }, {});
 
   const [kind, setKind] = useState(kinds[0] ?? 'cash');
+  const [code, setCode] = useState(baseCurrency);
 
   // The server refuses these roles regardless. Hiding the control is courtesy,
   // not security, and the two must never be confused for one another.
@@ -96,15 +108,51 @@ export function NewAccount({ kinds, baseCurrency, role }: Props) {
             </div>
 
             <div className="grid gap-2">
+              <Label htmlFor="currency">{t('currency')}</Label>
+              <Select name="currency" value={code} onValueChange={(v) => setCode(v ?? code)}>
+                <SelectTrigger id="currency" className="w-full">
+                  <SelectValue>{currencyLabel(code)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Said before the account exists rather than after, because a
+                  currency cannot be changed once entries are posted against it
+                  and the account will sit outside every total. */}
+              {code !== baseCurrency && (
+                <p className="text-muted-foreground text-xs">
+                  {t('currencyAside', { base: baseCurrency })}
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="institution">{t('institution')}</Label>
               <Input
                 id="institution"
                 name="institution"
+                list="known-institutions"
                 placeholder={t('institutionPlaceholder')}
+                aria-describedby="institution-hint"
               />
+              {/* Suggestions, not a closed list. Naming a bank Altitude can
+                  read puts its mark on the account and lets an import of that
+                  bank find this account by name later; naming one it cannot
+                  read is still worth doing, and still allowed. */}
+              <datalist id="known-institutions">
+                {institutions.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              <p id="institution-hint" className="text-muted-foreground text-xs">
+                {t('institutionHint')}
+              </p>
             </div>
-
-            <input type="hidden" name="currency" value={baseCurrency} />
 
             {state.error !== undefined && (
               <Alert variant="destructive" role="alert">

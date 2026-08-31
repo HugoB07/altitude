@@ -14,13 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const CURRENCIES = [
-  { code: 'EUR', label: 'EUR - euro' },
-  { code: 'USD', label: 'USD - US dollar' },
-  { code: 'GBP', label: 'GBP - pound sterling' },
-  { code: 'CHF', label: 'CHF - Swiss franc' },
-] as const;
+import { CURRENCIES } from '@/lib/currencies';
 
 export function SetupForm() {
   const [state, action, pending] = useActionState(

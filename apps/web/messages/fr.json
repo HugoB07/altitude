@@ -109,7 +109,7 @@
     "kind": "Type",
     "currency": "Devise",
     "institution": "Établissement",
-    "institutionPlaceholder": "facultatif",
+    "institutionPlaceholder": "Trade Republic",
     "create": "Ajouter le compte",
     "nameRequired": "Un compte a besoin d'un nom.",
     "save": "Enregistrer",
@@ -125,7 +125,10 @@
     "closeHint": "Un compte doit être vide avant d'être clôturé.",
     "edit": "Renommer",
     "cancel": "Annuler",
-    "equityShort": "Hors patrimoine net"
+    "equityShort": "Hors patrimoine net",
+    "foreignExcluded": "{count, plural, =1 {# compte n'est} other {# comptes ne sont}} pas dans ces totaux, car Altitude ne convertit pas encore les devises : {names}. Vos totaux sont en {base}.",
+    "currencyAside": "Ce n'est pas {base}, donc ce compte restera hors de vos totaux tant qu'Altitude ne convertit pas les devises. La devise d'un compte ne se change pas ensuite : il faudrait en créer un autre.",
+    "institutionHint": "Qui le détient. Nommer une banque qu'Altitude sait lire permet à un import de retrouver ce compte plus tard."
   },
   "toast": {
     "transactionRecorded": "Transaction enregistrée",

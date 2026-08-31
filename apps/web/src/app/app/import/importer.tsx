@@ -644,11 +644,7 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
 
       {/* --- The exceptions, one at a time --------------------------------- */}
       <Dialog open={perLine} onOpenChange={setPerLine}>
-        {/* `grid-cols-1`, which Tailwind writes as `minmax(0, 1fr)`. The dialog's
-            implicit column is `auto`, meaning max-content, so `min-w-0` on the
-            child changes nothing: it is the track that grows, and a rail of ten
-            cards made the dialog 1,733 pixels wider than the window. */}
-        <DialogContent className="grid-cols-1 sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{t('counterpartDialogTitle')}</DialogTitle>
             <DialogDescription>{t('counterpartDialogHint')}</DialogDescription>

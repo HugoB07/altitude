@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import {
+  accountBalances,
   closeAccount,
   createAccount,
   createHousehold,
@@ -23,6 +24,7 @@ import {
   transactionId,
 } from '@altitude/shared';
 import { getAuthDbClient } from './auth';
+import { AccountsMissingError, toMessage } from './errors';
 import { requireContext, requireSessionUser, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
 
@@ -49,12 +51,6 @@ export interface ActionResult {
  * flattening both into one translated sentence would hide which one occurred.
  * The fallback is translated because it is the only case with nothing to say.
  */
-async function toMessage(error: unknown): Promise<string> {
-  if (error instanceof Error) return error.message;
-  const t = await getTranslations('quickAdd');
-  return t('genericError');
-}
-
 export async function createHouseholdAction(formData: FormData): Promise<ActionResult> {
   await ensureTenantIsolation();
   // requireSessionUser, not requireContext: this is the flow for someone who
@@ -114,8 +110,23 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
   }
 
   try {
-    await scoped((tx) =>
-      postTransaction(tx, actor, {
+    await scoped(async (tx) => {
+      // The accounts' own currency, not the household's and not a literal.
+      // Written as `'EUR'` here, a transfer between two dollar accounts posted
+      // two euro entries against them: balanced, accepted, and silently wrong
+      // in every balance afterwards.
+      const balances = await accountBalances(tx, actor);
+      const source = balances.find((account) => account.accountId === from);
+      const target = balances.find((account) => account.accountId === to);
+      if (source === undefined || target === undefined) throw new AccountsMissingError();
+
+      // Two accounts in different currencies are not checked here. Posting in
+      // the source's currency makes the other entry disagree with its own
+      // account, and `postTransaction` refuses that by name - one rule, in the
+      // domain, saying which account and which two currencies. A second check
+      // here would be a second wording of it, free to drift.
+      const code = source.currency;
+      await postTransaction(tx, actor, {
         id: transactionId(randomUUID()),
         bookedOn: on === '' ? todayIn() : ledgerDate(on),
         kind: 'transfer',
@@ -123,11 +134,11 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
         // Two lines with opposite signs: the smallest balanced transaction
         // there is. The service validates it anyway.
         entries: [
-          { accountId: accountId(from), amount: Money.of(`-${amount}`, 'EUR') },
-          { accountId: accountId(to), amount: Money.of(amount, 'EUR') },
+          { accountId: accountId(from), amount: Money.of(`-${amount}`, code) },
+          { accountId: accountId(to), amount: Money.of(amount, code) },
         ],
-      }),
-    );
+      });
+    });
   } catch (error) {
     return { error: await toMessage(error) };
   }

@@ -18,6 +18,7 @@ import {
 } from '@altitude/core';
 import { accountId as toAccountId, importId, transactionId } from '@altitude/shared';
 import { presetById, type Preset } from '@/lib/import-presets';
+import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
 
@@ -433,7 +434,7 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
     revalidatePath('/app/transactions');
     return { written: result.written, instruments: result.instrumentsCreated };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : t('genericError') };
+    return { error: await toMessage(error) };
   }
 }
 
@@ -462,7 +463,7 @@ export interface OpenedAccounts {
  */
 export async function openAccountsAction(formData: FormData): Promise<OpenedAccounts> {
   await ensureTenantIsolation();
-  const { actor } = await requireContext();
+  const { actor, baseCurrency } = await requireContext();
   const t = await getTranslations('import');
 
   const preset = presetById(String(formData.get('preset') ?? ''));
@@ -477,6 +478,13 @@ export async function openAccountsAction(formData: FormData): Promise<OpenedAcco
     (account) => account.nature !== 'counterpart' && account.accountId === null,
   );
   if (wanted.length === 0) return { bound: {}, created: 0 };
+
+  // What the file says each account is moved in. Written as `'EUR'` here, a
+  // dollar statement created euro accounts and then posted dollar entries into
+  // them - and `accountBalances` sums entries without looking at their
+  // currency, so the balance would have been dollars and euros added together,
+  // labelled in euros, and wrong in a way nothing on screen could show.
+  const currencies = currenciesByLabel(reading);
 
   try {
     return await scoped(async (tx) => {
@@ -498,7 +506,7 @@ export async function openAccountsAction(formData: FormData): Promise<OpenedAcco
         const made = await createAccount(tx, actor, {
           name: account.name,
           kind: account.kind,
-          currency: 'EUR',
+          currency: currencies[account.label] ?? baseCurrency,
           ...(preset.institution === undefined ? {} : { institution: preset.institution }),
         });
         bound[account.label] = made.id;
@@ -509,6 +517,60 @@ export async function openAccountsAction(formData: FormData): Promise<OpenedAcco
       return { bound, created };
     });
   } catch (error) {
-    return { error: error instanceof Error ? error.message : t('genericError') };
+    return { error: await toMessage(error) };
   }
+}
+
+/**
+ * The currency to open each account in, according to the file.
+ *
+ * The most frequent one, not the first seen, and that distinction was reported
+ * from a real import: a Trade Republic statement whose first line touching the
+ * cash account happened to be in dollars opened a euro current account in USD.
+ * Every euro entry after it then belonged to an account that could not hold it.
+ *
+ * A securities label follows its cash account rather than counting its own
+ * lines. A brokerage account holds shares from everywhere - buy one American
+ * share in a euro CTO and the file says USD - and what denominates it is the
+ * cash it settles in, not the first thing bought with that cash.
+ *
+ * A label carrying two currencies is still a real thing, and the entries that
+ * do not match are refused when they are posted rather than quietly added to a
+ * total they do not belong in.
+ */
+function currenciesByLabel(reading: {
+  candidates: readonly { entries: readonly { account: string; currency: string }[] }[];
+}): Readonly<Record<string, string>> {
+  const tally = new Map<string, Map<string, number>>();
+  for (const candidate of reading.candidates) {
+    for (const entry of candidate.entries) {
+      const counts = tally.get(entry.account) ?? new Map<string, number>();
+      counts.set(entry.currency, (counts.get(entry.currency) ?? 0) + 1);
+      tally.set(entry.account, counts);
+    }
+  }
+
+  const found: Record<string, string> = {};
+  for (const [label, counts] of tally) {
+    // Ties go to the first seen, which is the file's own order.
+    let best = '';
+    let most = 0;
+    for (const [code, count] of counts) {
+      if (count > most) {
+        most = count;
+        best = code;
+      }
+    }
+    found[label] = best;
+  }
+
+  // After the tally, so a securities label takes its cash account's answer
+  // rather than racing its own.
+  for (const label of Object.keys(found)) {
+    if (!label.endsWith(SECURITIES_SUFFIX)) continue;
+    const cash = found[label.slice(0, -SECURITIES_SUFFIX.length)];
+    if (cash !== undefined) found[label] = cash;
+  }
+
+  return found;
 }

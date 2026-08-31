@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   const locale = await getLocale();
   // Widened on purpose: balances arrive as Money<string>, and the literal type
   // would make every sum with one a mismatch. Multi-currency is phase 3.
-  const base: string = 'EUR';
+  const base = ctx.baseCurrency;
 
   const all = await scoped((tx) => accountBalances(tx, ctx.actor));
   // Closed accounts leave the dashboard. closeAccount refuses a non-empty one,
@@ -174,6 +174,7 @@ export default async function DashboardPage() {
               scale={assetTotal}
               labelOf={(kind) => t(`accountKind.${kind}`)}
               shareOf={(percent) => t('dashboard.sharePlain', { percent })}
+              base={base}
             />
           </Panel>
 
@@ -185,6 +186,7 @@ export default async function DashboardPage() {
                 scale={debtTotal}
                 labelOf={(kind) => t(`accountKind.${kind}`)}
                 shareOf={(percent) => t('dashboard.sharePlain', { percent })}
+                base={base}
               />
             </Panel>
           )}
@@ -237,6 +239,7 @@ function AccountRows({
   scale,
   labelOf,
   shareOf,
+  base,
 }: {
   accounts: readonly AccountBalance[];
   locale: string;
@@ -244,6 +247,8 @@ function AccountRows({
   scale: Money;
   labelOf: (kind: string) => string;
   shareOf: (percent: string) => string;
+  /** The household's own currency, so an account in another one can say so. */
+  base: string;
 }) {
   const reference = scale.abs();
 
@@ -263,8 +268,17 @@ function AccountRows({
 
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] leading-tight font-medium">{account.name}</p>
+              {/* Kind, then who holds it, then its currency when it is not the
+                  household's - the third being why this account is missing
+                  from the total above. */}
               <p className="text-muted-foreground mt-0.5 truncate text-xs">
-                {labelOf(account.kind)}
+                {[
+                  labelOf(account.kind),
+                  account.institution,
+                  account.currency === base ? null : account.currency,
+                ]
+                  .filter((part) => part !== null && part !== '')
+                  .join(' · ')}
               </p>
             </div>
 

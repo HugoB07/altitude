@@ -109,7 +109,7 @@
     "kind": "Kind",
     "currency": "Currency",
     "institution": "Institution",
-    "institutionPlaceholder": "optional",
+    "institutionPlaceholder": "Trade Republic",
     "create": "Add account",
     "nameRequired": "An account needs a name.",
     "save": "Save",
@@ -125,7 +125,10 @@
     "closeHint": "An account has to be empty before it can be closed.",
     "edit": "Rename",
     "cancel": "Cancel",
-    "equityShort": "Not part of net worth"
+    "equityShort": "Not part of net worth",
+    "foreignExcluded": "{count, plural, =1 {# account is} other {# accounts are}} not in these totals, because Altitude does not convert currencies yet: {names}. Your totals are in {base}.",
+    "currencyAside": "Not {base}, so this account will sit outside your totals until Altitude converts currencies. An account's currency cannot be changed afterwards - you would open another one.",
+    "institutionHint": "Who holds it. Naming a bank Altitude can read lets an import find this account later."
   },
   "toast": {
     "transactionRecorded": "Transaction recorded",

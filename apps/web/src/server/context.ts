@@ -31,6 +31,15 @@ export interface RequestContext {
   readonly displayName: string;
   /** The household's own name, for the chrome. Already joined by findMemberships. */
   readonly householdName: string;
+  /**
+   * The currency this household counts in.
+   *
+   * Carried here because it was chosen at setup and then never read again: the
+   * dashboard and the accounts page both wrote `'EUR'` in the source, so a
+   * household set up in another currency held accounts in it, matched nothing,
+   * and reported a net worth of zero for ever without a word.
+   */
+  readonly baseCurrency: string;
 }
 
 export class UnauthenticatedError extends Error {
@@ -101,6 +110,7 @@ export const getContext = cache(async (): Promise<RequestContext | null> => {
     email: user.email,
     displayName: user.displayName,
     householdName: membership.householdName,
+    baseCurrency: membership.baseCurrency,
   };
 });
 
