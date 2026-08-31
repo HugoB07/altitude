@@ -1,0 +1,5 @@
+"datetime","date","account_type","category","type","asset_class","name","symbol","shares","price","amount","fee","tax","currency","original_amount","original_currency","fx_rate","description","transaction_id","counterparty_name","counterparty_iban","payment_reference","mcc_code"
+"","2026-07-02","DEFAULT","CASH","TRANSFER_OUT","","","","","","-500.000000","","","EUR","","","","Alimentation PEA","e2e-pea-out","","","",""
+"","2026-07-02","PEA","CASH","TRANSFER_IN","","","","","","500.000000","","","EUR","","","","Alimentation PEA","e2e-pea-in","","","",""
+"","2026-07-03","PEA","TRADING","BUY","FUND","Un ETF Europe","FR0000000009","8.0000000000","25.00","-200.00","","","EUR","","","","Achat PEA","e2e-pea-buy","","","",""
+"","2026-07-04","DEFAULT","TRADING","BUY","STOCK","Une action","US0000000009","2.0000000000","50.00","-100.00","","","EUR","","","","Achat CTO","e2e-cto-buy","","","",""

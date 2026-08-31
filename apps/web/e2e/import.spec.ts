@@ -38,6 +38,10 @@ const PASSWORD = 'correct horse battery staple';
 const FIXTURE = join(__dirname, 'fixtures', 'trade-republic.csv');
 /** Two rows the file describes identically and that are not the same kind of thing. */
 const TWO_SOURCES = join(__dirname, 'fixtures', 'trade-republic-two-sources.csv');
+/** A transfer into a PEA, a purchase inside it, and a purchase from the current account. */
+const PEA = join(__dirname, 'fixtures', 'trade-republic-pea.csv');
+/** Ten movements from outside, which is what it takes to overflow the dialog. */
+const MANY = join(__dirname, 'fixtures', 'trade-republic-many.csv');
 
 test.use({ locale: 'en-GB' });
 
@@ -69,10 +73,11 @@ async function expectNoConsoleErrors(run: () => Promise<void>) {
   expect(errors, 'the browser reported errors while rendering').toEqual([]);
 }
 
-/** Picks the account named `name` for the file's label `label`. */
-async function bind(label: string, name: string) {
-  await page.getByLabel(label, { exact: true }).click();
-  await page.getByRole('option', { name, exact: true }).click();
+/** Chooses the bank and hands over a file, which is every import's first move. */
+async function open(fixture: string) {
+  await page.goto('/app/import');
+  await page.getByRole('button', { name: 'Trade Republic' }).click();
+  await page.locator('input[type="file"]').setInputFiles(fixture);
 }
 
 test('a bank export is read, reviewed and written into the ledger', async () => {
@@ -116,18 +121,24 @@ test('a bank export is read, reviewed and written into the ledger', async () => 
       page.getByText('Duplicates are checked once every account is chosen.'),
     ).toBeVisible();
 
-    // --- The accounts --------------------------------------------------------
-    await bind('DEFAULT', 'Current account');
-    await bind('PEA', 'Savings');
+    // --- The accounts, in one press ------------------------------------------
+    // The exporter's codes are shown, but they are not what is asked about: the
+    // preset knows `DEFAULT` is the cash account and says so.
+    await expect(
+      page.getByRole('combobox', { name: /Trade Republic current account/ }),
+    ).toBeVisible();
+    await expect(page.getByText('DEFAULT · cash')).toBeVisible();
 
-    // The outside world is asked about separately, because it is not one of the
-    // file's accounts: it is where each transaction's money came from.
-    await expect(page.getByRole('heading', { name: 'Money from outside' })).toBeVisible();
-    await expect(page.getByText('Your file does not say where')).toBeVisible();
+    // Nobody who has just installed this owns an account called PEA, so being
+    // asked which of theirs it is has no answer. One press instead.
+    await page.getByRole('button', { name: 'Create the 2 missing accounts' }).click();
+    await expect(page.getByText('2 accounts created')).toBeVisible();
 
-    // Already the opening balance account, offered because that is what it
-    // usually is. Asserted rather than chosen.
-    await expect(page.getByLabel('Usually', { exact: true })).toContainText('Opening balances');
+    // The outside world is folded into a sentence, because on a real file it is
+    // the same answer forty times over.
+    await expect(
+      page.getByText('movements cross the edge of your household, filed under Opening balances'),
+    ).toBeVisible();
 
     // Bound, so the ledger has now been looked at - and it is empty.
     await expect(
@@ -146,24 +157,27 @@ test('a bank export is read, reviewed and written into the ledger', async () => 
     await expect(page.getByText('€501.06').first()).toBeVisible();
 
     await page.goto('/app/accounts');
+    await expect(page.getByText('Trade Republic current account').first()).toBeVisible();
     await expect(page.getByText('€401.06')).toBeVisible();
     await expect(page.getByText('€100.00').first()).toBeVisible();
 
     // The tax is a line of its own, not folded into a net figure.
     await page.goto('/app/transactions');
-    const interest = page.locator('li', { hasText: 'Interets' }).first();
-    await expect(interest).toBeVisible();
+    await expect(page.locator('li', { hasText: 'Interets' }).first()).toBeVisible();
   });
 });
 
 test('importing the same file twice is refused line by line, not silently', async () => {
   await expectNoConsoleErrors(async () => {
-    await page.goto('/app/import');
-    await page.getByRole('button', { name: 'Trade Republic' }).click();
-    await page.locator('input[type="file"]').setInputFiles(FIXTURE);
+    await open(FIXTURE);
 
-    await bind('DEFAULT', 'Current account');
-    await bind('PEA', 'Savings');
+    // Nothing to press. The accounts the first import created carry the names
+    // this screen would give them, so they are matched on sight and the offer
+    // to create anything does not appear at all.
+    await expect(page.getByRole('button', { name: /^Create the/ })).toHaveCount(0);
+    await expect(
+      page.getByRole('combobox', { name: /Trade Republic current account/ }),
+    ).toContainText('Trade Republic current account');
 
     // Every row carries the provider's own identifier and every one of them is
     // already in the ledger, so all three are certain rather than probable.
@@ -189,18 +203,24 @@ test('the outside world is answered per transaction, not once for the file', asy
     await dialog.getByRole('button', { name: 'Add account' }).click();
     await expect(dialog).toBeHidden();
 
-    await page.goto('/app/import');
-    await page.getByRole('button', { name: 'Trade Republic' }).click();
-    await page.locator('input[type="file"]').setInputFiles(TWO_SOURCES);
-    await bind('DEFAULT', 'Current account');
+    await open(TWO_SOURCES);
+    await expect(page.getByRole('button', { name: /^Create the/ })).toHaveCount(0);
 
     // Two lines the file describes identically: both are money arriving from
     // outside Trade Republic. One is a salary and one is a transfer from an
     // account of your own, and no column in the export says which.
-    const salary = page.locator('li', { hasText: 'Salaire' }).first();
-    const moved = page.locator('li', { hasText: 'Virement depuis autre banque' }).first();
+    //
+    // The controls live in a dialog, not on every line of the review. On a real
+    // statement the summary is right forty times and wrong twice, and the two
+    // are the hardest things to find in a list of forty.
+    await expect(page.locator('li', { hasText: 'Salaire' }).getByRole('combobox')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Change some of them' }).click();
 
-    // Both start on the default, which is the usual answer and wrong for one.
+    const dialogue = page.getByRole('dialog');
+    await expect(dialogue).toBeVisible();
+    const salary = dialogue.locator('li', { hasText: 'Salaire' }).first();
+    const moved = dialogue.locator('li', { hasText: 'Virement depuis autre banque' }).first();
+
     await expect(salary.getByRole('combobox')).toContainText('Opening balances');
     await expect(moved.getByRole('combobox')).toContainText('Opening balances');
 
@@ -210,18 +230,102 @@ test('the outside world is answered per transaction, not once for the file', asy
     // And the other line kept its own answer.
     await expect(salary.getByRole('combobox')).toContainText('Opening balances');
 
+    await dialogue.getByRole('button', { name: 'Done' }).click();
+    await expect(dialogue).toBeHidden();
+
     await page.getByRole('button', { name: 'Import 2 transactions' }).click();
     await expect(page.getByText('2 transactions imported')).toBeVisible();
 
-    // The claim, in one number. 2,300 arrived in the current account and net
-    // worth went up by 2,000: the salary is income and the transfer is the same
-    // money in a different place. One answer for the whole file would have
-    // counted 2,300 and quietly invented 300 euros.
+    // The claim, in one number. 2,300 arrived in the cash account and net worth
+    // went up by 2,000: the salary is income and the transfer is the same money
+    // in a different place. One answer for the whole file would have counted
+    // 2,300 and quietly invented 300 euros.
     await page.goto('/app');
     await expect(page.getByText('€2,501.06').first()).toBeVisible();
 
     await page.goto('/app/accounts');
     await expect(page.getByText('€2,701.06')).toBeVisible();
     await expect(page.getByText('-€300.00')).toBeVisible();
+  });
+});
+
+test('a PEA holds its own shares, and a CTO does not', async () => {
+  await expectNoConsoleErrors(async () => {
+    await open(PEA);
+
+    // Three accounts, not four. The current account and the CTO beside it are
+    // two places; the PEA is one place holding cash and holdings together, so
+    // asking for a separate "PEA securities" account would ask a person to
+    // invent one. That is a fact about this bank's products, so the preset
+    // says it - Fortuneo would say something else.
+    await expect(page.getByRole('combobox', { name: /Trade Republic PEA/ })).toHaveCount(1);
+    await expect(page.getByRole('combobox', { name: /PEA:SECURITIES/ })).toHaveCount(0);
+    await expect(page.getByText('DEFAULT:SECURITIES · securities')).toBeVisible();
+
+    // The current account and the PEA are matched on sight from the first
+    // import, so only the CTO is new.
+    await page.getByRole('button', { name: 'Create the missing account' }).click();
+    await expect(page.getByText('1 account created')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Import 3 transactions' }).click();
+    await expect(page.getByText('3 transactions imported')).toBeVisible();
+
+    await page.goto('/app/accounts');
+    // 500 left the current account and 100 bought a share from it.
+    await expect(page.getByText('€2,101.06')).toBeVisible();
+    // The PEA received 500 and spent 200 of it on a fund. It still holds 600:
+    // buying inside a PEA moves nothing out of it. Booked to two accounts, this
+    // would read 400 and put 200 somewhere nobody chose.
+    await expect(page.getByText('€600.00')).toBeVisible();
+    // And the CTO holds the share bought from the current account.
+    await expect(page.getByText('Trade Republic securities').first()).toBeVisible();
+    await expect(page.getByText('€100.00').first()).toBeVisible();
+
+    // Every movement was internal, so net worth did not budge.
+    await page.goto('/app');
+    await expect(page.getByText('€2,501.06').first()).toBeVisible();
+  });
+});
+
+test('the counterpart rail scrolls inside the dialog rather than out of it', async () => {
+  await expectNoConsoleErrors(async () => {
+    // Ten movements, and nothing is imported: this is about the dialog holding
+    // its shape, so the ledger is left exactly as the previous test left it.
+    await open(MANY);
+    await page.getByRole('button', { name: 'Change some of them' }).click();
+
+    const dialogue = page.getByRole('dialog');
+    await expect(dialogue).toBeVisible();
+
+    // The defect this catches is invisible to every other kind of test. The
+    // dialog is a grid, a grid item's default `min-width: auto` lets it grow to
+    // its content, and a rail of cards pushed the dialog off the side of the
+    // screen. It compiled, it rendered, and it was wrong to look at.
+    const shape = await dialogue.evaluate((el) => {
+      const list = el.querySelector('ul');
+      return {
+        dialog: el.clientWidth,
+        rail: list?.clientWidth ?? -1,
+        content: list?.scrollWidth ?? -1,
+      };
+    });
+
+    // The defect this catches is invisible to every other kind of test. The
+    // dialog is a grid, its implicit column is `auto` - meaning max-content -
+    // and `min-w-0` on the child does not help, because it is the track that
+    // grows. Ten cards made the rail 2,508 pixels wide inside a 576 pixel
+    // dialog, and the cards ran off the side of the screen. `grid-cols-1`,
+    // which Tailwind writes as `minmax(0, 1fr)`, is the fix.
+    expect(
+      shape.rail,
+      `the rail is wider than the dialog: ${JSON.stringify(shape)}`,
+    ).toBeLessThanOrEqual(shape.dialog);
+
+    // And it really does have more than it shows, so the buttons have
+    // something to do and the clipped card is a promise rather than a defect.
+    expect(shape.content).toBeGreaterThan(shape.rail);
+
+    await dialogue.getByRole('button', { name: 'Done' }).click();
+    await expect(dialogue).toBeHidden();
   });
 });
