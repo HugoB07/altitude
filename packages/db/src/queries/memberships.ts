@@ -6,6 +6,8 @@ import type { UserId } from '@altitude/shared';
 export interface MembershipRow {
   readonly householdId: string;
   readonly householdName: string;
+  /** What this household counts in. Joined here so no screen has to guess. */
+  readonly baseCurrency: string;
   readonly role: string;
 }
 
@@ -33,6 +35,7 @@ export async function findMemberships(
       .select({
         householdId: memberships.householdId,
         householdName: households.name,
+        baseCurrency: households.baseCurrency,
         role: memberships.role,
       })
       .from(memberships)
