@@ -1,11 +1,18 @@
-import { inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { imports, instruments, type Database } from '@altitude/db';
-import { Money, dec, instrumentId, type ImportId, type TransactionId } from '@altitude/shared';
+import {
+  Money,
+  dec,
+  instrumentId,
+  type ImportId,
+  type LedgerDate,
+  type TransactionId,
+} from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
 import type { BoundCandidate } from '../import/bind';
 import type { CandidateInstrument } from '../import/types';
 import type { TransactionInput } from '../ledger/types';
-import { postTransaction } from './transactions';
+import { postTransaction, reverseTransactionById } from './transactions';
 import { assertActorMatchesTenant } from './tenant';
 
 /**
@@ -93,6 +100,15 @@ export async function findDuplicates(
            ) AS shape
       FROM transactions t
      WHERE t.booked_on BETWEEN ${from}::date AND ${to}::date
+       -- Cancelled transactions are not matches. One would report a candidate
+       -- as "already imported" when what is in the ledger is a movement that
+       -- was undone, which is the opposite of the truth - and it would block
+       -- re-importing a file after rolling it back.
+       AND t.reversed_at IS NULL
+       -- Nor are the reversals themselves: a candidate looks exactly like the
+       -- opposite of itself in every respect but sign, and the shape below is
+       -- sign-sensitive only by luck.
+       AND t.reverses_id IS NULL
   `);
 
   const existing: Existing[] = [...rows].map((row) => ({
@@ -299,4 +315,165 @@ function instrumentKey(instrument: CandidateInstrument): string {
   return instrument.isin === undefined
     ? `name:${instrument.name.toLowerCase()}`
     : `isin:${instrument.isin}`;
+}
+
+export class ImportNotFoundError extends Error {
+  readonly code = 'IMPORT_NOT_FOUND';
+  constructor(id: ImportId) {
+    // Deliberately the same message whether the run belongs to another
+    // household or does not exist, like every other lookup here.
+    super(`No import ${id} in this household.`);
+    this.name = 'ImportNotFoundError';
+  }
+}
+
+export class ImportAlreadyRolledBackError extends Error {
+  readonly code = 'IMPORT_ALREADY_ROLLED_BACK';
+  constructor(id: ImportId) {
+    super(`Import ${id} has already been undone.`);
+    this.name = 'ImportAlreadyRolledBackError';
+  }
+}
+
+export interface RollbackResult {
+  readonly importId: ImportId;
+  /** How many of the run's transactions were reversed by this call. */
+  readonly reversed: number;
+  /** How many were already reversed by hand and were left alone. */
+  readonly skipped: number;
+}
+
+/**
+ * Undoes a whole import by reversing every transaction it made.
+ *
+ * Nothing is deleted. A reversal is the opposite transaction posted beside the
+ * original (ADR-0002), so the file's contents and the decision to undo them are
+ * both still in the ledger afterwards. That is the point: "N created, N
+ * skipped, undoable in one click" is only trustworthy if the undo is itself
+ * something you can look at.
+ *
+ * Everything or nothing: the caller wraps this in one unit of work, so a run
+ * half undone cannot exist. Half of a reversal is worse than none, because the
+ * balances then match neither the file nor the statement.
+ *
+ * A transaction somebody already reversed by hand is skipped rather than
+ * refused. Reversing a reversal would post the original amount a second time,
+ * quietly doubling it - and refusing the whole run because of one row would
+ * leave a person with no way to undo the rest.
+ *
+ * Dated today rather than on the original's day. A correction happened when it
+ * happened; backdating one silently rewrites what a past month looked like,
+ * which is the property ADR-0002 exists to keep.
+ */
+export async function rollbackImport(
+  tx: Database,
+  actor: Actor,
+  input: {
+    readonly importId: ImportId;
+    readonly on: LedgerDate;
+    /** One id per transaction to reverse, minted by the caller. */
+    readonly reversalIds: readonly TransactionId[];
+  },
+): Promise<RollbackResult> {
+  assertCan(actor, 'import:rollback', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  const [batch] = await tx
+    .select({ id: imports.id, rolledBackAt: imports.rolledBackAt })
+    .from(imports)
+    .where(eq(imports.id, input.importId))
+    .limit(1);
+
+  if (batch === undefined) throw new ImportNotFoundError(input.importId);
+  if (batch.rolledBackAt !== null) throw new ImportAlreadyRolledBackError(input.importId);
+
+  // Oldest first, so the reversals read in the order the originals were made.
+  const rows = await tx.execute<{ id: string; reversed_by_id: string | null }>(sql`
+    SELECT t.id,
+           (SELECT r.id FROM transactions r WHERE r.reverses_id = t.id LIMIT 1) AS reversed_by_id
+      FROM transactions t
+     WHERE t.import_id = ${input.importId}::uuid
+     ORDER BY t.booked_on, t.id
+  `);
+
+  const standing = [...rows].filter((row) => row.reversed_by_id === null);
+  if (standing.length > input.reversalIds.length) {
+    throw new Error(
+      `Rolling back ${input.importId} needs ${String(standing.length)} ids, given ${String(input.reversalIds.length)}.`,
+    );
+  }
+
+  for (const [index, row] of standing.entries()) {
+    await reverseTransactionById(
+      tx,
+      actor,
+      row.id as TransactionId,
+      input.reversalIds[index]!,
+      input.on,
+    );
+  }
+
+  await tx
+    .update(imports)
+    .set({ rolledBackAt: new Date(), rolledBackBy: actor.userId })
+    .where(eq(imports.id, input.importId));
+
+  return {
+    importId: input.importId,
+    reversed: standing.length,
+    skipped: [...rows].length - standing.length,
+  };
+}
+
+export interface ImportRun {
+  readonly id: ImportId;
+  readonly source: string;
+  readonly filename: string;
+  readonly createdAt: Date;
+  /** How many transactions the run made, reversed ones included. */
+  readonly transactions: number;
+  readonly rolledBackAt: Date | null;
+}
+
+/**
+ * The runs this household has made, newest first.
+ *
+ * The count comes from the transactions rather than from a column on the batch:
+ * a stored count is a second copy of a fact the ledger already holds, free to
+ * disagree with it the first time anything else touches a row.
+ */
+export async function listImports(tx: Database, actor: Actor): Promise<readonly ImportRun[]> {
+  assertCan(actor, 'import:run', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  // Typed as they arrive, not as they are wanted. `tx.execute` runs raw SQL and
+  // hands timestamps back as strings; annotating them `Date` compiled, and then
+  // `createdAt.toISOString()` threw at the first render of the screen. The
+  // conversion belongs here, where the shape is known.
+  const rows = await tx.execute<{
+    id: string;
+    source: string;
+    filename: string;
+    created_at: string;
+    transactions: string;
+    rolled_back_at: string | null;
+  }>(sql`
+    SELECT i.id,
+           i.source,
+           i.filename,
+           i.created_at,
+           i.rolled_back_at,
+           (SELECT count(*) FROM transactions t WHERE t.import_id = i.id) AS transactions
+      FROM imports i
+     ORDER BY i.created_at DESC
+  `);
+
+  return [...rows].map((row) => ({
+    id: row.id as ImportId,
+    source: row.source,
+    filename: row.filename,
+    createdAt: new Date(row.created_at),
+    transactions: Number(row.transactions),
+    rolledBackAt: row.rolled_back_at === null ? null : new Date(row.rolled_back_at),
+  }));
 }

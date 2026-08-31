@@ -85,5 +85,13 @@ export type {
   CandidateOverrides,
 } from './import/bind';
 export { findDuplicates } from './services/import';
+export {
+  listImports,
+  rollbackImport,
+  ImportNotFoundError,
+  ImportAlreadyRolledBackError,
+  type ImportRun,
+  type RollbackResult,
+} from './services/import';
 export { commitImport } from './services/import';
 export type { CommitInput, CommitResult, DuplicateReport, Verdict } from './services/import';

@@ -14,12 +14,17 @@ import {
 } from '@altitude/shared';
 import { createClient, withHousehold, type Client } from '@altitude/db';
 import {
+  ImportAlreadyRolledBackError,
+  ImportNotFoundError,
+  accountBalances,
   bindAccounts,
   commitImport,
   findDuplicates,
+  listImports,
   listTransactions,
   postTransaction,
   readTradeRepublic,
+  rollbackImport,
   type Actor,
   type Candidate,
 } from '../src/index';
@@ -444,5 +449,271 @@ describe('an import, end to end', () => {
       SELECT filename, source FROM imports WHERE household_id = ${HOUSE}`;
     expect(batch?.filename).toBe('export.csv');
     expect(batch?.source).toBe('trade-republic');
+  });
+});
+
+describe('rolling an import back', () => {
+  const HEADER_R = [
+    'datetime',
+    'date',
+    'account_type',
+    'category',
+    'type',
+    'asset_class',
+    'name',
+    'symbol',
+    'shares',
+    'price',
+    'amount',
+    'fee',
+    'tax',
+    'currency',
+    'original_amount',
+    'original_currency',
+    'fx_rate',
+    'description',
+    'transaction_id',
+    'counterparty_name',
+    'counterparty_iban',
+    'payment_reference',
+    'mcc_code',
+  ].join(';');
+
+  const row = (fields: Record<string, string>) =>
+    HEADER_R.split(';')
+      .map((name) => fields[name] ?? '')
+      .join(';');
+
+  /** Two movements from outside, so the reversal has something to cancel. */
+  const FILE_R = [
+    HEADER_R,
+    row({
+      date: '05/06/2026',
+      account_type: 'CASH',
+      type: 'TRANSFER_INSTANT_INBOUND',
+      amount: '80.00',
+      currency: 'EUR',
+      description: 'Rollback one',
+      transaction_id: 'rb-1',
+    }),
+    row({
+      date: '06/06/2026',
+      account_type: 'CASH',
+      type: 'TRANSFER_INSTANT_INBOUND',
+      amount: '20.00',
+      currency: 'EUR',
+      description: 'Rollback two',
+      transaction_id: 'rb-2',
+    }),
+    '',
+  ].join(String.fromCharCode(10));
+
+  const BATCH = toImportId('cccccccc-2222-4000-8000-000000000000');
+
+  async function balanceOfCash() {
+    const balances = await scoped((tx) => accountBalances(tx, owner));
+    return balances.find((b) => b.accountId === cash)?.balance.amount.toFixed();
+  }
+
+  it('undoes every transaction the run made, without deleting any', async () => {
+    const reading = readTradeRepublic(FILE_R);
+    const { bound } = bindAccounts(reading.candidates, {
+      CASH: cash,
+      SAVINGS: savings,
+      EXTERNAL: opening,
+    });
+
+    const before = await balanceOfCash();
+
+    await scoped((tx) =>
+      commitImport(tx, owner, {
+        importId: BATCH,
+        source: 'trade-republic',
+        filename: 'rollback.csv',
+        candidates: bound,
+        transactionIds: [
+          transactionId('cccccccc-2222-4000-8000-000000000001'),
+          transactionId('cccccccc-2222-4000-8000-000000000002'),
+        ],
+      }),
+    );
+
+    expect(await balanceOfCash()).not.toBe(before);
+
+    const result = await scoped((tx) =>
+      rollbackImport(tx, owner, {
+        importId: BATCH,
+        on: ledgerDate('2026-06-30'),
+        reversalIds: [
+          transactionId('cccccccc-2222-4000-8000-000000000011'),
+          transactionId('cccccccc-2222-4000-8000-000000000012'),
+        ],
+      }),
+    );
+
+    expect(result.reversed).toBe(2);
+    expect(result.skipped).toBe(0);
+    // Back where it started, and by arithmetic rather than by deletion.
+    expect(await balanceOfCash()).toBe(before);
+
+    // Four transactions now, not zero: the two the file made and the two that
+    // cancelled them. A ledger that erased them is the ledger ADR-0002 exists
+    // to avoid, and it is also the one that cannot answer "what happened".
+    const page = await scoped((tx) =>
+      listTransactions(tx, owner, {
+        perPage: 50,
+        from: ledgerDate('2026-06-01'),
+        to: ledgerDate('2026-06-30'),
+      }),
+    );
+    expect(page.total).toBe(4);
+  });
+
+  it('refuses to undo the same run twice', async () => {
+    await expect(
+      scoped((tx) =>
+        rollbackImport(tx, owner, {
+          importId: BATCH,
+          on: ledgerDate('2026-06-30'),
+          reversalIds: [transactionId('cccccccc-2222-4000-8000-000000000021')],
+        }),
+      ),
+    ).rejects.toThrow(ImportAlreadyRolledBackError);
+  });
+
+  it('refuses a run this household does not have', async () => {
+    await expect(
+      scoped((tx) =>
+        rollbackImport(tx, owner, {
+          importId: toImportId('dddddddd-2222-4000-8000-000000000000'),
+          on: ledgerDate('2026-06-30'),
+          reversalIds: [],
+        }),
+      ),
+    ).rejects.toThrow(ImportNotFoundError);
+  });
+
+  it('lists the run as undone, and still counts what it wrote', async () => {
+    const runs = await scoped((tx) => listImports(tx, owner));
+    const batch = runs.find((r) => r.id === BATCH);
+
+    expect(batch?.filename).toBe('rollback.csv');
+    expect(batch?.rolledBackAt).not.toBeNull();
+
+    // Dates, not the strings raw SQL hands back. Annotating the row type `Date`
+    // compiled and threw at the first render of the screen, and this assertion
+    // is what would have caught it here instead.
+    expect(batch?.createdAt).toBeInstanceOf(Date);
+    expect(batch?.rolledBackAt).toBeInstanceOf(Date);
+    // The transactions it made are still its own, reversed or not. A count that
+    // dropped to zero would make an undone import indistinguishable from an
+    // empty one.
+    expect(batch?.transactions).toBe(2);
+  });
+});
+
+describe('a file can be imported again after its import is undone', () => {
+  /**
+   * The promise the undo dialog makes, and the reason it was not true.
+   *
+   * `transactions_external_id_key` is what makes a second import of the same
+   * file add nothing. After a rollback, the cancelled originals still held
+   * every provider id, so re-importing collided with transactions that no
+   * longer counted for anything - reported as "an error occurred", which is all
+   * a unique-violation says to a person.
+   */
+  const HEADER_A = [
+    'datetime',
+    'date',
+    'account_type',
+    'category',
+    'type',
+    'asset_class',
+    'name',
+    'symbol',
+    'shares',
+    'price',
+    'amount',
+    'fee',
+    'tax',
+    'currency',
+    'original_amount',
+    'original_currency',
+    'fx_rate',
+    'description',
+    'transaction_id',
+    'counterparty_name',
+    'counterparty_iban',
+    'payment_reference',
+    'mcc_code',
+  ].join(';');
+
+  const line = (fields: Record<string, string>) =>
+    HEADER_A.split(';')
+      .map((name) => fields[name] ?? '')
+      .join(';');
+
+  const FILE_A = [
+    HEADER_A,
+    line({
+      date: '10/09/2026',
+      account_type: 'CASH',
+      type: 'TRANSFER_INSTANT_INBOUND',
+      amount: '42.00',
+      currency: 'EUR',
+      description: 'Again one',
+      transaction_id: 'again-1',
+    }),
+    '',
+  ].join(String.fromCharCode(10));
+
+  const bind = () => {
+    const reading = readTradeRepublic(FILE_A);
+    return bindAccounts(reading.candidates, { CASH: cash, EXTERNAL: opening }).bound;
+  };
+
+  it('imports, undoes, and imports the same file again', async () => {
+    const first = toImportId('eeeeeeee-3333-4000-8000-000000000001');
+    await scoped((tx) =>
+      commitImport(tx, owner, {
+        importId: first,
+        source: 'trade-republic',
+        filename: 'again.csv',
+        candidates: bind(),
+        transactionIds: [transactionId('eeeeeeee-3333-4000-8000-000000000011')],
+      }),
+    );
+
+    await scoped((tx) =>
+      rollbackImport(tx, owner, {
+        importId: first,
+        on: ledgerDate('2026-09-30'),
+        reversalIds: [transactionId('eeeeeeee-3333-4000-8000-000000000012')],
+      }),
+    );
+
+    // The cancelled original is no longer a match, so the row is offered again
+    // rather than reported as already imported.
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bind()));
+    expect(verdicts[0]?.kind).toBe('new');
+
+    // And it writes, which the unique index used to refuse.
+    const second = toImportId('eeeeeeee-3333-4000-8000-000000000002');
+    await expect(
+      scoped((tx) =>
+        commitImport(tx, owner, {
+          importId: second,
+          source: 'trade-republic',
+          filename: 'again.csv',
+          candidates: bind(),
+          transactionIds: [transactionId('eeeeeeee-3333-4000-8000-000000000021')],
+        }),
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('still refuses a third copy while the second one stands', async () => {
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bind()));
+    expect(verdicts[0]?.kind).toBe('certain');
   });
 });
