@@ -15,6 +15,8 @@ import {
 import { createClient, withHousehold, type Client } from '@altitude/db';
 import {
   AlreadyReversedError,
+  CurrencyDoesNotMatchAccountError,
+  createAccount,
   ForbiddenError,
   TenantScopeError,
   TransactionNotFoundError,
@@ -55,6 +57,7 @@ let current: AccountId;
 let savings: AccountId;
 let opening: AccountId;
 let mortgage: AccountId;
+let dollars: AccountId;
 
 const owner: Actor = { userId: USER, householdId: HOUSE, role: 'owner' };
 const viewer: Actor = { userId: USER, householdId: HOUSE, role: 'viewer' };
@@ -123,6 +126,14 @@ beforeAll(async () => {
         kind: 'loan',
         currency: 'EUR',
       },
+      // Not euros, so an entry can be posted at the wrong account and refused.
+      {
+        household_id: HOUSE,
+        portfolio_id: portfolio!.id,
+        name: 'Dollars',
+        kind: 'cash',
+        currency: 'USD',
+      },
     ])} RETURNING id, name`;
   await admin.unsafe(`ALTER ROLE altitude RESET row_security;`);
 
@@ -130,6 +141,7 @@ beforeAll(async () => {
   savings = accountId(made.find((a) => a.name === 'Savings')!.id);
   opening = accountId(made.find((a) => a.name === 'Opening')!.id);
   mortgage = accountId(made.find((a) => a.name === 'Mortgage')!.id);
+  dollars = accountId(made.find((a) => a.name === 'Dollars')!.id);
 
   const uri = new URL(container.getConnectionUri());
   client = createClient({
@@ -221,7 +233,7 @@ describe('postTransaction - the week 1 number, through the database', () => {
     const balances = await withHousehold(client, { householdId: HOUSE }, (tx) =>
       accountBalances(tx, owner),
     );
-    expect(balances).toHaveLength(4);
+    expect(balances).toHaveLength(5);
     // The mortgage has had no transaction yet. An account that vanished until
     // its first one would look like a bug to whoever had just created it.
     expect(balances.find((b) => b.name === 'Mortgage')?.balance.amount.toFixed()).toBe('0');
@@ -650,5 +662,71 @@ describe('reverseTransactionById', () => {
         ),
       ),
     ).rejects.toThrow(ForbiddenError);
+  });
+});
+
+describe('an entry may only move the currency its account holds', () => {
+  /**
+   * The defect this closes was not an error but a wrong number.
+   *
+   * Double entry balances per currency, so two euro entries balance each other
+   * whatever accounts they name. Nothing then compared them to the accounts,
+   * and `accountBalances` sums `amount` without reading `currency` and labels
+   * the total with the account's own - so a dollar account full of euro entries
+   * reported a dollar balance that was really a pile of euros. Reported from a
+   * real import, where an account showed "400.79 $US" of euros.
+   */
+  it('refuses euros posted into a dollar account', async () => {
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        postTransaction(tx, owner, {
+          id: transactionId('dddddddd-0000-4000-8000-000000000001'),
+          bookedOn: ledgerDate('2026-05-01'),
+          kind: 'deposit',
+          entries: [
+            { accountId: dollars, amount: Money.of('50', 'EUR') },
+            { accountId: opening, amount: Money.of('-50', 'EUR') },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(CurrencyDoesNotMatchAccountError);
+  });
+
+  it('names the account and both currencies, so the message is actionable', async () => {
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        postTransaction(tx, owner, {
+          id: transactionId('dddddddd-0000-4000-8000-000000000002'),
+          bookedOn: ledgerDate('2026-05-01'),
+          kind: 'deposit',
+          entries: [
+            { accountId: dollars, amount: Money.of('50', 'EUR') },
+            { accountId: opening, amount: Money.of('-50', 'EUR') },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(/Dollars is held in USD, and this entry is in EUR/);
+  });
+
+  it('accepts the same movement in the currency the account holds', async () => {
+    // Balanced in dollars on both sides, so nothing here is about the account
+    // it lands in - only about the currency agreeing with it.
+    const usdOpening = await withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+      createAccount(tx, owner, { name: 'Opening USD', kind: 'cash', currency: 'USD' }),
+    );
+
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        postTransaction(tx, owner, {
+          id: transactionId('dddddddd-0000-4000-8000-000000000003'),
+          bookedOn: ledgerDate('2026-05-01'),
+          kind: 'transfer',
+          entries: [
+            { accountId: dollars, amount: Money.of('50', 'USD') },
+            { accountId: accountId(usdOpening.id), amount: Money.of('-50', 'USD') },
+          ],
+        }),
+      ),
+    ).resolves.toBeDefined();
   });
 });

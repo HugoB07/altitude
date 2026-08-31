@@ -45,6 +45,7 @@ export {
   type TransactionStatus,
   type TransactionPage,
   TenantScopeError,
+  CurrencyDoesNotMatchAccountError,
 } from './services/transactions';
 export { createHousehold, type NewHousehold, type CreatedHousehold } from './services/household';
 export {

@@ -1,5 +1,9 @@
-import { sql } from 'drizzle-orm';
-import { entries as entriesTable, transactions as transactionsTable } from '@altitude/db';
+import { inArray, sql } from 'drizzle-orm';
+import {
+  accounts as accountsTable,
+  entries as entriesTable,
+  transactions as transactionsTable,
+} from '@altitude/db';
 import type { AccountClass, Database } from '@altitude/db';
 import { Money, dec, type AccountId, type LedgerDate, type TransactionId } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
@@ -47,6 +51,7 @@ export async function postTransaction(
   await assertActorMatchesTenant(tx, actor);
 
   const transaction = createTransaction(input);
+  await assertEntriesMatchTheirAccounts(tx, transaction);
 
   await tx.insert(transactionsTable).values({
     id: transaction.id,
@@ -83,10 +88,77 @@ export async function postTransaction(
   return { transaction, id: transaction.id };
 }
 
+export class CurrencyDoesNotMatchAccountError extends Error {
+  readonly code = 'ENTRY_CURRENCY_MISMATCH';
+  readonly accountName: string;
+  readonly accountCurrency: string;
+  readonly entryCurrency: string;
+
+  constructor(accountName: string, accountCurrency: string, entryCurrency: string) {
+    super(
+      `${accountName} is held in ${accountCurrency}, and this entry is in ${entryCurrency}. ` +
+        'An account holds one currency: post this to an account in the right one, or open one.',
+    );
+    this.name = 'CurrencyDoesNotMatchAccountError';
+    this.accountName = accountName;
+    this.accountCurrency = accountCurrency;
+    this.entryCurrency = entryCurrency;
+  }
+}
+
+/**
+ * An entry may only move the currency its account is held in.
+ *
+ * Nothing checked this, and the consequence was not an error but a wrong
+ * number. Double entry balances per currency, so euros posted into a dollar
+ * account balance perfectly against each other and are accepted; then
+ * `accountBalances` sums `amount` without looking at `currency` and labels the
+ * total with the account's. A dollar account holding euro entries therefore
+ * reported a dollar balance that was really a pile of euros - reported from a
+ * real import, where an account showed "400.79 $US" of euros.
+ *
+ * Refused rather than converted. A rate belongs to a day and has to be recorded
+ * with the transaction (phase 3); inventing one here would replace a visible
+ * refusal with an invisible approximation.
+ *
+ * One query for the whole transaction, and it names no household: row-level
+ * security means an account id from elsewhere matches nothing and is reported
+ * as missing rather than as somebody else's.
+ */
+async function assertEntriesMatchTheirAccounts(
+  tx: Database,
+  transaction: Transaction,
+): Promise<void> {
+  const ids = [...new Set(transaction.entries.map((entry) => entry.accountId))];
+  if (ids.length === 0) return;
+
+  const rows = await tx
+    .select({ id: accountsTable.id, name: accountsTable.name, currency: accountsTable.currency })
+    .from(accountsTable)
+    .where(inArray(accountsTable.id, ids));
+
+  const held = new Map(rows.map((row) => [row.id, row]));
+  for (const entry of transaction.entries) {
+    const account = held.get(entry.accountId);
+    // A missing account is not this function's error to raise: the foreign key
+    // says it better, and saying it here would guess at why it is missing.
+    if (account === undefined) continue;
+    if (account.currency !== entry.amount.currency) {
+      throw new CurrencyDoesNotMatchAccountError(
+        account.name,
+        account.currency,
+        entry.amount.currency,
+      );
+    }
+  }
+}
+
 export interface AccountBalance {
   readonly accountId: AccountId;
   readonly name: string;
   readonly kind: string;
+  /** Who holds it, when somebody said. Shown, so the field is worth filling in. */
+  readonly institution: string | null;
   readonly currency: string;
   /** Derived from `kind` in the database, so it cannot disagree with it. */
   readonly classification: AccountClass;
@@ -121,6 +193,7 @@ export async function accountBalances(
     id: string;
     name: string;
     kind: string;
+    institution: string | null;
     currency: string;
     classification: AccountClass;
     closed_on: string | null;
@@ -129,13 +202,14 @@ export async function accountBalances(
     SELECT a.id,
            a.name,
            a.kind,
+           a.institution,
            a.currency,
            a.classification,
            a.closed_on,
            COALESCE(sum(e.amount), 0)::text AS balance
       FROM accounts a
       LEFT JOIN entries e ON e.account_id = a.id
-     GROUP BY a.id, a.name, a.kind, a.currency, a.classification, a.closed_on
+     GROUP BY a.id, a.name, a.kind, a.institution, a.currency, a.classification, a.closed_on
      ORDER BY a.name
   `);
 
@@ -143,6 +217,7 @@ export async function accountBalances(
     accountId: row.id as AccountId,
     name: row.name,
     kind: row.kind,
+    institution: row.institution,
     currency: row.currency,
     classification: row.classification,
     closedOn: row.closed_on,
