@@ -329,3 +329,92 @@ test('the counterpart rail scrolls inside the dialog rather than out of it', asy
     await expect(dialogue).toBeHidden();
   });
 });
+
+test('a dialog holds its contents, whatever the accounts are called', async () => {
+  await expectNoConsoleErrors(async () => {
+    // Not a regression test: the defect it was written for turned out to be
+    // fixed by the dialog change proved in the test above, and this one stayed
+    // green when that change was reverted. It is kept as a standing check that
+    // a two-column dialog holding the longest name this suite makes draws
+    // nothing outside itself, which is cheap and is what a person sees.
+    await page.goto('/app');
+    await page.getByRole('button', { name: 'Move money' }).click();
+
+    const dialogue = page.getByRole('dialog');
+    await expect(dialogue).toBeVisible();
+
+    // Measured on the text, not on the boxes. An overflowing label does not
+    // widen the element that holds it, so comparing rectangles saw nothing
+    // while "Trade Republic securities (CTO)" was being drawn across the edge
+    // of the dialog. `scrollWidth` is what notices.
+    const spills = await dialogue.evaluate((el) =>
+      [...el.querySelectorAll<HTMLElement>('*')]
+        .filter(
+          (c) =>
+            c.scrollWidth > c.clientWidth + 1 &&
+            // Wide enough to be something a person looks at. A select keeps a
+            // one-pixel input for the form value, and every icon carries a
+            // screen-reader name; neither is drawn.
+            c.clientWidth > 24 &&
+            !c.classList.contains('sr-only'),
+        )
+        .map(
+          (c) =>
+            `${c.tagName}.${c.className.toString().slice(0, 40)}: ${String(c.scrollWidth)} > ${String(c.clientWidth)}`,
+        ),
+    );
+    expect(spills, 'text is drawn wider than the control holding it').toEqual([]);
+
+    await page.keyboard.press('Escape');
+    await expect(dialogue).toBeHidden();
+    await page.setViewportSize({ width: 1280, height: 720 });
+  });
+});
+
+test('an account in another currency is left out of the totals, and said so', async () => {
+  await expectNoConsoleErrors(async () => {
+    await page.goto('/app/accounts');
+    await page.getByRole('button', { name: 'New account' }).click();
+
+    const dialogue = page.getByRole('dialog');
+    await dialogue.getByLabel('Name').fill('Compte USD');
+    await dialogue.getByLabel('Currency').click();
+    await page.getByRole('option', { name: 'USD - US dollar' }).click();
+    // Said before the account exists, because nothing changes it afterwards.
+    await expect(dialogue.getByText('will sit outside your totals')).toBeVisible();
+    await dialogue.getByRole('button', { name: 'Add account' }).click();
+    await expect(dialogue).toBeHidden();
+
+    // `Money.plus` throws on a currency mismatch, so before this the page did
+    // not merely mislead - it failed to render at all.
+    await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+    await expect(page.getByText('not in these totals')).toBeVisible();
+    await expect(page.getByText('Compte USD (USD)')).toBeVisible();
+
+    // The totals are unchanged, the dollar account being none of their business.
+    await page.goto('/app');
+    await expect(page.getByText('€2,501.06').first()).toBeVisible();
+
+    // And moving money into it is refused rather than posted in the wrong
+    // currency, which is what a hardcoded 'EUR' used to do in silence. The
+    // refusal comes from the domain and names the account and both currencies,
+    // rather than from a second wording of the rule in the web layer.
+    await page.getByRole('button', { name: 'Move money' }).click();
+    const move = page.getByRole('dialog');
+    await move.getByLabel('From').click();
+    await page.getByRole('option', { name: 'Compte USD', exact: true }).click();
+    await move.getByLabel('To').click();
+    await page.getByRole('option', { name: 'Trade Republic PEA', exact: true }).click();
+    await move.getByLabel('Amount').fill('10');
+    await move.getByRole('button', { name: 'Record' }).click();
+
+    await expect(page.getByText(/is held in EUR, and this entry is in USD/).first()).toBeVisible();
+    await expect(move).toBeVisible();
+
+    // And what reached the screen is a sentence, not the driver's. A raw
+    // "Failed query: insert into transactions (...)" with the parameters
+    // printed after it is what a person saw before `toMessage` stopped
+    // relaying anything that was not written for them.
+    await expect(page.getByText(/Failed query/)).toHaveCount(0);
+  });
+});
