@@ -74,6 +74,14 @@ export interface TransactionInput {
   readonly source?: TransactionSource;
   /** Provider identifier, used for import and sync idempotency. */
   readonly externalId?: string;
+  /**
+   * sha256 over the date, the entries and the normalised label (plan §8.5).
+   *
+   * What makes importing the same file twice painless where the bank gives no
+   * identifier of its own, which is most French statements. Set by the import;
+   * never by hand, where there is no file to have written it.
+   */
+  readonly dedupeHash?: string;
   /** Set when this transaction reverses another; the ledger is append-only. */
   readonly reversesId?: TransactionId;
   /**
@@ -103,6 +111,7 @@ export interface Transaction {
   readonly counterparty: string | undefined;
   readonly source: TransactionSource;
   readonly externalId: string | undefined;
+  readonly dedupeHash: string | undefined;
   readonly reversesId: TransactionId | undefined;
   readonly importId: ImportId | undefined;
   readonly entries: readonly Entry[];

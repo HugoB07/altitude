@@ -99,6 +99,7 @@ export function createTransaction(input: TransactionInput): Transaction {
     counterparty: input.counterparty,
     source: input.source ?? 'manual',
     externalId: input.externalId,
+    dedupeHash: input.dedupeHash,
     reversesId: input.reversesId,
     importId: input.importId,
     entries: boundEntries,

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { imports, instruments, type Database } from '@altitude/db';
 import {
@@ -35,12 +36,30 @@ import { assertActorMatchesTenant } from './tenant';
  * neither. A balance that is quietly wrong is worse than a row somebody has to
  * delete.
  */
+/**
+ * The transaction a candidate looks like, in enough detail to show it.
+ *
+ * The id alone was enough while the only question was whether to import; it is
+ * not enough to put the two side by side, which is what deciding actually
+ * needs (plan §8.5).
+ */
+export interface MatchedTransaction {
+  readonly id: TransactionId;
+  readonly bookedOn: string;
+  readonly description: string | null;
+  readonly entries: readonly {
+    readonly accountId: string;
+    readonly amount: string;
+    readonly currency: string;
+  }[];
+}
+
 export type Verdict =
   | { readonly kind: 'new' }
-  | { readonly kind: 'certain'; readonly existing: TransactionId }
+  | { readonly kind: 'certain'; readonly existing: MatchedTransaction }
   | {
       readonly kind: 'probable';
-      readonly existing: TransactionId;
+      readonly existing: MatchedTransaction;
       /**
        * How far apart the two dates are, and how alike the two descriptions.
        *
@@ -77,11 +96,29 @@ interface Existing {
   readonly id: TransactionId;
   readonly bookedOn: string;
   readonly externalId: string | null;
+  readonly description: string | null;
+  /** Every way an import has recognised this transaction. One row, several files. */
+  readonly dedupeKeys: readonly string[];
   /** `accountId:amount`, sorted, so two entry lists compare as one string. */
   readonly shape: string;
   /** Through `normaliseLabel`, so the trigram score is not of dates and references. */
   readonly label: string;
+  readonly entries: readonly {
+    readonly accountId: string;
+    readonly amount: string;
+    readonly currency: string;
+  }[];
   taken: boolean;
+}
+
+/** What a verdict hands back, built once per row rather than per candidate. */
+function matched(row: Existing): MatchedTransaction {
+  return {
+    id: row.id,
+    bookedOn: row.bookedOn,
+    description: row.description,
+    entries: row.entries,
+  };
 }
 
 /**
@@ -119,12 +156,31 @@ export async function findDuplicates(
     booked_on: string;
     external_id: string | null;
     description: string | null;
+    dedupe_keys: readonly string[];
+    entries: readonly { accountId: string; amount: string; currency: string }[];
     shape: string;
   }>(sql`
     SELECT t.id,
            t.booked_on::text AS booked_on,
            t.external_id,
            t.description,
+           COALESCE(
+             (SELECT array_agg(k.hash)
+                FROM transactions_dedupe_keys k
+               WHERE k.transaction_id = t.id),
+             ARRAY[]::text[]
+           ) AS dedupe_keys,
+           COALESCE(
+             (SELECT json_agg(
+                       json_build_object(
+                         'accountId', e.account_id::text,
+                         'amount', trim_scale(e.amount)::text,
+                         'currency', e.currency
+                       ) ORDER BY e.account_id::text)
+                FROM entries e
+               WHERE e.transaction_id = t.id),
+             '[]'::json
+           ) AS entries,
            COALESCE(
              -- trim_scale, not a bare cast. The column is numeric(28,10), so
              -- ::text renders -39.82 as "-39.8200000000" while Decimal writes
@@ -157,8 +213,11 @@ export async function findDuplicates(
     id: row.id as TransactionId,
     bookedOn: row.booked_on,
     externalId: row.external_id,
+    description: row.description,
+    dedupeKeys: row.dedupe_keys,
     shape: row.shape,
     label: row.description === null ? '' : normaliseLabel(row.description),
+    entries: row.entries,
     taken: false,
   }));
 
@@ -170,15 +229,33 @@ export async function findDuplicates(
   const verdicts: Verdict[] = candidates.map((candidate) => {
     if (candidate.externalId !== undefined) {
       const match = byExternalId.get(candidate.externalId);
-      // An identifier match needs no consuming: the column is unique per
-      // household, so one candidate cannot match two rows or two candidates the
-      // same row.
-      if (match !== undefined) return { kind: 'certain', existing: match.id };
+      // Consumed like every other match. The column is unique per household,
+      // so no two candidates can claim the same row this way - but a candidate
+      // without an identifier can reach it by hash, and one transaction must
+      // not be reported as the duplicate of two different lines.
+      if (match !== undefined) {
+        match.taken = true;
+        return { kind: 'certain', existing: matched(match) };
+      }
       return { kind: 'new' };
     }
 
     const shape = shapeOf(candidate);
     const label = candidate.description === undefined ? '' : normaliseLabel(candidate.description);
+
+    // The exact level (plan §8.5): a hash the import itself wrote, over the
+    // date, the entries and the normalised label. Only rows an import created
+    // carry one, so this decides nothing about a transaction somebody typed.
+    //
+    // Consumed like any other match. Two identical debits on one day hash the
+    // same, and a file holding both against a ledger holding one must still
+    // report one duplicate and one new movement.
+    const hash = dedupeHashOf(candidate);
+    const exact = existing.find((row) => !row.taken && row.dedupeKeys.includes(hash));
+    if (exact !== undefined) {
+      exact.taken = true;
+      return { kind: 'certain', existing: matched(exact) };
+    }
 
     let best: { row: Existing; daysApart: number; similarity?: number } | undefined;
     for (const row of existing) {
@@ -212,8 +289,8 @@ export async function findDuplicates(
     best.row.taken = true;
     const { row, daysApart, similarity } = best;
     return similarity === undefined
-      ? { kind: 'probable', existing: row.id, daysApart }
-      : { kind: 'probable', existing: row.id, daysApart, similarity };
+      ? { kind: 'probable', existing: matched(row), daysApart }
+      : { kind: 'probable', existing: matched(row), daysApart, similarity };
   });
 
   return { verdicts };
@@ -228,6 +305,27 @@ export async function findDuplicates(
  * still worth flagging, and a bank that changes its wording between exports
  * would otherwise duplicate a person's entire history.
  */
+/**
+ * The exact-match key of the plan (§8.5): sha256 over the date, the entries and
+ * the normalised label.
+ *
+ * Written by the import onto every transaction it creates, and compared on the
+ * next one. This is what makes a second import of the same file painless where
+ * the bank gives no identifier of its own, which is most French statements.
+ *
+ * The label goes through `normaliseLabel` first, so a statement that writes
+ * the card number one month and not the next still hashes the same.
+ */
+export function dedupeHashOf(candidate: BoundCandidate): string {
+  const label = candidate.description === undefined ? '' : normaliseLabel(candidate.description);
+  return createHash('sha256')
+    .update([candidate.bookedOn, shapeOf(candidate), label].join(UNIT))
+    .digest('hex');
+}
+
+/** ASCII unit separator: no statement writes one, and no label survives with one. */
+const UNIT = String.fromCodePoint(31);
+
 /** Whole days between two `YYYY-MM-DD` dates, without a sign. */
 function daysBetween(left: string, right: string): number {
   const from = Date.parse(`${left}T00:00:00Z`);
@@ -249,11 +347,23 @@ export interface CommitInput {
   readonly candidates: readonly BoundCandidate[];
   /** One id per candidate, minted by the caller: the domain builds before anything is written. */
   readonly transactionIds: readonly TransactionId[];
+  /**
+   * Lines a person said were the transaction already in the ledger.
+   *
+   * The plan's third answer to a look-alike, next to "keep both" and "skip"
+   * (§8.5). Nothing is posted and nothing is edited: the existing row takes
+   * the line's hash, so the same file read again recognises it outright
+   * instead of asking a second time. An append-only ledger (ADR-0002) has no
+   * other way to record "these two are the same thing".
+   */
+  readonly merges?: readonly { readonly existing: TransactionId; readonly line: BoundCandidate }[];
 }
 
 export interface CommitResult {
   readonly importId: ImportId;
   readonly written: number;
+  /** Existing transactions a person said were the same as a line of the file. */
+  readonly merged: number;
   readonly instrumentsCreated: number;
 }
 
@@ -303,6 +413,9 @@ export async function commitImport(
       kind: candidate.kind as TransactionInput['kind'],
       source: 'import',
       importId: input.importId,
+      // Written now so the next import of the same file recognises this row
+      // outright, without a person being asked about it again.
+      dedupeHash: dedupeHashOf(candidate),
       ...(candidate.description === undefined ? {} : { description: candidate.description }),
       ...(candidate.externalId === undefined ? {} : { externalId: candidate.externalId }),
       entries: candidate.entries.map((entry) => ({
@@ -322,9 +435,32 @@ export async function commitImport(
     });
   }
 
+  // The rows a person said were already there. An update of provenance, not of
+  // the ledger: no amount, date or account moves, so append-only holds.
+  let merged = 0;
+  for (const merge of input.merges ?? []) {
+    // An insert, not an update. A transaction already carries the key of the
+    // file that wrote it; this adds the second file's way of writing the same
+    // movement, so both are recognised next time rather than taking turns.
+    //
+    // The subquery is what makes row-level security apply: another household's
+    // id selects no row, so nothing is inserted rather than a key being filed
+    // against a transaction the actor cannot see.
+    const done = await tx.execute(sql`
+      INSERT INTO transactions_dedupe_keys (transaction_id, household_id, hash)
+      SELECT t.id, t.household_id, ${dedupeHashOf(merge.line)}
+        FROM transactions t
+       WHERE t.id = ${merge.existing}::uuid
+      ON CONFLICT DO NOTHING
+      RETURNING transaction_id
+    `);
+    merged += done.length === 0 ? 0 : 1;
+  }
+
   return {
     importId: input.importId,
     written: input.candidates.length,
+    merged,
     instrumentsCreated: resolved.created,
   };
 }

@@ -81,6 +81,7 @@ export {
 } from './import/mapped';
 export { parseAmount, fromDebitCredit, type ParsedAmount } from './import/numbers';
 export { normaliseLabel, trigramSimilarity } from './import/labels';
+export { readCurrency } from './import/currencies';
 export {
   EXTERNAL,
   SECURITIES_SUFFIX,
@@ -111,7 +112,7 @@ export {
   forgetMapping,
   type StoredMapping,
 } from './services/mappings';
-export { findDuplicates } from './services/import';
+export { findDuplicates, dedupeHashOf, type MatchedTransaction } from './services/import';
 export {
   listImports,
   rollbackImport,

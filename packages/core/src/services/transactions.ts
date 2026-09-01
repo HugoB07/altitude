@@ -3,6 +3,7 @@ import {
   accounts as accountsTable,
   entries as entriesTable,
   transactions as transactionsTable,
+  transactionsDedupeKeys as dedupeKeys,
 } from '@altitude/db';
 import type { AccountClass, Database } from '@altitude/db';
 import {
@@ -74,6 +75,14 @@ export async function postTransaction(
     importId: transaction.importId ?? null,
     createdBy: actor.userId,
   });
+
+  if (transaction.dedupeHash !== undefined) {
+    await tx.insert(dedupeKeys).values({
+      transactionId: transaction.id,
+      householdId: actor.householdId,
+      hash: transaction.dedupeHash,
+    });
+  }
 
   await tx.insert(entriesTable).values(
     transaction.entries.map((entry) => ({

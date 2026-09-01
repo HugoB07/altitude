@@ -229,8 +229,12 @@ describe('findDuplicates', () => {
     const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bound));
 
     // Decided, not flagged: the identifier is unique per household, so there is
-    // nothing left for a person to judge.
-    expect(verdicts[0]).toEqual({ kind: 'certain', existing: id });
+    // nothing left for a person to judge. The verdict hands back the whole
+    // transaction, which is what putting the two side by side needs.
+    expect(verdicts[0]?.kind).toBe('certain');
+    expect(verdicts[0]).toMatchObject({
+      existing: { id, bookedOn: '2026-03-02', entries: expect.anything() },
+    });
   });
 
   it('flags a look-alike rather than deciding, when there is no identifier', async () => {
@@ -368,7 +372,11 @@ describe('findDuplicates', () => {
 
     // The row two days earlier is still unconsumed and would have matched. A
     // date that agrees beats a date that is merely close.
-    expect(verdict).toMatchObject({ kind: 'probable', existing: onTheDay, daysApart: 0 });
+    expect(verdict).toMatchObject({
+      kind: 'probable',
+      existing: { id: onTheDay },
+      daysApart: 0,
+    });
   });
 
   it('refuses an actor from another household', async () => {
@@ -808,5 +816,142 @@ describe('a file can be imported again after its import is undone', () => {
   it('still refuses a third copy while the second one stands', async () => {
     const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bind()));
     expect(verdicts[0]?.kind).toBe('certain');
+  });
+});
+
+/**
+ * The exact level of the plan (§8.5), for the statements that carry no
+ * identifier of their own - which is most French ones.
+ *
+ * Without it, re-importing a file was a page of look-alikes to walk through
+ * every time. With it the import writes what it read, and reading the same
+ * thing again is decided rather than asked about.
+ */
+describe('a file the bank gives no identifiers for', () => {
+  const RUN = toImportId('ffffffff-4444-4000-8000-000000000001');
+  const lines = () =>
+    bindAccounts(
+      [
+        described('2026-12-03', '54.90', 'CARTE 03/12 BOULANGERIE DU PARC 4972'),
+        described('2026-12-04', '18.30', 'CARTE 04/12 PHARMACIE DE LA GARE 4972'),
+      ],
+      binding(),
+    ).bound;
+
+  it('is recognised outright the second time, by the hash the import wrote', async () => {
+    await scoped((tx) =>
+      commitImport(tx, owner, {
+        importId: RUN,
+        source: 'other',
+        filename: 'decembre.csv',
+        candidates: lines(),
+        transactionIds: [
+          transactionId('ffffffff-4444-4000-8000-000000000011'),
+          transactionId('ffffffff-4444-4000-8000-000000000012'),
+        ],
+      }),
+    );
+
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, lines()));
+    expect(verdicts.map((v) => v.kind)).toEqual(['certain', 'certain']);
+  });
+
+  it('survives the bank rewriting the date and the card number in the text', async () => {
+    // The same two lines as a re-export writes them: the embedded date moved
+    // with nothing else, which is exactly what `normaliseLabel` takes out
+    // before the hash is taken.
+    const rewritten = bindAccounts(
+      [
+        described('2026-12-03', '54.90', 'CARTE 05/12 BOULANGERIE DU PARC 4972'),
+        described('2026-12-04', '18.30', 'CARTE 06/12 PHARMACIE DE LA GARE 4972'),
+      ],
+      binding(),
+    ).bound;
+
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, rewritten));
+    expect(verdicts.map((v) => v.kind)).toEqual(['certain', 'certain']);
+  });
+});
+
+describe('merging a look-alike into what is already there', () => {
+  const RUN = toImportId('ffffffff-4444-4000-8000-000000000002');
+  const existing = transactionId('ffffffff-4444-4000-8000-000000000021');
+
+  it('gives the existing transaction the line hash, and posts nothing', async () => {
+    // Typed by hand, so it carries no hash and no identifier: the case where
+    // "keep both" and "skip" are both wrong, because the movement is real and
+    // already recorded.
+    await scoped((tx) =>
+      postTransaction(tx, owner, {
+        id: existing,
+        bookedOn: ledgerDate('2026-12-20'),
+        kind: 'withdrawal',
+        description: 'Chauffagiste',
+        entries: [
+          { accountId: cash, amount: Money.of('120', 'EUR') },
+          { accountId: opening, amount: Money.of('-120', 'EUR') },
+        ],
+      }),
+    );
+
+    const line = bindAccounts(
+      [described('2026-12-20', '120', 'VIR 87654321 CHAUFFAGISTE')],
+      binding(),
+    ).bound;
+
+    const result = await scoped((tx) =>
+      commitImport(tx, owner, {
+        importId: RUN,
+        source: 'other',
+        filename: 'decembre.csv',
+        candidates: [],
+        transactionIds: [],
+        merges: [{ existing, line: line[0]! }],
+      }),
+    );
+
+    expect(result.written).toBe(0);
+    expect(result.merged).toBe(1);
+
+    // And the same line, read again, is now decided rather than asked about.
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, line));
+    expect(verdicts[0]).toMatchObject({ kind: 'certain', existing: { id: existing } });
+  });
+
+  it('adds a second way of writing the same movement rather than replacing the first', async () => {
+    // Another bank's export of the same payment, worded its own way. Both
+    // wordings now belong to this transaction: a single stored key would make
+    // the two files take turns overwriting each other, and each import would
+    // ask about the same movement again.
+    const other = bindAccounts(
+      [described('2026-12-20', '120', 'VIREMENT PLOMBIER')],
+      binding(),
+    ).bound;
+
+    const again = () =>
+      scoped((tx) =>
+        commitImport(tx, owner, {
+          importId: toImportId('ffffffff-4444-4000-8000-000000000003'),
+          source: 'other',
+          filename: 'autre.csv',
+          candidates: [],
+          transactionIds: [],
+          merges: [{ existing, line: other[0]! }],
+        }),
+      );
+
+    expect((await again()).merged).toBe(1);
+
+    // Both are recognised, neither having displaced the other.
+    const first = bindAccounts(
+      [described('2026-12-20', '120', 'VIR 87654321 CHAUFFAGISTE')],
+      binding(),
+    ).bound;
+    expect((await scoped((tx) => findDuplicates(tx, owner, first))).verdicts[0]?.kind).toBe(
+      'certain',
+    );
+    expect((await scoped((tx) => findDuplicates(tx, owner, other))).verdicts[0]?.kind).toBe(
+      'certain',
+    );
   });
 });
