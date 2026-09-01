@@ -141,6 +141,11 @@ function candidate(day: string, amount: string, externalId?: string): Candidate 
   };
 }
 
+/** The same, with the text a statement writes on the line. */
+function described(day: string, amount: string, description: string): Candidate {
+  return { ...candidate(day, amount), description };
+}
+
 const binding = () => ({ CASH: cash, OPENING: opening, SAVINGS: savings });
 
 describe('bindAccounts', () => {
@@ -276,6 +281,94 @@ describe('findDuplicates', () => {
     const { bound } = bindAccounts([candidate('2026-03-02', '25.0000')], binding());
     const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bound));
     expect(verdicts[0]?.kind).toBe('probable');
+  });
+
+  /**
+   * The defect the wider window exists for.
+   *
+   * A bank re-exporting a month does not always write the same date for a
+   * line - the operation date one time, the value date the next. On an exact
+   * date match that came back as new, and a person ended up with the same
+   * direct debit twice, which nobody notices until the balance is months wrong.
+   */
+  it('matches a line the bank moved by two days, when the description agrees', async () => {
+    await scoped((tx) =>
+      postTransaction(tx, owner, {
+        id: transactionId('99999999-0000-4000-8000-000000000010'),
+        bookedOn: ledgerDate('2026-09-10'),
+        kind: 'withdrawal',
+        description: 'PRLV SEPA ASSURANCE HABITATION 87654321',
+        entries: [
+          { accountId: cash, amount: Money.of('31.20', 'EUR') },
+          { accountId: opening, amount: Money.of('-31.20', 'EUR') },
+        ],
+      }),
+    );
+
+    const { bound } = bindAccounts(
+      [described('2026-09-12', '31.20', 'PRLV SEPA ASSURANCE HABITATION')],
+      binding(),
+    );
+    const [verdict] = (await scoped((tx) => findDuplicates(tx, owner, bound))).verdicts;
+
+    expect(verdict?.kind).toBe('probable');
+    // Carried so the screen can say why, which on a date that does not match
+    // is the difference between a warning and a riddle.
+    expect(verdict).toMatchObject({ daysApart: 2 });
+    expect(verdict && 'similarity' in verdict ? verdict.similarity : 0).toBeGreaterThan(0.7);
+  });
+
+  it('leaves a nearby line alone when the descriptions disagree', async () => {
+    const { bound } = bindAccounts(
+      [described('2026-09-12', '31.20', 'CARTE BOULANGERIE DU PARC')],
+      binding(),
+    );
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bound));
+    expect(verdicts[0]?.kind).toBe('new');
+  });
+
+  it('leaves a nearby line alone when there is nothing to weigh', async () => {
+    // No description on the candidate. Two debits of the same amount two days
+    // apart are an ordinary thing to have done, and guessing here would be the
+    // failure the whole design refuses.
+    const { bound } = bindAccounts([candidate('2026-09-12', '31.20')], binding());
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bound));
+    expect(verdicts[0]?.kind).toBe('new');
+  });
+
+  it('stops at the edge of the window, however alike the wording', async () => {
+    const { bound } = bindAccounts(
+      [described('2026-09-14', '31.20', 'PRLV SEPA ASSURANCE HABITATION 87654321')],
+      binding(),
+    );
+    const { verdicts } = await scoped((tx) => findDuplicates(tx, owner, bound));
+    expect(verdicts[0]?.kind).toBe('new');
+  });
+
+  it('takes the line on the same day over the one nearby', async () => {
+    const onTheDay = transactionId('99999999-0000-4000-8000-000000000011');
+    await scoped((tx) =>
+      postTransaction(tx, owner, {
+        id: onTheDay,
+        bookedOn: ledgerDate('2026-09-12'),
+        kind: 'withdrawal',
+        description: 'PRLV SEPA ASSURANCE HABITATION 87654321',
+        entries: [
+          { accountId: cash, amount: Money.of('31.20', 'EUR') },
+          { accountId: opening, amount: Money.of('-31.20', 'EUR') },
+        ],
+      }),
+    );
+
+    const { bound } = bindAccounts(
+      [described('2026-09-12', '31.20', 'PRLV SEPA ASSURANCE HABITATION')],
+      binding(),
+    );
+    const [verdict] = (await scoped((tx) => findDuplicates(tx, owner, bound))).verdicts;
+
+    // The row two days earlier is still unconsumed and would have matched. A
+    // date that agrees beats a date that is merely close.
+    expect(verdict).toMatchObject({ kind: 'probable', existing: onTheDay, daysApart: 0 });
   });
 
   it('refuses an actor from another household', async () => {

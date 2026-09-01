@@ -10,6 +10,7 @@ import {
 } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
 import type { BoundCandidate } from '../import/bind';
+import { normaliseLabel, trigramSimilarity } from '../import/labels';
 import type { CandidateInstrument } from '../import/types';
 import type { TransactionInput } from '../ledger/types';
 import { postTransaction, reverseTransactionById } from './transactions';
@@ -24,6 +25,11 @@ import { assertActorMatchesTenant } from './tenant';
  * only a person can say - two transfers of the same amount on one day are a
  * common and entirely real thing.
  *
+ * Nothing is ever decided from the description alone. It widens what counts as
+ * a look-alike; it never narrows it. A line that matched on date and shape
+ * before still matches whatever it is called, so adding the comparison could
+ * not turn a duplicate somebody used to be warned about into one they are not.
+ *
  * The asymmetry is why `probable` is not treated as `certain`: creating a
  * duplicate is visible and reversible, while dropping a real movement is
  * neither. A balance that is quietly wrong is worse than a row somebody has to
@@ -32,12 +38,40 @@ import { assertActorMatchesTenant } from './tenant';
 export type Verdict =
   | { readonly kind: 'new' }
   | { readonly kind: 'certain'; readonly existing: TransactionId }
-  | { readonly kind: 'probable'; readonly existing: TransactionId };
+  | {
+      readonly kind: 'probable';
+      readonly existing: TransactionId;
+      /**
+       * How far apart the two dates are, and how alike the two descriptions.
+       *
+       * Carried because the match is no longer self-evident. On the same day
+       * the screen can just say "looks like a duplicate"; three days apart it
+       * has to say why, or a person is being asked to judge something they
+       * cannot see. `similarity` is undefined when the dates were identical
+       * and no description was needed to decide.
+       */
+      readonly daysApart: number;
+      readonly similarity?: number;
+    };
 
 export interface DuplicateReport {
   /** One verdict per candidate, in the order given. */
   readonly verdicts: readonly Verdict[];
 }
+
+/**
+ * How far either side of a candidate's own date a match is looked for, and how
+ * alike two descriptions have to be before a date that is not identical counts
+ * as evidence. Both are the plan's (§8.5).
+ *
+ * A bank re-exporting a month does not always write the same date for a line:
+ * the operation date one time, the value date the next, or a weekend pushed to
+ * the Monday. Requiring the day to match exactly means those come back as new
+ * and quietly double a balance, which is the one failure deduplication exists
+ * to prevent.
+ */
+const WINDOW_DAYS = 3;
+const SIMILAR_ENOUGH = 0.7;
 
 interface Existing {
   readonly id: TransactionId;
@@ -45,6 +79,8 @@ interface Existing {
   readonly externalId: string | null;
   /** `accountId:amount`, sorted, so two entry lists compare as one string. */
   readonly shape: string;
+  /** Through `normaliseLabel`, so the trigram score is not of dates and references. */
+  readonly label: string;
   taken: boolean;
 }
 
@@ -53,7 +89,8 @@ interface Existing {
  *
  * One query for the whole batch rather than one per candidate: an import of a
  * thousand rows would otherwise be a thousand round trips, and the window it
- * needs - the dates the file covers - is known up front.
+ * needs - the dates the file covers, widened by `WINDOW_DAYS` at each end - is
+ * known up front.
  *
  * No `dedupe_hash` is computed. The column exists for the day a ledger is large
  * enough that comparing shapes in memory stops being free, and until then a
@@ -81,11 +118,13 @@ export async function findDuplicates(
     id: string;
     booked_on: string;
     external_id: string | null;
+    description: string | null;
     shape: string;
   }>(sql`
     SELECT t.id,
            t.booked_on::text AS booked_on,
            t.external_id,
+           t.description,
            COALESCE(
              -- trim_scale, not a bare cast. The column is numeric(28,10), so
              -- ::text renders -39.82 as "-39.8200000000" while Decimal writes
@@ -99,7 +138,10 @@ export async function findDuplicates(
              ''
            ) AS shape
       FROM transactions t
-     WHERE t.booked_on BETWEEN ${from}::date AND ${to}::date
+     -- Widened by the window, so a line the bank moved by a day or two is
+     -- still in the batch this compares against.
+     WHERE t.booked_on BETWEEN ${from}::date - ${WINDOW_DAYS}::integer
+                           AND ${to}::date + ${WINDOW_DAYS}::integer
        -- Cancelled transactions are not matches. One would report a candidate
        -- as "already imported" when what is in the ledger is a movement that
        -- was undone, which is the opposite of the truth - and it would block
@@ -116,6 +158,7 @@ export async function findDuplicates(
     bookedOn: row.booked_on,
     externalId: row.external_id,
     shape: row.shape,
+    label: row.description === null ? '' : normaliseLabel(row.description),
     taken: false,
   }));
 
@@ -135,16 +178,42 @@ export async function findDuplicates(
     }
 
     const shape = shapeOf(candidate);
-    // Consumed once matched. Two identical transfers in the file against one in
-    // the ledger means one is already there and one is genuinely new - marking
-    // both as duplicates would lose a real movement.
-    const match = existing.find(
-      (row) => !row.taken && row.bookedOn === candidate.bookedOn && row.shape === shape,
-    );
-    if (match === undefined) return { kind: 'new' };
+    const label = candidate.description === undefined ? '' : normaliseLabel(candidate.description);
 
-    match.taken = true;
-    return { kind: 'probable', existing: match.id };
+    let best: { row: Existing; daysApart: number; similarity?: number } | undefined;
+    for (const row of existing) {
+      // Consumed once matched. Two identical transfers in the file against one
+      // in the ledger means one is already there and one is genuinely new -
+      // marking both as duplicates would lose a real movement.
+      if (row.taken || row.shape !== shape) continue;
+
+      const daysApart = daysBetween(row.bookedOn, candidate.bookedOn);
+      // Same day, same shape: the match this has always made, and the one no
+      // description is needed for. Taken over anything found earlier in the
+      // loop, because a date that agrees beats a date that is merely close.
+      if (daysApart === 0) {
+        best = { row, daysApart };
+        break;
+      }
+      if (daysApart > WINDOW_DAYS) continue;
+
+      // Off the exact date the description is the only evidence there is.
+      // Without one on both sides there is nothing to weigh, and two debits of
+      // the same amount three days apart are an ordinary thing to have done.
+      if (label === '' || row.label === '') continue;
+      const similarity = trigramSimilarity(label, row.label);
+      if (similarity < SIMILAR_ENOUGH) continue;
+
+      if (best === undefined || daysApart < best.daysApart) best = { row, daysApart, similarity };
+    }
+
+    if (best === undefined) return { kind: 'new' };
+
+    best.row.taken = true;
+    const { row, daysApart, similarity } = best;
+    return similarity === undefined
+      ? { kind: 'probable', existing: row.id, daysApart }
+      : { kind: 'probable', existing: row.id, daysApart, similarity };
   });
 
   return { verdicts };
@@ -159,6 +228,13 @@ export async function findDuplicates(
  * still worth flagging, and a bank that changes its wording between exports
  * would otherwise duplicate a person's entire history.
  */
+/** Whole days between two `YYYY-MM-DD` dates, without a sign. */
+function daysBetween(left: string, right: string): number {
+  const from = Date.parse(`${left}T00:00:00Z`);
+  const to = Date.parse(`${right}T00:00:00Z`);
+  return Math.abs(to - from) / 86_400_000;
+}
+
 function shapeOf(candidate: BoundCandidate): string {
   return candidate.entries
     .map((entry) => `${entry.accountId}:${dec(entry.amount).toFixed()}`)
