@@ -82,6 +82,7 @@ export {
 export { parseAmount, fromDebitCredit, type ParsedAmount } from './import/numbers';
 export { normaliseLabel, trigramSimilarity } from './import/labels';
 export { readCurrency } from './import/currencies';
+export { fingerprintFile, type FileFingerprint } from './import/fingerprint';
 export {
   categorise,
   parseConditions,
@@ -135,7 +136,12 @@ export {
   forgetMapping,
   type StoredMapping,
 } from './services/mappings';
-export { findDuplicates, dedupeHashOf, type MatchedTransaction } from './services/import';
+export {
+  findDuplicates,
+  dedupeHashOf,
+  findImportsOfFile,
+  type MatchedTransaction,
+} from './services/import';
 export {
   listImports,
   rollbackImport,

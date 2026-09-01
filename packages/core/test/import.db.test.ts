@@ -20,6 +20,7 @@ import {
   bindAccounts,
   commitImport,
   findDuplicates,
+  findImportsOfFile,
   listImports,
   listTransactions,
   postTransaction,
@@ -953,5 +954,57 @@ describe('merging a look-alike into what is already there', () => {
     expect((await scoped((tx) => findDuplicates(tx, owner, other))).verdicts[0]?.kind).toBe(
       'certain',
     );
+  });
+});
+
+/**
+ * What an import keeps about the file it read, which is not the file.
+ *
+ * The plan asks for the raw statement to be archived (§8.2, step 1). That
+ * document holds an IBAN, an account holder's name and every operation of the
+ * period, including the ones nobody imported - so this keeps a digest instead,
+ * and answers the question people actually ask with it.
+ */
+describe('recognising a file that was imported before', () => {
+  const RUN = toImportId('aaaa6666-0000-4000-8000-000000000001');
+  const FILE = ['Date;Libelle;Montant', '05/01/2027;Loyer janvier;-750,00', ''].join('\n');
+
+  it('finds nothing before anything has been imported', async () => {
+    expect(await scoped((tx) => findImportsOfFile(tx, owner, FILE))).toEqual([]);
+  });
+
+  it('recognises the same file afterwards, and says when', async () => {
+    await scoped((tx) =>
+      commitImport(tx, owner, {
+        importId: RUN,
+        source: 'other',
+        filename: 'janvier.csv',
+        text: FILE,
+        candidates: bindAccounts([candidate('2027-01-05', '750')], binding()).bound,
+        transactionIds: [transactionId('aaaa6666-0000-4000-8000-000000000011')],
+      }),
+    );
+
+    const seen = await scoped((tx) => findImportsOfFile(tx, owner, FILE));
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.filename).toBe('janvier.csv');
+    expect(seen[0]?.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('does not recognise a different file', async () => {
+    const other = FILE.replace('Loyer janvier', 'Loyer fevrier');
+    expect(await scoped((tx) => findImportsOfFile(tx, owner, other))).toEqual([]);
+  });
+
+  it('forgets a run that was rolled back, because it added nothing in the end', async () => {
+    await scoped((tx) =>
+      rollbackImport(tx, owner, {
+        importId: RUN,
+        on: ledgerDate('2027-01-31'),
+        reversalIds: [transactionId('aaaa6666-0000-4000-8000-000000000021')],
+      }),
+    );
+
+    expect(await scoped((tx) => findImportsOfFile(tx, owner, FILE))).toEqual([]);
   });
 });

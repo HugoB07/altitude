@@ -11,6 +11,7 @@ import {
 } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
 import type { BoundCandidate } from '../import/bind';
+import { fingerprintFile } from '../import/fingerprint';
 import { normaliseLabel, trigramSimilarity } from '../import/labels';
 import type { CandidateInstrument } from '../import/types';
 import type { TransactionInput } from '../ledger/types';
@@ -345,6 +346,13 @@ export interface CommitInput {
   readonly importId: ImportId;
   readonly source: string;
   readonly filename: string;
+  /**
+   * The file as it was read, for its digest.
+   *
+   * Optional so a caller with candidates but no text - a test, a future
+   * connector - is not made to invent one. Nothing keeps the text itself.
+   */
+  readonly text?: string;
   readonly candidates: readonly BoundCandidate[];
   /** One id per candidate, minted by the caller: the domain builds before anything is written. */
   readonly transactionIds: readonly TransactionId[];
@@ -396,11 +404,18 @@ export async function commitImport(
   assertCan(actor, 'import:run', { householdId: actor.householdId });
   await assertActorMatchesTenant(tx, actor);
 
+  // What the file was, without the file. See the migration for why this is not
+  // the raw archive the plan asks for.
+  const file = input.text === undefined ? undefined : fingerprintFile(input.text);
+
   await tx.insert(imports).values({
     id: input.importId,
     householdId: actor.householdId,
     source: input.source,
     filename: input.filename,
+    ...(file === undefined
+      ? {}
+      : { fileHash: file.hash, fileBytes: file.bytes, fileLines: file.lines }),
     createdBy: actor.userId,
   });
 
@@ -654,6 +669,37 @@ export interface ImportRun {
   /** How many transactions the run made, reversed ones included. */
   readonly transactions: number;
   readonly rolledBackAt: Date | null;
+}
+
+/**
+ * The runs that read this exact file before, newest first.
+ *
+ * The whole return on keeping a digest instead of the file: a person about to
+ * import a statement they already imported is told so before they read a page
+ * of look-alikes. Deduplication would catch it anyway - this catches it a step
+ * earlier, and says which run and when.
+ */
+export async function findImportsOfFile(
+  tx: Database,
+  actor: Actor,
+  text: string,
+): Promise<readonly { readonly filename: string; readonly createdAt: Date }[]> {
+  assertCan(actor, 'import:run', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  const rows = await tx.execute<{ filename: string; created_at: string }>(sql`
+    SELECT i.filename, i.created_at
+      FROM imports i
+     WHERE i.file_hash = ${fingerprintFile(text).hash}
+       AND i.rolled_back_at IS NULL
+     ORDER BY i.created_at DESC
+     LIMIT 5
+  `);
+
+  return [...rows].map((row) => ({
+    filename: row.filename,
+    createdAt: new Date(row.created_at),
+  }));
 }
 
 /**
