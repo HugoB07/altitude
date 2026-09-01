@@ -22,14 +22,21 @@ real estate and liabilities - on your server, in your database.
 > and the whole run undoable in one press.
 >
 > A bank is described once: the columns you named are kept and found again by the shape
-> of the next file, so the following month asks nothing.
+> of the next file, so the following month asks nothing. Where a statement carries its
+> running balance, the file is read back against it - every row has to move the balance by
+> its own amount - and its closing balance is compared with what your ledger will hold.
+> Movements are filed by rules you write: ordered, readable, and traceable to one line, so
+> "why is this in groceries" has an answer.
 >
 > What is missing from phase 2: only CSV is read - not XLSX, OFX, QIF, CAMT, and not PDF,
 > which matters more than the plan assumed, since some French banks (Crédit Agricole among
-> them) offer a monthly statement as a PDF and little else; there is no categorisation; a
-> mapping cannot yet be contributed back as a preset; and the import runs inside the
-> request rather than in a worker, so a very large file will outlast its own timeout.
-> There is no market data and no history at all - those are phase 3. See the
+> them) offer a monthly statement as a PDF and little else; a mapping cannot yet be
+> contributed back as a preset, so exactly one bank ships with a reader and a first file
+> from any other has to be described by hand; a movement's counterparty - the shop, the
+> employer - is not read yet, and neither counterparties, categories nor tags can be
+> filtered on in the transactions tab, which is where they earn their keep; and the import
+> runs inside the request rather than in a worker, so a very large file will outlast its
+> own timeout. There is no market data and no history at all - those are phase 3. See the
 > [roadmap](#roadmap).
 
 ## Why
