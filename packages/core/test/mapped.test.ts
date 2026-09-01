@@ -4,6 +4,7 @@ import {
   STATEMENT_ACCOUNT,
   STATEMENT_COUNTERPART,
   mappingFits,
+  parseMapping,
   readMapped,
   readShape,
   type ColumnMapping,
@@ -215,5 +216,140 @@ describe('rows a statement lists but that did not happen', () => {
     // one value everywhere is a constant, not a choice.
     expect(shape.categories['Montant']).toBeUndefined();
     expect(shape.categories['Devise']).toBeUndefined();
+  });
+});
+
+describe('parseMapping', () => {
+  /**
+   * A mapping arrives from a browser and comes back out of a database, so it
+   * is input in both directions. Unchecked, it produces a reader that indexes
+   * every row by `undefined` and reports a perfectly good file as unreadable.
+   */
+  const valid = { columns: { bookedOn: 'Date', amount: 'Montant' } };
+
+  it('accepts the smallest mapping that can read anything', () => {
+    expect(parseMapping(valid)).toEqual({ columns: { bookedOn: 'Date', amount: 'Montant' } });
+  });
+
+  it('refuses anything that is not an object with columns', () => {
+    for (const value of [null, undefined, 'Date', 42, [], {}, { columns: null }, { columns: 7 }]) {
+      expect(parseMapping(value), JSON.stringify(value)).toBeNull();
+    }
+  });
+
+  it('refuses a mapping with no date column', () => {
+    expect(parseMapping({ columns: { amount: 'Montant' } })).toBeNull();
+    // Present but blank is the same as absent: a select nobody touched.
+    expect(parseMapping({ columns: { bookedOn: '   ', amount: 'Montant' } })).toBeNull();
+    expect(parseMapping({ columns: { bookedOn: 7, amount: 'Montant' } })).toBeNull();
+  });
+
+  it('insists on one amount column or two, never both and never neither', () => {
+    expect(parseMapping({ columns: { bookedOn: 'Date' } })).toBeNull();
+    expect(parseMapping({ columns: { bookedOn: 'Date', debit: 'D' } })).toBeNull();
+    expect(parseMapping({ columns: { bookedOn: 'Date', credit: 'C' } })).toBeNull();
+    // Both shapes at once describes two different files.
+    expect(
+      parseMapping({ columns: { bookedOn: 'Date', amount: 'M', debit: 'D', credit: 'C' } }),
+    ).toBeNull();
+
+    expect(parseMapping({ columns: { bookedOn: 'Date', debit: 'D', credit: 'C' } })).toEqual({
+      columns: { bookedOn: 'Date', debit: 'D', credit: 'C' },
+    });
+  });
+
+  it('keeps the optional columns it is given, and drops the blank ones', () => {
+    const parsed = parseMapping({
+      columns: {
+        ...valid.columns,
+        description: 'Libelle',
+        currency: 'Devise',
+        externalId: 'Reference',
+        status: 'Etat',
+      },
+    });
+    expect(parsed?.columns.description).toBe('Libelle');
+    expect(parsed?.columns.status).toBe('Etat');
+
+    const blank = parseMapping({ columns: { ...valid.columns, description: '  ', status: '' } });
+    expect(blank?.columns.description).toBeUndefined();
+    expect(blank?.columns.status).toBeUndefined();
+  });
+
+  it('refuses a date order it does not know, and keeps one it does', () => {
+    expect(parseMapping({ ...valid, dateOrder: 'sideways' })).toBeNull();
+    expect(parseMapping({ ...valid, dateOrder: 'mdy' })?.dateOrder).toBe('mdy');
+    expect(parseMapping(valid)?.dateOrder).toBeUndefined();
+  });
+
+  it('refuses a header row that is not a whole number', () => {
+    expect(parseMapping({ ...valid, headerRow: 1.5 })).toBeNull();
+    expect(parseMapping({ ...valid, headerRow: 'four' })).toBeNull();
+    expect(parseMapping({ ...valid, headerRow: 4 })?.headerRow).toBe(4);
+  });
+
+  it('keeps only the statuses that are strings, and drops an empty list', () => {
+    const parsed = parseMapping({ ...valid, skipStatuses: ['RENVOYÉ', '', 7, null, 'ANNULÉ'] });
+    expect(parsed?.skipStatuses).toEqual(['RENVOYÉ', 'ANNULÉ']);
+
+    expect(parseMapping({ ...valid, skipStatuses: [] })?.skipStatuses).toBeUndefined();
+    expect(parseMapping({ ...valid, skipStatuses: 'RENVOYÉ' })?.skipStatuses).toBeUndefined();
+  });
+
+  it('drops a blank currency rather than storing one', () => {
+    expect(parseMapping({ ...valid, currency: '  ' })?.currency).toBeUndefined();
+    expect(parseMapping({ ...valid, currency: 'CHF' })?.currency).toBe('CHF');
+  });
+
+  it('keeps a delimiter, for a file that defeats the sniffer', () => {
+    expect(parseMapping({ ...valid, delimiter: '|' })?.delimiter).toBe('|');
+    expect(parseMapping({ ...valid, delimiter: 7 })?.delimiter).toBeUndefined();
+  });
+});
+
+describe('a mapping that overrides what would be detected', () => {
+  const PIPED = ['ignore me', 'Date|Montant', '01/04/2026|-800,00', ''].join('\n');
+
+  it('uses the delimiter and header row it is given', () => {
+    const reading = readMapped(PIPED, {
+      columns: { bookedOn: 'Date', amount: 'Montant' },
+      currency: 'EUR',
+      delimiter: '|',
+      headerRow: 1,
+    });
+    expect(reading.problems).toEqual([]);
+    expect(reading.candidates).toHaveLength(1);
+    expect(reading.candidates[0]?.entries[0]?.amount).toBe('-800');
+  });
+
+  it('uses the date order it is given rather than the one it would find', () => {
+    // Nothing in a one-row column settles it, so without this the default
+    // would apply and read the fourth of January.
+    const reading = readMapped(PIPED, {
+      columns: { bookedOn: 'Date', amount: 'Montant' },
+      currency: 'EUR',
+      delimiter: '|',
+      headerRow: 1,
+      dateOrder: 'mdy',
+    });
+    expect(reading.candidates[0]?.bookedOn).toBe('2026-01-04');
+  });
+
+  it('takes the currency from a column when the file has one', () => {
+    const mixed = ['Date;Montant;Devise', '01/04/2026;-800,00;CHF', ''].join('\n');
+    const reading = readMapped(mixed, {
+      columns: { bookedOn: 'Date', amount: 'Montant', currency: 'Devise' },
+    });
+    expect(reading.candidates[0]?.entries[0]?.currency).toBe('CHF');
+  });
+
+  it('reports a row whose amount cannot be read, and keeps the others', () => {
+    const broken = ['Date;Montant', '01/04/2026;n/a', '02/04/2026;-12,00', ''].join('\n');
+    const reading = readMapped(broken, {
+      columns: { bookedOn: 'Date', amount: 'Montant' },
+      currency: 'EUR',
+    });
+    expect(reading.candidates).toHaveLength(1);
+    expect(reading.problems[0]?.reason).toContain('amount');
   });
 });
