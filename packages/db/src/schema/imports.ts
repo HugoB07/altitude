@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { households, users } from './identity';
 
 /**
@@ -40,4 +40,42 @@ export const imports = pgTable(
     rolledBackBy: uuid('rolled_back_by').references(() => users.id, { onDelete: 'set null' }),
   },
   (t) => [index('imports_household_idx').on(t.householdId, t.createdAt.desc())],
+);
+
+/**
+ * A description of a bank's file, kept so it is written once.
+ *
+ * Scoped to a household deliberately. A mapping holds no figures - it says
+ * "this file's third column is the amount" - but its existence says which bank
+ * somebody uses. `instruments` accepts that kind of leak because phase 3 seeds
+ * it with a public catalogue that dissolves it (ADR-0011); nothing would ever
+ * dissolve this one, since the table only ever holds what people imported.
+ *
+ * Sharing goes through the repository instead: a mapping worth having by
+ * everyone ships as a preset, which is a file in git rather than a row here.
+ */
+export const importsMappings = pgTable(
+  'imports_mappings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    /** What the person called it, so a list of them is readable. */
+    name: text('name').notNull(),
+    /**
+     * The header row and the delimiter.
+     *
+     * What two exports of the same bank agree on, and everything else differs
+     * by. Unique per household: a second description of the same shape is a
+     * correction rather than an addition.
+     */
+    fingerprint: text('fingerprint').notNull(),
+    /** The `ColumnMapping`, validated on the way in and on the way back out. */
+    mapping: jsonb('mapping').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('imports_mappings_fingerprint_key').on(t.householdId, t.fingerprint)],
 );
