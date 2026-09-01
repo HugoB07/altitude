@@ -42,6 +42,10 @@ const TWO_SOURCES = join(__dirname, 'fixtures', 'trade-republic-two-sources.csv'
 const PEA = join(__dirname, 'fixtures', 'trade-republic-pea.csv');
 /** Ten movements from outside, which is what it takes to overflow the dialog. */
 const MANY = join(__dirname, 'fixtures', 'trade-republic-many.csv');
+/** A French statement: CP1252, semicolons, a junk header block, debit and credit apart. */
+const FRENCH = join(__dirname, 'fixtures', 'releve-francais.csv');
+/** A statement with a state column, holding a card payment that was reverted. */
+const STATES = join(__dirname, 'fixtures', 'releve-etats.csv');
 
 test.use({ locale: 'en-GB' });
 
@@ -473,5 +477,106 @@ test('an import can be undone, and the undoing is itself in the ledger', async (
     // guarded on the server.
     await page.goto('/app/import');
     await expect(run.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+  });
+});
+
+test('a bank nobody wrote a preset for is described and read', async () => {
+  await expectNoConsoleErrors(async () => {
+    await page.goto('/app/import');
+
+    // The path for a bank with no preset. It used to be shown and inert.
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(FRENCH);
+
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+
+    // Written in CP1252, which is what Excel on a French Windows produces.
+    // Read as UTF-8 - which is what `file.text()` does - the accent becomes a
+    // replacement character and never comes back.
+    await expect(page.getByRole('cell', { name: 'Loyer octobre régularisé' })).toBeVisible();
+
+    // Each choice echoes a real value from the column it names. Two columns
+    // called "Date de debut" and "Date de fin" are told apart by what they
+    // hold, not by what they are called.
+    await expect(page.getByText(/^e\.g\. /).first()).toBeVisible();
+
+    // Four lines of identification block above the header, semicolons, and a
+    // debit/credit pair. None of that was said; all of it was worked out.
+    await expect(page.getByRole('combobox', { name: /^Date/ })).toContainText('Date');
+    await expect(page.getByLabel('How the amounts are written')).toContainText(
+      'Two columns, both positive',
+    );
+    await expect(page.getByRole('combobox', { name: /Debit/ })).toContainText('Debit');
+    await expect(page.getByRole('combobox', { name: /Credit/ })).toContainText('Credit');
+
+    // 18 October settles the order, so the question is not asked.
+    await expect(page.getByText('is the third of April or the fourth of March')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    // From here it is the same screen as any preset: accounts, then review.
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('Loyer octobre régularisé')).toBeVisible();
+    await expect(page.getByText('Salaire octobre')).toBeVisible();
+
+    await page.getByRole('button', { name: /^Create the/ }).click();
+    await expect(page.getByText(/account(s)? created/)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Import 3 transactions' }).click();
+    await expect(page.getByText('3 transactions imported')).toBeVisible();
+
+    // The arithmetic, which is what proves the reading rather than the screen.
+    // 1,800 in and 812.40 out, so the statement account holds 987.60 - and the
+    // thousands space in "1 800,00" is a non-breaking one.
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€987.60')).toBeVisible();
+
+    // Money crossing the household's edge, so net worth moved by the same.
+    await page.goto('/app');
+    await expect(page.getByText('€3,488.66').first()).toBeVisible();
+  });
+});
+
+test('a line the statement says did not happen is left out, and said so', async () => {
+  await expectNoConsoleErrors(async () => {
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(STATES);
+
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+
+    // Dates carrying a time, which used to make a whole column stop looking
+    // like dates - and then made the screen ask whether 03/04 was March.
+    await expect(page.getByText(/^e\.g\. 2026-11-24 13:12:06/).first()).toBeVisible();
+    await expect(page.getByText(/Which day is/)).toHaveCount(0);
+
+    // The state column is found by shape, not by name: it repeats a handful of
+    // values where an amount column does not.
+    await expect(page.getByRole('combobox', { name: /State/ })).toContainText('Etat');
+    await expect(page.getByRole('group', { name: 'Leave these out' })).toBeVisible();
+
+    // Which states mean "did not happen" is a fact about the bank, so it is
+    // asked. The values offered are the ones the file actually holds.
+    await page.getByRole('checkbox', { name: 'RENVOYÉ' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    // Two movements from three rows, and the third is accounted for rather
+    // than missing.
+    await expect(page.getByText('1 line was left out, because RENVOYÉ')).toBeVisible();
+    await expect(page.getByText('Paiement envoye')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Import 2 transactions' })).toBeVisible();
+
+    // The statement accounts already exist from the previous test and are
+    // matched on sight, so there is nothing to create.
+    await expect(page.getByRole('button', { name: /^Create the/ })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Import 2 transactions' }).click();
+    await expect(page.getByText('2 transactions imported')).toBeVisible();
+
+    // 50 in and 2.55 out, on top of the 987.60 the previous statement left.
+    // The reverted 2.55 is not in that number: imported, the balance would be
+    // short by exactly what was refunded.
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€1,035.05')).toBeVisible();
   });
 });
