@@ -72,6 +72,7 @@ export {
   readMapped,
   readShape,
   mappingFits,
+  fingerprintOf,
   parseMapping,
   STATEMENT_ACCOUNT,
   STATEMENT_COUNTERPART,
@@ -102,6 +103,13 @@ export type {
   BoundEntry,
   CandidateOverrides,
 } from './import/bind';
+export {
+  findMapping,
+  listMappings,
+  rememberMapping,
+  forgetMapping,
+  type StoredMapping,
+} from './services/mappings';
 export { findDuplicates } from './services/import';
 export {
   listImports,

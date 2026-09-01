@@ -392,3 +392,30 @@ export function parseMapping(value: unknown): ColumnMapping | null {
     ...(order === undefined ? {} : { dateOrder: order }),
   };
 }
+
+/**
+ * What identifies a file's shape, so a mapping written once can be found again.
+ *
+ * The header row and the delimiter, and nothing else. Two exports from the same
+ * bank differ in every row and agree on those, which is exactly the property a
+ * key needs here.
+ *
+ * Not a hash. A hash would be shorter and would make a stored row unreadable,
+ * and there is nothing to hide: a fingerprint holds column names, which say
+ * which bank a file came from and nothing about what is in it. Being able to
+ * look at the table and see why a mapping did or did not match is worth more
+ * than the bytes it saves.
+ *
+ * A renamed column breaks the match, and should: a bank that renames one has
+ * changed the question, and answering it with the old mapping would read the
+ * value date as the booking date without saying so.
+ */
+export function fingerprintOf(text: string, delimiter?: string): string {
+  const separator = delimiter ?? sniffDelimiter(text);
+  const rows = parseDelimited(text, separator);
+  const header = rows[findHeaderRow(rows)] ?? [];
+
+  // A unit separator, because a column name can hold anything a person can
+  // type - including whatever character was picked as a joiner.
+  return [separator, ...header.map((name) => name.trim())].join('');
+}

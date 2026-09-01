@@ -3,6 +3,7 @@ import { dec } from '@altitude/shared';
 import {
   STATEMENT_ACCOUNT,
   STATEMENT_COUNTERPART,
+  fingerprintOf,
   mappingFits,
   parseMapping,
   readMapped,
@@ -351,5 +352,56 @@ describe('a mapping that overrides what would be detected', () => {
     });
     expect(reading.candidates).toHaveLength(1);
     expect(reading.problems[0]?.reason).toContain('amount');
+  });
+});
+
+describe('fingerprintOf', () => {
+  const HEADER = 'Date;Libelle;Debit;Credit';
+  const file = (...rows: string[]) => [HEADER, ...rows, ''].join('\n');
+
+  it('is the same for two exports of the same bank', () => {
+    const april = file('01/04/2026;Loyer;800,00;');
+    const may = file('02/05/2026;Salaire;;2500,00', '03/05/2026;Courses;45,00;');
+
+    // Every row differs and the shape does not, which is the property a key
+    // needs: a mapping written in April is found again in May.
+    expect(fingerprintOf(may)).toBe(fingerprintOf(april));
+  });
+
+  it('sees past a junk header block, as the reader does', () => {
+    const wrapped = [
+      'Releve de compte;;;',
+      'IBAN;FR76;;',
+      ';;;',
+      HEADER,
+      '01/04/2026;Loyer;800,00;',
+      '',
+    ].join('\n');
+
+    expect(fingerprintOf(wrapped)).toBe(fingerprintOf(file('01/04/2026;Loyer;800,00;')));
+  });
+
+  it('differs when a column is renamed, added or reordered', () => {
+    const base = fingerprintOf(file('01/04/2026;Loyer;800,00;'));
+
+    // A bank that renames a column has changed the question. Answering it with
+    // the old mapping would read the value date as the booking date in silence.
+    const renamed = ['Date;Intitule;Debit;Credit', '01/04/2026;L;8;', ''].join('\n');
+    const added = ['Date;Libelle;Debit;Credit;Solde', '01/04/2026;L;8;;9', ''].join('\n');
+    const reordered = ['Libelle;Date;Debit;Credit', 'L;01/04/2026;8;', ''].join('\n');
+
+    expect(fingerprintOf(renamed)).not.toBe(base);
+    expect(fingerprintOf(added)).not.toBe(base);
+    expect(fingerprintOf(reordered)).not.toBe(base);
+  });
+
+  it('differs when the delimiter differs, for the same column names', () => {
+    const comma = ['Date,Libelle,Debit,Credit', '01/04/2026,Loyer,800.00,', ''].join('\n');
+    expect(fingerprintOf(comma)).not.toBe(fingerprintOf(file('01/04/2026;Loyer;800,00;')));
+  });
+
+  it('ignores surrounding space in a column name', () => {
+    const padded = [' Date ; Libelle ;Debit;Credit', '01/04/2026;L;8;', ''].join('\n');
+    expect(fingerprintOf(padded)).toBe(fingerprintOf(file('01/04/2026;L;8;')));
   });
 });
