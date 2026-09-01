@@ -279,6 +279,9 @@ export interface LedgerLine {
   readonly accountId: AccountId;
   readonly accountName: string;
   readonly amount: Money;
+  /** What this side of the movement was for, when a rule or a person said. */
+  readonly category: string | null;
+  readonly categoryId: string | null;
 }
 
 export interface LedgerEntry {
@@ -446,7 +449,14 @@ export async function listTransactions(
     source: string;
     reverses_id: string | null;
     reversed_by_id: string | null;
-    lines: { account_id: string; account_name: string; amount: string; currency: string }[];
+    lines: {
+      account_id: string;
+      account_name: string;
+      amount: string;
+      currency: string;
+      category: string | null;
+      category_id: string | null;
+    }[];
   }>(sql`
     WITH page AS MATERIALIZED (
       SELECT t.id
@@ -473,10 +483,13 @@ export async function listTransactions(
                        'account_id', e.account_id,
                        'account_name', a.name,
                        'amount', e.amount::text,
-                       'currency', e.currency
+                       'currency', e.currency,
+                       'category', c.name,
+                       'category_id', e.category_id
                      ) ORDER BY e.amount DESC, a.name)
                 FROM entries e
                 JOIN accounts a ON a.id = e.account_id
+                LEFT JOIN categories c ON c.id = e.category_id
                WHERE e.transaction_id = t.id),
              '[]'::json
            ) AS lines
@@ -498,6 +511,8 @@ export async function listTransactions(
         accountId: line.account_id as AccountId,
         accountName: line.account_name,
         amount: Money.of(line.amount, line.currency),
+        category: line.category,
+        categoryId: line.category_id,
       })),
     })),
     total,

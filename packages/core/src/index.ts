@@ -92,6 +92,20 @@ export {
   type RuleConditions,
 } from './categories/rules';
 export {
+  listCategories,
+  createCategory,
+  deleteCategory,
+  listRules,
+  createRule,
+  deleteRule,
+  applyRules,
+  setTransactionCategory,
+  type Category,
+  type StoredRule,
+  type NewRule,
+  type ApplyResult,
+} from './services/categories';
+export {
   EXTERNAL,
   SECURITIES_SUFFIX,
   looksLikeTradeRepublic,

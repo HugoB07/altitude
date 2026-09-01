@@ -15,6 +15,7 @@ import { normaliseLabel, trigramSimilarity } from '../import/labels';
 import type { CandidateInstrument } from '../import/types';
 import type { TransactionInput } from '../ledger/types';
 import { postTransaction, reverseTransactionById } from './transactions';
+import { applyRules } from './categories';
 import { assertActorMatchesTenant } from './tenant';
 
 /**
@@ -364,6 +365,8 @@ export interface CommitResult {
   readonly written: number;
   /** Existing transactions a person said were the same as a line of the file. */
   readonly merged: number;
+  /** Entries a rule gave a category to, on the way in. */
+  readonly categorised: number;
   readonly instrumentsCreated: number;
 }
 
@@ -457,10 +460,16 @@ export async function commitImport(
     merged += done.length === 0 ? 0 : 1;
   }
 
+  // Step 7 of the pipeline (plan §8.2), over what this run just wrote. Rules
+  // are the household's own, run in the same unit of work, so a file either
+  // lands categorised or does not land at all.
+  const categorised = await applyRules(tx, actor, { importId: input.importId });
+
   return {
     importId: input.importId,
     written: input.candidates.length,
     merged,
+    categorised: categorised.changed,
     instrumentsCreated: resolved.created,
   };
 }
