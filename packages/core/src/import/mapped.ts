@@ -1,4 +1,5 @@
 import { dec } from '@altitude/shared';
+import { readCurrency } from './currencies';
 import { sniffDelimiter, findHeaderRow, parseDelimited } from './csv';
 import { dayPart, detectDateOrder, readDate, type DateOrder } from './dates';
 import { fromDebitCredit, parseAmount } from './numbers';
@@ -240,6 +241,15 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
       problems.push({ line, reason: 'No currency for this row, and none set', row });
       continue;
     }
+    // Read here rather than at the ledger's door. A "€" in a currency column
+    // used to pass the preview and throw on the way into the database, after
+    // somebody had approved every line, with nothing said about which one
+    // carried it.
+    const code = readCurrency(currency);
+    if (code === null) {
+      problems.push({ line, reason: `Unreadable currency "${currency}"`, row });
+      continue;
+    }
 
     const description = (row[mapping.columns.description ?? ''] ?? '').trim();
     const externalId = (row[mapping.columns.externalId ?? ''] ?? '').trim();
@@ -253,8 +263,8 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
       ...(description === '' ? {} : { description }),
       sourceLines: [line],
       entries: [
-        entry(STATEMENT_ACCOUNT, amount.toFixed(), currency),
-        entry(STATEMENT_COUNTERPART, amount.negated().toFixed(), currency),
+        entry(STATEMENT_ACCOUNT, amount.toFixed(), code),
+        entry(STATEMENT_COUNTERPART, amount.negated().toFixed(), code),
       ],
     });
   }

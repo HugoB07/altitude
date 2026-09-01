@@ -146,6 +146,57 @@ describe('readMapped', () => {
   });
 });
 
+describe('the currency cell', () => {
+  const header = 'Date;Libelle;Montant;Devise';
+  const read = (cell: string) =>
+    readMapped([header, `05/10/2026;Loyer octobre;-750,00;${cell}`].join('\n'), {
+      columns: {
+        bookedOn: 'Date',
+        description: 'Libelle',
+        amount: 'Montant',
+        currency: 'Devise',
+      },
+    });
+
+  /**
+   * Where this used to fail, and how badly.
+   *
+   * `Money.of` calls `currency`, which throws on a symbol. That happened at
+   * the last step of the import, inside the transaction that writes: every
+   * line approved, the whole run refused, and the message that reached the
+   * screen said nothing about which row carried it. A file is read line by
+   * line and its problems belong to lines (plan §8.2, step 5).
+   */
+  it('reads a symbol that names one currency and only one', () => {
+    const reading = read('€');
+    expect(reading.problems).toEqual([]);
+    expect(reading.candidates[0]?.entries.map((e) => e.currency)).toEqual(['EUR', 'EUR']);
+  });
+
+  it('refuses the dollar sign rather than picking a country', () => {
+    // Four currencies write it. Guessing between them is the same silent wrong
+    // answer as reading 03/04 as the third of April, and the mapping has a
+    // field for saying which currency the file is in.
+    const reading = read('$');
+    expect(reading.candidates).toEqual([]);
+    expect(reading.problems).toEqual([
+      { line: 2, reason: 'Unreadable currency "$"', row: expect.anything() },
+    ]);
+  });
+
+  it('refuses anything that is not a code, against the line that carried it', () => {
+    expect(read('123').problems[0]).toMatchObject({ line: 2 });
+    expect(read('EU R').problems[0]).toMatchObject({ line: 2 });
+  });
+
+  it('accepts a code written in lower case, and stores it upper', () => {
+    // Banks are not consistent about this, and it is not an error.
+    const reading = read('eur');
+    expect(reading.problems).toEqual([]);
+    expect(reading.candidates[0]?.entries.map((e) => e.currency)).toEqual(['EUR', 'EUR']);
+  });
+});
+
 describe('mappingFits', () => {
   it('recognises a file a mapping can read', () => {
     expect(mappingFits(STATEMENT, MAPPING)).toBe(true);

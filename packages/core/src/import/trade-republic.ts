@@ -1,4 +1,5 @@
 import { dec, ledgerDate, type LedgerDate } from '@altitude/shared';
+import { readCurrency } from './currencies';
 import { parseRecords, sniffDelimiter } from './csv';
 import type {
   Candidate,
@@ -208,6 +209,11 @@ function single(row: Row): Candidate | { reason: string } {
   const date = toLedgerDate(data['date']);
   if (date === null) return { reason: 'Unreadable date' };
   if (!isDecimal(amount)) return { reason: `Unreadable amount "${amount}"` };
+  // The ledger refuses a code it cannot recognise, and refusing it here is the
+  // difference between one line reported and a whole import failing at the
+  // last step with nothing said about where.
+  const code = readCurrency(currency);
+  if (code === null) return { reason: `Unreadable currency "${currency}"` };
 
   const kind = LEDGER_KINDS[type] ?? 'adjustment';
   const common = {
@@ -231,9 +237,9 @@ function single(row: Row): Candidate | { reason: string } {
     return {
       ...common,
       entries: [
-        line(account, amount, currency),
+        line(account, amount, code),
         {
-          ...line(securitiesLabel(account), negate(amount), currency),
+          ...line(securitiesLabel(account), negate(amount), code),
           quantity: type === 'BUY' ? quantity : negate(quantity),
           ...(isDecimal(data['price'] ?? '') ? { unitPrice: data['price'] } : {}),
           instrument,
@@ -261,16 +267,16 @@ function single(row: Row): Candidate | { reason: string } {
     return {
       ...common,
       entries: [
-        line(account, amount, currency, 'gross'),
-        line(account, tax, currency, 'withholdingTax'),
-        line(EXTERNAL, negate(net.toFixed()), currency, 'netCredited'),
+        line(account, amount, code, 'gross'),
+        line(account, tax, code, 'withholdingTax'),
+        line(EXTERNAL, negate(net.toFixed()), code, 'netCredited'),
       ],
     };
   }
 
   return {
     ...common,
-    entries: [line(account, amount, currency), line(EXTERNAL, negate(amount), currency)],
+    entries: [line(account, amount, code), line(EXTERNAL, negate(amount), code)],
   };
 }
 

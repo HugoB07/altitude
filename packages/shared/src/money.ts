@@ -12,6 +12,18 @@ export type CurrencyCode = string;
 
 const CURRENCY_RE = /^[A-Z]{3,10}$/;
 
+/**
+ * Whether a string could be a currency code, without throwing to find out.
+ *
+ * `currency` refuses what it cannot accept, which is right at the boundary of
+ * the ledger and wrong while reading a file: there the answer has to become a
+ * problem attached to a line number, not an exception that loses the row it
+ * came from.
+ */
+export function isCurrencyCode(code: string): boolean {
+  return CURRENCY_RE.test(code.toUpperCase());
+}
+
 export function currency(code: string): CurrencyCode {
   const upper = code.toUpperCase();
   if (!CURRENCY_RE.test(upper)) {
