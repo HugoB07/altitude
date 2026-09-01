@@ -628,3 +628,33 @@ test('a bank described once is not described again', async () => {
     await expect(page.getByText('€2,594.55')).toBeVisible();
   });
 });
+
+test('a wide statement scrolls inside its panel rather than pushing the page', async () => {
+  await expectNoConsoleErrors(async () => {
+    // The Trade Republic export read through the "other bank" path, for its
+    // twenty-three columns. Nothing is imported: this is about the table
+    // staying inside the panel that holds it.
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(FIXTURE);
+
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'account_type' })).toBeVisible();
+    // A grid's implicit column is `auto`, meaning max-content, so without
+    // `grid-cols-1` the track grows to the table and the whole page draws past
+    // the right edge - the same defect as the counterpart rail in its dialog,
+    // and this time on the page itself.
+    const spill = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(spill, 'the page scrolls sideways').toBe(0);
+
+    // And the table itself does scroll, which is what the panel is for.
+    const table = page.locator('table').first();
+    const scrolls = await table.evaluate((el) => {
+      const box = el.parentElement!;
+      return box.scrollWidth > box.clientWidth;
+    });
+    expect(scrolls, 'the table is not scrollable, so its columns are unreachable').toBe(true);
+  });
+});

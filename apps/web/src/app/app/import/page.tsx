@@ -34,7 +34,7 @@ export default async function ImportPage() {
   const opening = balances.find((balance) => balance.kind === 'opening_balance');
 
   return (
-    <div className="grid gap-8">
+    <div className="grid grid-cols-1 gap-8">
       <div className="min-w-0">
         <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('description')}</p>

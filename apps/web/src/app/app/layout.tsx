@@ -71,7 +71,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="md:pl-64">
+      {/* `min-w-0`: without it this box grows to whatever the widest child
+          wants, and a table of a bank's twenty-three columns drags the whole
+          page sideways past the sidebar. */}
+      <div className="min-w-0 md:pl-64">
         {/* Same surface as the sidebar, not the page. The chrome is one
             continuous plane wrapping the content; two different darks meeting
             at the corner of the sidebar read as a rendering fault. */}
@@ -91,7 +94,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Bottom padding on small screens so the bar never covers the last row. */}
-        <main className="w-full px-5 pt-6 pb-24 sm:px-8 md:pb-10">{children}</main>
+        <main className="w-full min-w-0 px-5 pt-6 pb-24 sm:px-8 md:pb-10">{children}</main>
       </div>
 
       <AppBarNav />

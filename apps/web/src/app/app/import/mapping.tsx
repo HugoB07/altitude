@@ -111,53 +111,64 @@ export function MappingForm({
     (draft.amountMode === 'one' ? draft.amount !== '' : draft.debit !== '' && draft.credit !== '');
 
   return (
-    <section className="grid gap-5">
+    // `grid-cols-1`, which Tailwind writes as `minmax(0, 1fr)`. A grid's
+    // implicit column is `auto`, meaning max-content, so the table below - as
+    // wide as a bank's column list - widened the track and drew past the edge
+    // of the page. Same defect as the dialog holding the counterpart rail.
+    <section className="grid grid-cols-1 gap-5">
       <div>
         <h2 className="text-[13px] font-semibold tracking-wide uppercase">{t('mappingTitle')}</h2>
         <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('mappingHint')}</p>
       </div>
 
       {/* The file itself, first. Everything below is a question about it. */}
-      <div className="overflow-x-auto rounded-2xl border">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/50">
-            <tr>
-              {shape.headers.map((name, index) => (
-                <th
-                  key={`${name}-${String(index)}`}
-                  className={cn(
-                    'px-3 py-2 text-left align-top font-medium whitespace-nowrap',
-                    roles[name] !== undefined && 'bg-primary/10',
-                  )}
-                >
-                  <span className="block">{name === '' ? '-' : name}</span>
-                  {roles[name] !== undefined && (
-                    <span className="text-primary block text-[11px] font-normal">
-                      {roles[name]}
-                    </span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {shape.sample.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-t">
+      {/* Two boxes rather than one. The border and its radius belong to the
+          outer box, which clips; the scrolling belongs to the inner one. Put
+          both on the same box and the horizontal scrollbar is drawn along the
+          inside edge of the border, its square ends crossing the rounded
+          corners and reading as something spilling out of the panel. */}
+      <div className="w-full min-w-0 overflow-hidden rounded-2xl border">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/50">
+              <tr>
                 {shape.headers.map((name, index) => (
-                  <td
-                    key={index}
+                  <th
+                    key={`${name}-${String(index)}`}
                     className={cn(
-                      'text-muted-foreground max-w-[16rem] truncate px-3 py-1.5 whitespace-nowrap',
-                      roles[name] !== undefined && 'bg-primary/5 text-foreground',
+                      'px-3 py-2 text-left align-top font-medium whitespace-nowrap',
+                      roles[name] !== undefined && 'bg-primary/10',
                     )}
                   >
-                    {row[index] ?? ''}
-                  </td>
+                    <span className="block">{name === '' ? '-' : name}</span>
+                    {roles[name] !== undefined && (
+                      <span className="text-primary block text-[11px] font-normal">
+                        {roles[name]}
+                      </span>
+                    )}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {shape.sample.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-t">
+                  {shape.headers.map((name, index) => (
+                    <td
+                      key={index}
+                      className={cn(
+                        'text-muted-foreground max-w-[16rem] truncate px-3 py-1.5 whitespace-nowrap',
+                        roles[name] !== undefined && 'bg-primary/5 text-foreground',
+                      )}
+                    >
+                      {row[index] ?? ''}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Group title={t('groupRequired')} hint={t('groupRequiredHint')}>
