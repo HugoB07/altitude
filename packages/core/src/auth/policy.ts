@@ -25,6 +25,8 @@ export const ACTIONS = [
   'transaction:create',
   'transaction:update',
   'transaction:delete',
+  'category:read',
+  'category:write',
   'import:run',
   'import:rollback',
   'connector:link',
@@ -95,6 +97,8 @@ const GRANTS: Record<Role, ReadonlySet<Action>> = {
     'transaction:create',
     'transaction:update',
     'transaction:delete',
+    'category:read',
+    'category:write',
     'import:run',
     'import:rollback',
     'export:run',
@@ -106,12 +110,13 @@ const GRANTS: Record<Role, ReadonlySet<Action>> = {
     'portfolio:read',
     'account:read',
     'transaction:read',
+    'category:read',
     'export:run',
   ]),
 
   // A child sees their own subtree and nothing else. No export: the point of
   // the role is that the data stays where the parents put it.
-  child: new Set<Action>(['portfolio:read', 'account:read', 'transaction:read']),
+  child: new Set<Action>(['portfolio:read', 'account:read', 'transaction:read', 'category:read']),
 };
 
 const SCOPED_ROLES: ReadonlySet<Role> = new Set<Role>(['contributor', 'viewer', 'child']);

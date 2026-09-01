@@ -83,6 +83,15 @@ export { parseAmount, fromDebitCredit, type ParsedAmount } from './import/number
 export { normaliseLabel, trigramSimilarity } from './import/labels';
 export { readCurrency } from './import/currencies';
 export {
+  categorise,
+  parseConditions,
+  suggestPattern,
+  type Categorisable,
+  type Categorised,
+  type CategorisationRule,
+  type RuleConditions,
+} from './categories/rules';
+export {
   EXTERNAL,
   SECURITIES_SUFFIX,
   looksLikeTradeRepublic,
