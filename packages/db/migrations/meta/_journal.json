@@ -127,6 +127,13 @@
       "when": 1788272371454,
       "tag": "0017_import_mappings",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788272372454,
+      "tag": "0018_transaction_dedupe_keys",
+      "breakpoints": true
     }
   ]
 }

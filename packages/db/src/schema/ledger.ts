@@ -5,6 +5,7 @@ import {
   index,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -61,8 +62,6 @@ export const transactions = pgTable(
      * subquery, and a partial index cannot be written over one.
      */
     reversedAt: timestamp('reversed_at', { withTimezone: true }),
-    /** sha256 over account, date, amount and normalised label (plan §8.5). */
-    dedupeHash: text('dedupe_hash'),
     /** Set when this transaction cancels another: the ledger is append-only. */
     reversesId: uuid('reverses_id'),
     /**
@@ -206,6 +205,32 @@ export const entries = pgTable(
      */
     index('entries_account_idx').on(t.householdId, t.accountId, t.transactionId, t.amount),
     index('entries_transaction_idx').on(t.transactionId),
+  ],
+);
+
+/**
+ * The keys by which an import recognises a transaction it has already written.
+ *
+ * One transaction has several: a bank re-exporting a month writes the same
+ * movement differently, and a person saying "this line is the one I already
+ * have" adds a way of writing it rather than correcting the last one.
+ */
+export const transactionsDedupeKeys = pgTable(
+  'transactions_dedupe_keys',
+  {
+    transactionId: uuid('transaction_id')
+      .notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    /** sha256 over the date, the entries and the normalised label (plan §8.5). */
+    hash: text('hash').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.transactionId, t.hash] }),
+    index('transactions_dedupe_keys_lookup').on(t.householdId, t.hash),
   ],
 );
 
