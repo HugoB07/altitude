@@ -676,5 +676,35 @@ test('a line the bank moved by two days is offered as a look-alike', async () =>
     // The distance is named. Without it a person is asked to judge a duplicate
     // against a date they can see is not the same, with nothing said about why.
     await expect(page.getByText('looks like a duplicate - 2 days apart')).toBeVisible();
+
+    // And both halves of the question are on screen. Judging a duplicate
+    // against a row in another page is not judging, it is guessing.
+    await expect(page.getByText('In your file')).toBeVisible();
+    await expect(page.getByText('Already recorded')).toBeVisible();
+
+    // The third answer of the plan: not a second transaction, not a line
+    // thrown away, but "this is the one I already have".
+    await page.getByRole('button', { name: 'Same one', exact: true }).click();
+    await page.getByRole('button', { name: /^Import/ }).click();
+    await expect(page.getByText('1 line matched to what you already had')).toBeVisible();
+
+    // Nothing was posted: the balance is what it was.
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€2,594.55')).toBeVisible();
+  });
+});
+
+test('a line merged once is decided the next time, not asked about again', async () => {
+  await expectNoConsoleErrors(async () => {
+    // The same file once more. The transaction now carries the hash of this
+    // line, so the exact level of the plan (§8.5) answers before anybody is
+    // asked - which is what makes re-importing an overlapping period painless.
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(FRENCH_AGAIN);
+
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('already imported')).toBeVisible();
+    await expect(page.getByText('looks like a duplicate')).toHaveCount(0);
   });
 });

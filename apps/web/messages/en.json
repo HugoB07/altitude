@@ -207,6 +207,18 @@
     "verdictCertain": "already imported",
     "verdictProbable": "looks like a duplicate",
     "verdictDaysApart": "{days, plural, =1 {# day apart} other {# days apart}}",
+    "sideFile": "In your file",
+    "sideLedger": "Already recorded",
+    "keepBoth": "Keep both",
+    "mergeIntoExisting": "Same one",
+    "skipLine": "Skip",
+    "applyToAlike": "Do this to the {count, plural, =1 {other one} other {# others}}",
+    "answer": {
+      "both": "Both will be recorded.",
+      "merge": "Nothing is added, and this line will not be offered again.",
+      "skip": "Nothing is added, and the next file will ask about it again."
+    },
+    "mergedCount": "{count, plural, =1 {# line matched to what you already had} other {# lines matched to what you already had}}",
     "notCheckedYet": "Duplicates are checked once every account is chosen.",
     "problems": "Rows that could not be read",
     "commit": "Import {count, plural, =1 {# transaction} other {# transactions}}",

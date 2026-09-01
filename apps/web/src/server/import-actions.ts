@@ -24,7 +24,13 @@ import {
   type EntryRole,
   type Verdict,
 } from '@altitude/core';
-import { accountId as toAccountId, importId, todayIn, transactionId } from '@altitude/shared';
+import {
+  accountId as toAccountId,
+  importId,
+  isUuid,
+  todayIn,
+  transactionId,
+} from '@altitude/shared';
 import { CUSTOM_PRESET_ID, customPreset, presetById, type Preset } from '@/lib/import-presets';
 import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
@@ -60,6 +66,19 @@ export interface PreviewLine {
    * asked to judge a match against a date they can see is different.
    */
   readonly daysApart: number | null;
+  /**
+   * The transaction this line looks like, named rather than referenced.
+   *
+   * Deciding means comparing, and comparing means seeing both. Account names
+   * are resolved here because the browser has the household's accounts for the
+   * binding controls, not for a transaction it has never seen.
+   */
+  readonly existing: {
+    readonly id: string;
+    readonly bookedOn: string;
+    readonly description: string | null;
+    readonly entries: readonly { readonly name: string; readonly amount: string }[];
+  } | null;
   readonly entries: readonly {
     readonly label: string;
     readonly amount: string;
@@ -181,6 +200,7 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
       sourceLines: candidate.sourceLines,
       verdict: verdicts[index]?.kind ?? 'new',
       daysApart: verdicts[index]?.kind === 'probable' ? verdicts[index].daysApart : null,
+      existing: describeMatch(verdicts[index], existing),
       entries: candidate.entries.map((entry) => ({
         label: entry.account,
         amount: entry.amount,
@@ -379,7 +399,26 @@ function readBinding(
 export interface CommitOutcome {
   readonly error?: string;
   readonly written?: number;
+  /** Existing transactions a person said were the same as a line of the file. */
+  readonly merged?: number;
   readonly instruments?: number;
+}
+
+/** The matched transaction, with its accounts named the way the household names them. */
+function describeMatch(
+  verdict: Verdict | undefined,
+  accounts: readonly { accountId: string; name: string }[],
+): PreviewLine['existing'] {
+  if (verdict === undefined || verdict.kind === 'new') return null;
+  return {
+    id: verdict.existing.id,
+    bookedOn: verdict.existing.bookedOn,
+    description: verdict.existing.description,
+    entries: verdict.existing.entries.map((entry) => ({
+      name: accounts.find((a) => a.accountId === entry.accountId)?.name ?? '',
+      amount: `${entry.amount} ${entry.currency}`,
+    })),
+  };
 }
 
 export async function commitImportAction(formData: FormData): Promise<CommitOutcome> {
@@ -398,7 +437,17 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
       .filter((value) => value !== '')
       .map(Number),
   );
-  if (chosen.size === 0) return { error: t('nothingSelected') };
+  // Lines a person said were already in the ledger, as `index:transactionId`.
+  // Nothing is posted for these: the existing row takes the line's hash so the
+  // same file read again recognises it outright.
+  const merges = new Map<number, string>();
+  for (const pair of String(formData.get('merged') ?? '').split(',')) {
+    const [index, id] = pair.split(':');
+    if (index === undefined || id === undefined || !isUuid(id)) continue;
+    merges.set(Number(index), id);
+  }
+
+  if (chosen.size === 0 && merges.size === 0) return { error: t('nothingSelected') };
 
   // Read again rather than trusting what came back. The file is the source of
   // truth; the browser only says which of its lines a person approved.
@@ -446,13 +495,26 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
         filename,
         candidates: described,
         transactionIds: described.map(() => transactionId(randomUUID())),
+        merges: [...merges.entries()].flatMap(([index, id]) => {
+          const candidate = reading.candidates[index];
+          if (candidate === undefined) return [];
+          const { bound: one, problems: refused } = bindAccounts([candidate], binding, {
+            ...(overrides[index] === undefined ? {} : { 0: overrides[index] }),
+          });
+          if (refused.length > 0 || one[0] === undefined) return [];
+          return [{ existing: transactionId(id), line: one[0] }];
+        }),
       }),
     );
 
     revalidatePath('/app');
     revalidatePath('/app/accounts');
     revalidatePath('/app/transactions');
-    return { written: result.written, instruments: result.instrumentsCreated };
+    return {
+      written: result.written,
+      merged: result.merged,
+      instruments: result.instrumentsCreated,
+    };
   } catch (error) {
     return { error: await toMessage(error) };
   }

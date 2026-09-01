@@ -167,6 +167,14 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   const [run, dispatch] = useReducer(reduce, EMPTY);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  /**
+   * Look-alikes a person answered "this is the one I already have" about.
+   *
+   * Kept apart from `selected` rather than as a third state of it: merging
+   * writes nothing to the ledger, so these lines are unticked, and a set of
+   * unticked lines cannot say which of them were merely skipped.
+   */
+  const [merging, setMerging] = useState<Map<number, string>>(new Map());
   const [query, setQuery] = useState('');
   /** What the file turned out to look like, and the answers being collected. */
   const [shape, setShape] = useState<FileShapeView | null>(null);
@@ -362,6 +370,10 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     form.set('filename', run.filename);
     if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
     form.set('selected', [...selected].join(','));
+    form.set(
+      'merged',
+      [...merging.entries()].map(([index, id]) => `${String(index)}:${id}`).join(','),
+    );
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
     for (const [index, id] of Object.entries(overrides)) form.set(`counterpart:${index}`, id);
 
@@ -372,6 +384,10 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           return;
         }
         toast.success(t('imported', { count: result.written ?? 0 }));
+        // Said separately, because merging wrote nothing and reporting it as
+        // imported would claim transactions that do not exist.
+        if ((result.merged ?? 0) > 0)
+          toast.success(t('mergedCount', { count: result.merged ?? 0 }));
 
         // Kept now rather than when the mapping screen was finished: a
         // description that never imported anything is a guess nobody
@@ -573,6 +589,36 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
       else next.delete(index);
     }
     setSelected(next);
+    // Ticking a line is answering "keep both", which is not "merge".
+    if (on && indices.some((index) => merging.has(index))) {
+      const kept = new Map(merging);
+      for (const index of indices) kept.delete(index);
+      setMerging(kept);
+    }
+  };
+
+  /**
+   * One of the three answers to a look-alike (plan §8.5), for one line or for
+   * every line like it.
+   *
+   * The matched transaction's id travels with the answer, because merging is
+   * a statement about two specific rows and the form that carries it has no
+   * other way to name the second one.
+   */
+  const decide = (
+    answers: readonly { readonly index: number; readonly existing: string | null }[],
+    answer: 'both' | 'merge' | 'skip',
+  ) => {
+    const ticked = new Set(selected);
+    const merged = new Map(merging);
+    for (const { index, existing } of answers) {
+      if (answer === 'both') ticked.add(index);
+      else ticked.delete(index);
+      if (answer === 'merge' && existing !== null) merged.set(index, existing);
+      else merged.delete(index);
+    }
+    setSelected(ticked);
+    setMerging(merged);
   };
 
   return (
@@ -799,10 +845,29 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
                           line={line}
                           t={t}
                           selected={selected.has(line.index)}
+                          merging={merging.has(line.index)}
                           checked={preview.checked === true}
+                          alike={
+                            lines.filter(
+                              (other) =>
+                                other.index !== line.index && other.verdict === line.verdict,
+                            ).length
+                          }
                           nameOf={nameOf}
                           onToggle={(on) => {
                             setMany([line.index], on);
+                          }}
+                          onDecide={(answer, all) => {
+                            const targets = all
+                              ? lines.filter((other) => other.verdict === line.verdict)
+                              : [line];
+                            decide(
+                              targets.map((other) => ({
+                                index: other.index,
+                                existing: other.existing?.id ?? null,
+                              })),
+                              answer,
+                            );
                           }}
                         />
                       </li>
@@ -916,7 +981,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
         <Button
           type="button"
           onClick={commit}
-          disabled={pending || selected.size === 0 || missing.length > 0}
+          disabled={pending || (selected.size === 0 && merging.size === 0) || missing.length > 0}
         >
           <Check className="size-4" aria-hidden />
           {t('commit', { count: selected.size })}
@@ -936,16 +1001,23 @@ function Row({
   line,
   t,
   selected,
+  merging,
   checked,
+  alike,
   nameOf,
   onToggle,
+  onDecide,
 }: {
   line: PreviewLine;
   t: ReturnType<typeof useTranslations<'import'>>;
   selected: boolean;
+  merging: boolean;
   checked: boolean;
+  /** How many other lines carry the same verdict, for "do this to all of them". */
+  alike: number;
   nameOf: (id: string) => string;
   onToggle: (on: boolean) => void;
+  onDecide: (answer: 'both' | 'merge' | 'skip', all: boolean) => void;
 }) {
   return (
     <div
@@ -1011,6 +1083,149 @@ function Row({
           ))}
         </ul>
       </div>
+
+      {line.existing !== null && checked && (
+        <Compared
+          line={line}
+          t={t}
+          selected={selected}
+          merging={merging}
+          alike={alike}
+          nameOf={nameOf}
+          onDecide={onDecide}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The line and the transaction it looks like, side by side.
+ *
+ * Deciding means comparing, and until this existed a person was asked to judge
+ * a duplicate against a row they could not see: the badge said "looks like a
+ * duplicate" and the other half of the sentence was in another screen.
+ */
+function Compared({
+  line,
+  t,
+  selected,
+  merging,
+  alike,
+  nameOf,
+  onDecide,
+}: {
+  line: PreviewLine;
+  t: ReturnType<typeof useTranslations<'import'>>;
+  selected: boolean;
+  merging: boolean;
+  alike: number;
+  nameOf: (id: string) => string;
+  onDecide: (answer: 'both' | 'merge' | 'skip', all: boolean) => void;
+}) {
+  const existing = line.existing;
+  if (existing === null) return null;
+
+  const answer = merging ? 'merge' : selected ? 'both' : 'skip';
+  const answers = [
+    { key: 'both', label: t('keepBoth') },
+    { key: 'merge', label: t('mergeIntoExisting') },
+    { key: 'skip', label: t('skipLine') },
+  ] as const;
+
+  return (
+    <div className="mt-2 ml-7 grid grid-cols-1 gap-3 rounded-lg border border-dashed p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Side
+          title={t('sideFile')}
+          bookedOn={line.bookedOn}
+          description={line.description}
+          entries={line.entries.map((entry) => ({
+            name: nameOf(entry.accountId ?? '') || entry.label,
+            amount: `${entry.amount} ${entry.currency}`,
+          }))}
+        />
+        <Side
+          title={t('sideLedger')}
+          bookedOn={existing.bookedOn}
+          description={existing.description}
+          entries={existing.entries.map((entry) => ({
+            name: entry.name,
+            amount: entry.amount,
+          }))}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        {answers.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => {
+              onDecide(key, false);
+            }}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-xs transition-colors',
+              answer === key
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'hover:bg-muted',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+
+        {/* The case this screen is actually used for is not one look-alike but
+            thirty, when a month is exported twice over. Deciding thirty times
+            by hand is what makes people stop reviewing and tick everything. */}
+        {alike > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              onDecide(answer, true);
+            }}
+            className="text-muted-foreground hover:text-foreground ml-auto text-xs underline underline-offset-2"
+          >
+            {t('applyToAlike', { count: alike })}
+          </button>
+        )}
+      </div>
+
+      {/* "Same one" and "Skip" both post nothing, so on screen they look like
+          the same button twice. The difference is what is remembered: one says
+          these two rows are one movement and is never asked again, the other
+          says not this time and comes back with the next file. */}
+      <p className="text-muted-foreground text-xs">{t(`answer.${answer}`)}</p>
+    </div>
+  );
+}
+
+function Side({
+  title,
+  bookedOn,
+  description,
+  entries,
+}: {
+  title: string;
+  bookedOn: string;
+  description: string | null;
+  entries: readonly { name: string; amount: string }[];
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+        {title}
+      </p>
+      <p className="mt-1 truncate text-xs font-medium">{description ?? '-'}</p>
+      <p className="text-muted-foreground text-xs">{bookedOn}</p>
+      <ul className="mt-1 grid gap-0.5">
+        {entries.map((entry, index) => (
+          <li key={index} className="flex items-baseline justify-between gap-2 text-xs">
+            <span className="text-muted-foreground truncate">{entry.name}</span>
+            <span className="shrink-0 tabular-nums">{entry.amount}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -207,6 +207,18 @@
     "verdictCertain": "déjà importé",
     "verdictProbable": "ressemble à un doublon",
     "verdictDaysApart": "{days, plural, =1 {# jour d'écart} other {# jours d'écart}}",
+    "sideFile": "Dans votre fichier",
+    "sideLedger": "Déjà enregistré",
+    "keepBoth": "Garder les deux",
+    "mergeIntoExisting": "La même",
+    "skipLine": "Ignorer",
+    "applyToAlike": "Faire pareil pour {count, plural, =1 {une autre ligne} other {# autres lignes}}",
+    "answer": {
+      "both": "Les deux seront enregistrés.",
+      "merge": "Rien n'est ajouté, et cette ligne ne sera plus proposée.",
+      "skip": "Rien n'est ajouté, et le prochain fichier reposera la question."
+    },
+    "mergedCount": "{count, plural, =1 {# ligne rattachée à ce que vous aviez déjà} other {# lignes rattachées à ce que vous aviez déjà}}",
     "notCheckedYet": "Les doublons sont vérifiés une fois tous les comptes choisis.",
     "problems": "Lignes illisibles",
     "commit": "Importer {count, plural, =1 {# transaction} other {# transactions}}",
