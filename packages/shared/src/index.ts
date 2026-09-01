@@ -1,6 +1,7 @@
 export { Decimal, dec, ZERO, type DecimalInput } from './decimal';
 export { Money, currency, CurrencyMismatchError, type CurrencyCode } from './money';
 export { ledgerDate, compareDates, todayIn, type LedgerDate } from './ledger-date';
+export { decodeText, type DecodedText } from './text';
 export {
   isUuid,
   accountId,
