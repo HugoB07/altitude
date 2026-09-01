@@ -9,6 +9,7 @@ import {
   CreditCard,
   FileUp,
   LayoutDashboard,
+  Tags,
   Settings,
   Wallet,
   type LucideIcon,
@@ -30,7 +31,14 @@ import { cn } from '@/lib/utils';
  */
 interface NavItem {
   readonly key:
-    'dashboard' | 'accounts' | 'transactions' | 'holdings' | 'realEstate' | 'import' | 'settings';
+    | 'dashboard'
+    | 'accounts'
+    | 'transactions'
+    | 'holdings'
+    | 'realEstate'
+    | 'import'
+    | 'categories'
+    | 'settings';
   readonly href?: string;
   readonly icon: LucideIcon;
   /** Shown in the bottom bar on small screens, where there is room for four. */
@@ -47,6 +55,7 @@ const MAIN: readonly NavItem[] = [
 
 const MANAGE: readonly NavItem[] = [
   { key: 'import', href: '/app/import', icon: FileUp },
+  { key: 'categories', href: '/app/categories', icon: Tags },
   { key: 'settings', icon: Settings, compact: true },
 ];
 

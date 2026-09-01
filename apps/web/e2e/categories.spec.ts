@@ -1,0 +1,144 @@
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * Step 7 of the import pipeline, from an empty household to a categorised
+ * ledger (plan §8.6).
+ *
+ * One journey rather than five tests, for the reason the household suite gives:
+ * each step needs the one before it, and five tests sharing state report four
+ * confusing failures alongside the real one.
+ *
+ * What it is really checking is that nothing here happens on its own. A rule
+ * exists because somebody wrote it, a pass happens because somebody pressed a
+ * button, and the count comes before the act.
+ */
+
+const stamp = Date.now();
+const EMAIL = `remi-${stamp}@example.test`;
+const PASSWORD = 'correct horse battery staple';
+const HOUSEHOLD = 'Lanvin';
+
+test.use({ locale: 'en-GB' });
+
+async function expectNoConsoleErrors(page: Page, run: () => Promise<void>) {
+  const errors: string[] = [];
+  const onConsole = (message: { type: () => string; text: () => string }) => {
+    if (message.type() === 'error') errors.push(message.text());
+  };
+  page.on('console', onConsole);
+  page.on('pageerror', (error) => errors.push(error.message));
+  await run();
+  page.off('console', onConsole);
+  expect(errors, 'the browser reported errors while rendering').toEqual([]);
+}
+
+test('a rule is written, previewed, applied, and shows on the transaction', async ({ page }) => {
+  await expectNoConsoleErrors(page, async () => {
+    // --- A household with one movement in it -------------------------------
+    await page.goto('/login');
+    await page.getByRole('button', { name: 'New here? Sign up' }).click();
+    await page.getByLabel('Name').fill('Remi');
+    await page.getByLabel('Email').fill(EMAIL);
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Create account' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Create your household' })).toBeVisible();
+    await page.getByLabel('Household name').fill(HOUSEHOLD);
+    await page.getByRole('button', { name: 'Create household' }).click();
+    await page.waitForURL('**/app');
+    await expect(page.getByText('Net worth')).toBeVisible();
+
+    // Money out of the current account, worded the way a card payment is.
+    await page.getByRole('button', { name: 'Move money' }).click();
+    const move = page.getByRole('dialog');
+    await move.getByLabel('From').click();
+    await page.getByRole('option', { name: 'Current account', exact: true }).click();
+    await move.getByLabel('To').click();
+    await page.getByRole('option', { name: 'Savings', exact: true }).click();
+    await move.getByLabel('Amount').fill('54,90');
+    await move.getByLabel('Description').fill('CARTE 12/03 CARREFOUR MARKET 4972');
+    await move.getByRole('button', { name: 'Record' }).click();
+    await expect(move).toBeHidden();
+
+    // --- A category and a rule ---------------------------------------------
+    await page.goto('/app/categories');
+    await expect(page.getByRole('heading', { name: 'Categories', level: 1 })).toBeVisible();
+
+    await page.getByLabel('Name').fill('Groceries');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(page.getByText('Groceries').first()).toBeVisible();
+
+    await page.getByLabel('What this rule is for').fill('Supermarkets');
+    // Written against the normalised label, which is why no date and no card
+    // number appear in it even though both are in the description above.
+    await page.getByLabel('Words to look for').fill('carrefour|leclerc');
+    await page.getByLabel('Files it under').click();
+    await page.getByRole('option', { name: 'Groceries' }).click();
+    await page.getByRole('button', { name: 'Add rule' }).click();
+    await expect(page.getByText('carrefour|leclerc')).toBeVisible();
+
+    // --- The count comes before the act ------------------------------------
+    await page.getByRole('button', { name: 'See what would change' }).click();
+    await expect(page.getByText('1 entry would change')).toBeVisible();
+    await expect(page.getByText('1 entry into Groceries')).toBeVisible();
+
+    // Nothing written yet: the transaction is still uncategorised.
+    await page.goto('/app/transactions');
+    await expect(page.getByText('CARTE 12/03 CARREFOUR MARKET 4972')).toBeVisible();
+    await expect(page.getByText('Groceries')).toHaveCount(0);
+
+    // --- Applied ------------------------------------------------------------
+    await page.goto('/app/categories');
+    await page.getByRole('button', { name: 'See what would change' }).click();
+    await page.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect(page.getByText('1 entry categorised')).toBeVisible();
+
+    await page.goto('/app/transactions');
+    await expect(page.getByText('Groceries').first()).toBeVisible();
+
+    // --- Filing one by hand, and being offered a rule for the rest ---------
+    /**
+     * What the plan calls explicit learning (§8.6).
+     *
+     * The offer is an offer: the pattern is suggested from the description,
+     * and nothing is written until somebody presses. A tool that quietly wrote
+     * a rule every time you corrected it is a tool you stop correcting.
+     */
+    await page.goto('/app/categories');
+    await page.getByLabel('Name').fill('Household');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(page.getByText('Household').first()).toBeVisible();
+
+    await page.goto('/app/transactions');
+    await page.getByLabel('File under').first().click();
+    await page.getByRole('option', { name: 'Household' }).click();
+    await expect(page.getByText('Filed under Household')).toBeVisible();
+
+    // Suggested from "CARTE 12/03 CARREFOUR MARKET 4972": no date, no card
+    // number, no word the bank writes on every line.
+    await page.getByRole('button', { name: 'Make a rule' }).click();
+    await expect(page.getByText('Rule added for CARREFOUR MARKET')).toBeVisible();
+
+    // --- And a pass does not undo what a person decided --------------------
+    await page.goto('/app/categories');
+    await page.getByRole('button', { name: 'See what would change' }).click();
+    await expect(page.getByText('Nothing would change')).toBeVisible();
+
+    await page.goto('/app/transactions');
+    await expect(page.getByText('Household').first()).toBeVisible();
+
+    // --- Removing a category takes its rules with it -----------------------
+    await page.goto('/app/categories');
+    await expect(page.getByText('CARREFOUR MARKET')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Delete Household' }).click();
+    await expect(page.getByText('Category deleted')).toBeVisible();
+
+    // The rule that filed into it is gone too: one that cannot be applied
+    // would be a line in the list that does nothing.
+    await expect(page.getByText('CARREFOUR MARKET')).toHaveCount(0);
+    // And the transaction keeps its history, without the label.
+    await page.goto('/app/transactions');
+    await expect(page.getByText('Household')).toHaveCount(0);
+  });
+});

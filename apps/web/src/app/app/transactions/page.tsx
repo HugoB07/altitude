@@ -4,6 +4,7 @@ import { ArrowRight, Undo2 } from 'lucide-react';
 import {
   TRANSACTION_STATUSES,
   accountBalances,
+  listCategories,
   listTransactions,
   type LedgerEntry,
   type LedgerLine,
@@ -15,6 +16,7 @@ import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
 import { Pagination } from '@/components/pagination';
 import { TransactionFilters, type FilterValues } from './filters';
+import { Categorise } from './categorise';
 import { ReverseButton } from './reverse-button';
 
 export const metadata = { title: 'Altitude' };
@@ -102,6 +104,7 @@ export default async function TransactionsPage({
     filters.to !== '';
 
   const accounts = await scoped((tx) => accountBalances(tx, ctx.actor));
+  const categories = await scoped((tx) => listCategories(tx, ctx.actor));
 
   const page = await scoped((tx) =>
     listTransactions(tx, ctx.actor, {
@@ -167,6 +170,7 @@ export default async function TransactionsPage({
               <li key={entry.id}>
                 <Card
                   entry={entry}
+                  categories={categories}
                   locale={locale}
                   date={dates.format(new Date(`${entry.bookedOn}T00:00:00`))}
                   kindLabel={t(`transactionKind.${entry.kind}`)}
@@ -221,6 +225,7 @@ function Card({
   kindLabel,
   labels,
   canReverse,
+  categories,
 }: {
   entry: LedgerEntry;
   locale: string;
@@ -228,9 +233,13 @@ function Card({
   kindLabel: string;
   labels: { reversed: string; isReversal: string; reverse: string; to: string; lines: string };
   canReverse: boolean;
+  categories: readonly { id: string; name: string }[];
 }) {
   const reversed = entry.reversedById !== null;
   const movement = asMovement(entry.lines);
+  // The household's side of the movement carries it; the equity counterpart
+  // never does, so the first one found is the one to show.
+  const categoryId = entry.lines.find((line) => line.categoryId !== null)?.categoryId ?? null;
 
   return (
     <div className={`bg-card/60 rounded-2xl border p-4 sm:p-5 ${reversed ? 'opacity-70' : ''}`}>
@@ -240,6 +249,14 @@ function Card({
             <span className="truncate text-[15px] font-medium">
               {entry.description ?? kindLabel}
             </span>
+            {/* The category, and the way to change it, in one control. A
+                badge beside a menu would be the same fact twice. */}
+            <Categorise
+              transactionId={entry.id}
+              description={entry.description}
+              current={categoryId ?? ''}
+              categories={categories}
+            />
             {reversed && (
               <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase">
                 {labels.reversed}
@@ -282,7 +299,12 @@ function Card({
                 key={`${line.accountId}-${String(index)}`}
                 className="flex items-baseline justify-between gap-4 text-sm"
               >
-                <span className="text-muted-foreground min-w-0 truncate">{line.accountName}</span>
+                <span className="text-muted-foreground min-w-0 truncate">
+                  {line.accountName}
+                  {line.category !== null && (
+                    <span className="text-primary ml-2 text-xs">{line.category}</span>
+                  )}
+                </span>
                 <span className="shrink-0 tabular-nums">
                   {money(line.amount.amount.toFixed(), line.amount.currency, locale, true)}
                 </span>
