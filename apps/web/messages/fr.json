@@ -314,7 +314,10 @@
     "groupStates": "Les lignes qui n'ont pas eu lieu",
     "groupStatesHint": "Un relevé liste plus que des mouvements.",
     "mappingRemembered": "Lu avec la description gardée de {name}.",
-    "changeMapping": "Changer la façon de lire ce fichier"
+    "changeMapping": "Changer la façon de lire ce fichier",
+    "fileTooBig": "Ce fichier dépasse {limit} Mo. Découpez-le par année et importez les morceaux.",
+    "fileTooLong": "Ce fichier dépasse {limit} lignes. Découpez-le par année et importez les morceaux.",
+    "alreadyImported": "Vous avez importé exactement ce fichier le {date}, sous le nom {name}. Le réimporter retrouvera chaque ligne déjà présente."
   },
   "categories": {
     "title": "Catégories",

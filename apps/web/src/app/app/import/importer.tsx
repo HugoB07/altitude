@@ -47,7 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { decodeText } from '@altitude/shared';
+import { checkUpload, decodeText } from '@altitude/shared';
 import { CUSTOM_PRESET_ID } from '@/lib/import-custom';
 import { MappingForm, type DraftMapping, type FileShapeView } from './mapping';
 import { cn } from '@/lib/utils';
@@ -290,12 +290,30 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   }
 
   async function onFile(file: File) {
+    // Refused here, before a megabyte of it crosses the network. The same
+    // limit is checked again on the server, which is where it is enforced;
+    // this is where it is explained.
+    const tooBig = checkUpload(file.size);
+    if (tooBig !== null) {
+      toast.error(t('fileTooBig', { limit: Math.round(tooBig.limit / (1024 * 1024)) }));
+      return;
+    }
+
     // Bytes, not `file.text()`. That method assumes UTF-8 and replaces
     // everything else with U+FFFD, so a CP1252 export - which is what Excel on
     // a French Windows writes - arrives with "VIREMENT SÉPA" already turned
     // into "VIREMENT S?PA", and no care downstream brings the letter back.
     const bytes = new Uint8Array(await file.arrayBuffer());
     const { text: contents } = decodeText(bytes);
+
+    // Lines only after decoding, because that is when there are lines. A file
+    // small enough in bytes and still too long is a real shape: one column,
+    // millions of rows.
+    const tooLong = checkUpload(file.size, contents);
+    if (tooLong !== null) {
+      toast.error(t('fileTooLong', { limit: tooLong.limit }));
+      return;
+    }
 
     seededFrom.current = '';
     setShape(null);
@@ -646,6 +664,20 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
         <Alert>
           <AlertTriangle className="size-4" aria-hidden />
           <AlertDescription>{t('wrongShape', { name: preset.name })}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Said once, up front. Deduplication says it again line by line, which
+          is thirty warnings where one sentence does. */}
+      {preview.alreadyImported !== undefined && (
+        <Alert>
+          <AlertTriangle className="size-4" aria-hidden />
+          <AlertDescription>
+            {t('alreadyImported', {
+              name: preview.alreadyImported.filename,
+              date: new Date(preview.alreadyImported.at).toLocaleDateString(locale),
+            })}
+          </AlertDescription>
         </Alert>
       )}
 

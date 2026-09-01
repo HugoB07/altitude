@@ -703,8 +703,54 @@ test('a line merged once is decided the next time, not asked about again', async
     await page.getByRole('button', { name: 'Other bank' }).click();
     await page.locator('input[type="file"]').setInputFiles(FRENCH_AGAIN);
 
+    // Said once, up front, from the digest the run kept of the file. The
+    // line-by-line verdicts say it again below; this says it before.
+    await expect(page.getByText(/You imported this exact file on/)).toBeVisible();
+
     await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
     await expect(page.getByText('already imported')).toBeVisible();
     await expect(page.getByText('looks like a duplicate')).toHaveCount(0);
+  });
+});
+
+test('a file past what the application accepts is refused with the number', async () => {
+  await expectNoConsoleErrors(async () => {
+    /**
+     * Step 1 of the plan, which nothing enforced (§8.2).
+     *
+     * Next caps a server action body at one megabyte by default, so a large
+     * statement already failed - with a framework error naming nothing, after
+     * the whole file had crossed the network. This refuses in the browser,
+     * before anything is sent, and says the limit.
+     *
+     * Built as a buffer rather than a fixture: a file this long has no place
+     * in the repository, and its shape is one narrow column and years of rows,
+     * which weighs little and reads long.
+     */
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    // Counted, because the point of refusing in the browser is that nothing is
+    // sent. The server refuses too, from the same key and with the same words,
+    // so without this the test passes with the browser check deleted - and the
+    // half that saves the upload would go quietly.
+    const posts: string[] = [];
+    const onRequest = (request: { method: () => string; url: () => string }) => {
+      if (request.method() === 'POST') posts.push(request.url());
+    };
+    page.on('request', onRequest);
+
+    const rows = '01/01/2027;1\n'.repeat(60_000);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'dix-ans.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(`Date;Montant\n${rows}`),
+    });
+
+    await expect(page.getByText(/over 50000 lines/)).toBeVisible();
+    page.off('request', onRequest);
+    expect(posts, 'the file was sent before being refused').toEqual([]);
+
+    // And nothing was read: the screen is still asking for a file.
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
   });
 });

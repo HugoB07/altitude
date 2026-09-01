@@ -31,6 +31,20 @@ const nextConfig: NextConfig = {
   // The workspace packages ship TypeScript source rather than built output, so
   // Next has to compile them alongside the application.
   transpilePackages: ['@altitude/shared', '@altitude/core', '@altitude/db'],
+  experimental: {
+    serverActions: {
+      /**
+       * A megabyte over `MAX_UPLOAD_BYTES`, which is the number the application
+       * states and refuses on.
+       *
+       * Next caps a server action body at 1MB by default. Left alone it would
+       * refuse first, and refuse with a framework error rather than a sentence
+       * naming the limit - so the file that a person is told is acceptable has
+       * to fit through here, with room for what multipart adds around it.
+       */
+      bodySizeLimit: '6mb',
+    },
+  },
 };
 
 // next-intl needs the request config wired at build time so server components

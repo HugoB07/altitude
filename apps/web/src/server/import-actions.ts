@@ -11,6 +11,7 @@ import {
   ImportNotFoundError,
   createAccount,
   findDuplicates,
+  findImportsOfFile,
   fingerprintOf,
   findMapping,
   parseMapping,
@@ -26,6 +27,7 @@ import {
 } from '@altitude/core';
 import {
   accountId as toAccountId,
+  checkUpload,
   importId,
   isUuid,
   todayIn,
@@ -123,6 +125,14 @@ export interface RequestedAccount {
 
 export interface PreviewResult {
   readonly error?: string;
+  /**
+   * A run that read this exact file before, if there is one.
+   *
+   * The return on keeping a digest instead of the file. Deduplication would
+   * catch it a step later, line by line; this says it once, up front, with the
+   * date.
+   */
+  readonly alreadyImported?: { readonly filename: string; readonly at: string };
   /** Every account the file needs, named. Cash and securities first, then counterparts. */
   readonly requested?: readonly RequestedAccount[];
   readonly lines?: readonly PreviewLine[];
@@ -150,6 +160,23 @@ export interface PreviewResult {
  * once every label is bound can duplicates be looked for, because a duplicate
  * is a question about accounts and amounts, not about labels.
  */
+/**
+ * Refuses a file past what the application says it accepts.
+ *
+ * Checked on every action that takes one, not only the one that writes: an
+ * action is an endpoint, and the browser's own check is there to explain the
+ * limit rather than to hold it.
+ */
+async function refuseOversized(text: string): Promise<string | null> {
+  const refused = checkUpload(Buffer.byteLength(text, 'utf8'), text);
+  if (refused === null) return null;
+
+  const t = await getTranslations('import');
+  return refused.reason === 'bytes'
+    ? t('fileTooBig', { limit: Math.round(refused.limit / (1024 * 1024)) })
+    : t('fileTooLong', { limit: refused.limit });
+}
+
 export async function previewImportAction(formData: FormData): Promise<PreviewResult> {
   await ensureTenantIsolation();
   const { actor } = await requireContext();
@@ -159,6 +186,9 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
+
+  const oversized = await refuseOversized(text);
+  if (oversized !== null) return { error: oversized };
   if (text.trim() === '') return { error: t('emptyFile') };
 
   const reading = preset.read(text);
@@ -186,8 +216,18 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
     ? [...(await scoped((tx) => findDuplicates(tx, actor, bound))).verdicts]
     : reading.candidates.map(() => ({ kind: 'new' }) as const);
 
+  const seenBefore = await scoped((tx) => findImportsOfFile(tx, actor, text));
+
   return {
     checked,
+    ...(seenBefore[0] === undefined
+      ? {}
+      : {
+          alreadyImported: {
+            filename: seenBefore[0].filename,
+            at: seenBefore[0].createdAt.toISOString(),
+          },
+        }),
     looksWrong: !preset.matches(text),
     requested: describeAccounts(preset, reading, binding, t, existing),
     problems: reading.problems.map((p) => ({ line: p.line, reason: p.reason })),
@@ -431,6 +471,9 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
 
   const text = String(formData.get('text') ?? '');
   const filename = String(formData.get('filename') ?? 'import.csv');
+
+  const oversized = await refuseOversized(text);
+  if (oversized !== null) return { error: oversized };
   const chosen = new Set(
     String(formData.get('selected') ?? '')
       .split(',')
@@ -493,6 +536,7 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
         importId: importId(randomUUID()),
         source: preset.id,
         filename,
+        text,
         candidates: described,
         transactionIds: described.map(() => transactionId(randomUUID())),
         merges: [...merges.entries()].flatMap(([index, id]) => {
@@ -552,6 +596,9 @@ export async function openAccountsAction(formData: FormData): Promise<OpenedAcco
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
+
+  const oversized = await refuseOversized(text);
+  if (oversized !== null) return { error: oversized };
   if (text.trim() === '') return { error: t('emptyFile') };
 
   const reading = preset.read(text);
@@ -769,6 +816,9 @@ export async function shapeFileAction(formData: FormData): Promise<ShapeResult> 
   const t = await getTranslations('import');
 
   const text = String(formData.get('text') ?? '');
+
+  const oversized = await refuseOversized(text);
+  if (oversized !== null) return { error: oversized };
   if (text.trim() === '') return { error: t('emptyFile') };
 
   const shape = readShape(text);

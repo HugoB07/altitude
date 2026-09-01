@@ -314,7 +314,10 @@
     "groupStates": "Lines that did not happen",
     "groupStatesHint": "A statement lists more than movements.",
     "mappingRemembered": "Read with the description kept from {name}.",
-    "changeMapping": "Change how this file is read"
+    "changeMapping": "Change how this file is read",
+    "fileTooBig": "That file is over {limit} MB. Split it by year and import the parts.",
+    "fileTooLong": "That file is over {limit} lines. Split it by year and import the parts.",
+    "alreadyImported": "You imported this exact file on {date}, as {name}. Importing it again will find every line already there."
   },
   "categories": {
     "title": "Categories",
