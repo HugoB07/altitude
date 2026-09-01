@@ -17,9 +17,15 @@ real estate and liabilities - on your server, in your database.
 
 > **⚠️ Status: phase 2, import.** The ledger works: sign in, create a household,
 > manage accounts, record and reverse transactions, and read a net worth that an internal
-> transfer does not inflate. What it cannot do is fill itself - every figure has been
-> typed by hand, and there is no market data and no history yet. See the
-> [roadmap](#roadmap).
+> transfer does not inflate. A CSV statement now imports too - a preset for Trade
+> Republic, or any bank at all by naming its columns on screen - with duplicates flagged
+> and the whole run undoable in one press.
+>
+> What is missing from phase 2: the mapping is not remembered between imports, so the
+> same bank is described each time; only CSV is read, not XLSX, OFX, QIF or CAMT; there
+> is no categorisation; and the import runs inside the request rather than in a worker,
+> so a very large file will outlast its own timeout. There is no market data and no
+> history at all - those are phase 3. See the [roadmap](#roadmap).
 
 ## Why
 
@@ -70,8 +76,14 @@ node build-html.mjs && node build-pdf.mjs
 
 The domain core is open to contributions: `packages/shared` and `packages/core`. Also
 useful, and needing no TypeScript: critique of the plan, anonymised bank export samples,
-and ETF exposure data. Once the importer lands, the easiest entry point will be adding a
-preset for your bank - a JSON file and a test fixture.
+and ETF exposure data.
+
+Adding a bank is close to being the easiest entry point, and is not there yet. A reader
+is already a `ColumnMapping` - which column is the date, which is the amount, how the
+statement writes a state that means "this did not happen" - and the screen builds one for
+any file. What is missing is a place to keep it, so that a mapping written once can ship
+in the repository as a preset. Until then, the most useful thing you can send is an
+anonymised export of a bank nobody has covered.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the anonymisation checklist
 before attaching any export file.
