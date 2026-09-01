@@ -1,4 +1,13 @@
-import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { households, users } from './identity';
 
 /**
@@ -25,6 +34,18 @@ export const imports = pgTable(
     source: text('source').notNull(),
     /** As the person uploaded it, for recognising a file six months later. */
     filename: text('filename').notNull(),
+    /**
+     * What the file was, without the file.
+     *
+     * sha256 over the decoded text rather than the bytes, so a statement saved
+     * twice by the same bank digests the same. Enough to answer "have I
+     * already imported this?", which is the question people actually ask, and
+     * it holds no bank data at all. See the migration for why the plan's raw
+     * archive is not what this does.
+     */
+    fileHash: text('file_hash'),
+    fileBytes: integer('file_bytes'),
+    fileLines: integer('file_lines'),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     /**
@@ -39,7 +60,10 @@ export const imports = pgTable(
     rolledBackAt: timestamp('rolled_back_at', { withTimezone: true }),
     rolledBackBy: uuid('rolled_back_by').references(() => users.id, { onDelete: 'set null' }),
   },
-  (t) => [index('imports_household_idx').on(t.householdId, t.createdAt.desc())],
+  (t) => [
+    index('imports_household_idx').on(t.householdId, t.createdAt.desc()),
+    index('imports_file_hash_idx').on(t.householdId, t.fileHash),
+  ],
 );
 
 /**

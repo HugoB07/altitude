@@ -141,6 +141,13 @@
       "when": 1788272373454,
       "tag": "0019_categories_and_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788272374454,
+      "tag": "0020_import_file_fingerprint",
+      "breakpoints": true
     }
   ]
 }
