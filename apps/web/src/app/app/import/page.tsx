@@ -49,6 +49,7 @@ export default async function ImportPage() {
         }))}
         accounts={accounts}
         openingAccountId={opening?.accountId ?? null}
+        baseCurrency={ctx.baseCurrency}
       />
 
       {/* Dates cross to the client as strings. A Date would be serialised and

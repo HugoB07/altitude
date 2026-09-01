@@ -11,6 +11,8 @@ import {
   ImportNotFoundError,
   createAccount,
   findDuplicates,
+  parseMapping,
+  readShape,
   listImports,
   rollbackImport,
   type AccountBinding,
@@ -20,7 +22,7 @@ import {
   type Verdict,
 } from '@altitude/core';
 import { accountId as toAccountId, importId, todayIn, transactionId } from '@altitude/shared';
-import { presetById, type Preset } from '@/lib/import-presets';
+import { CUSTOM_PRESET_ID, customPreset, presetById, type Preset } from '@/lib/import-presets';
 import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
@@ -95,6 +97,8 @@ export interface PreviewResult {
   readonly requested?: readonly RequestedAccount[];
   readonly lines?: readonly PreviewLine[];
   readonly problems?: readonly { line: number; reason: string }[];
+  /** Rows the reader left out on purpose, with the state that caused it. */
+  readonly skipped?: readonly { line: number; reason: string }[];
   /** False until every label has an account, which is when duplicates can be looked for. */
   readonly checked?: boolean;
   /**
@@ -121,7 +125,7 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
   const { actor } = await requireContext();
   const t = await getTranslations('import');
 
-  const preset = presetById(String(formData.get('preset') ?? ''));
+  const preset = resolvePreset(formData);
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
@@ -157,6 +161,7 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
     looksWrong: !preset.matches(text),
     requested: describeAccounts(preset, reading, binding, t, existing),
     problems: reading.problems.map((p) => ({ line: p.line, reason: p.reason })),
+    skipped: reading.skipped.map((p) => ({ line: p.line, reason: p.reason })),
     lines: reading.candidates.map((candidate, index) => ({
       index,
       bookedOn: candidate.bookedOn,
@@ -370,7 +375,7 @@ export async function commitImportAction(formData: FormData): Promise<CommitOutc
   const { actor } = await requireContext();
   const t = await getTranslations('import');
 
-  const preset = presetById(String(formData.get('preset') ?? ''));
+  const preset = resolvePreset(formData);
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
@@ -469,7 +474,7 @@ export async function openAccountsAction(formData: FormData): Promise<OpenedAcco
   const { actor, baseCurrency } = await requireContext();
   const t = await getTranslations('import');
 
-  const preset = presetById(String(formData.get('preset') ?? ''));
+  const preset = resolvePreset(formData);
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
@@ -623,4 +628,69 @@ export async function rollbackImportAction(formData: FormData): Promise<Rollback
   } catch (error) {
     return { error: await toMessage(error) };
   }
+}
+
+/**
+ * Which reader this request wants.
+ *
+ * A named preset is looked up. `custom` is built from the mapping the screen
+ * sends, which is why the mapping travels with every step exactly as the file's
+ * text does: nothing about how to read a file is remembered between actions, so
+ * two requests cannot disagree about it.
+ *
+ * The mapping is checked before it is trusted. It came from a browser, and an
+ * unchecked one produces a reader that indexes every row by `undefined` and
+ * reports the whole file as unreadable.
+ */
+function resolvePreset(formData: FormData): Preset | undefined {
+  const id = String(formData.get('preset') ?? '');
+  if (id !== CUSTOM_PRESET_ID) return presetById(id);
+
+  const raw = String(formData.get('mapping') ?? '');
+  if (raw === '') return undefined;
+
+  try {
+    const mapping = parseMapping(JSON.parse(raw));
+    return mapping === null ? undefined : customPreset(mapping);
+  } catch {
+    return undefined;
+  }
+}
+
+export interface ShapeResult {
+  readonly error?: string;
+  readonly delimiter?: string;
+  readonly headers?: readonly string[];
+  readonly sample?: readonly (readonly string[])[];
+  /** Per column, the date order found and whether anything settled it. */
+  readonly dates?: Readonly<Record<string, { order: string; ambiguous: boolean }>>;
+  /** Columns repeating a handful of values, and which - a status column is one. */
+  readonly categories?: Readonly<Record<string, readonly string[]>>;
+}
+
+/**
+ * What a file looks like, before anyone has said which column is what.
+ *
+ * A server action rather than a call in the browser, because `readShape` lives
+ * in `@altitude/core` and core imports the database driver - a client component
+ * that reached for it would take `postgres` into the bundle and stop the build
+ * at "can't resolve 'fs'". The rule has a guard of its own now.
+ */
+export async function shapeFileAction(formData: FormData): Promise<ShapeResult> {
+  await requireContext();
+  const t = await getTranslations('import');
+
+  const text = String(formData.get('text') ?? '');
+  if (text.trim() === '') return { error: t('emptyFile') };
+
+  const shape = readShape(text);
+  if (shape.headers.length === 0) return { error: t('nothingToImport') };
+
+  return {
+    delimiter: shape.delimiter,
+    headers: shape.headers,
+    sample: shape.sample,
+    dates: shape.dates,
+    categories: shape.categories,
+  };
 }

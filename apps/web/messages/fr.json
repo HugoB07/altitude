@@ -193,7 +193,6 @@
     "chooseBank": "Choisissez votre banque",
     "chooseFile": "Choisissez un fichier",
     "custom": "Autre banque",
-    "customSoon": "Associer les colonnes vous-même",
     "soon": "bientôt",
     "step1": "Banque",
     "step2": "Fichier",
@@ -234,7 +233,8 @@
       "tradeRepublicCto": "CTO Trade Republic",
       "tradeRepublicPea": "PEA Trade Republic",
       "securitiesOf": "Titres {name}",
-      "outside": "Hors du foyer"
+      "outside": "Hors du foyer",
+      "statementAccount": "Le compte de ce relevé"
     },
     "openAll": "Créer {count, plural, =1 {le compte manquant} other {les # comptes manquants}}",
     "opened": "{count, plural, =0 {Tout existait déjà} =1 {# compte créé} other {# comptes créés}}",
@@ -261,6 +261,37 @@
     "undoConfirm": "Annuler l'import",
     "cancel": "Fermer",
     "rolledBack": "{count, plural, =1 {# transaction contrepassée} other {# transactions contrepassées}}",
-    "unknownImport": "Cet import n'existe plus."
+    "unknownImport": "Cet import n'existe plus.",
+    "customHint": "Décrivez ses colonnes vous-même",
+    "reading": "Lecture du fichier...",
+    "mappingTitle": "Quelle colonne est quoi",
+    "mappingHint": "Altitude a trouvé le séparateur, la ligne d'en-tête et la façon dont les dates sont écrites. Ce qu'il ne peut pas savoir, c'est ce que chaque colonne veut dire.",
+    "mappingDone": "Continuer",
+    "columnDate": "Date",
+    "columnDescription": "Libellé",
+    "columnAmount": "Montant",
+    "columnDebit": "Débit (sortie)",
+    "columnCredit": "Crédit (entrée)",
+    "columnReference": "Référence",
+    "columnReferenceHint": "Le numéro propre à la banque pour chaque ligne. Avec lui, importer deux fois le même fichier n'ajoute rien.",
+    "columnNone": "Aucune",
+    "optional": "facultatif",
+    "amountShape": "Comment les montants sont écrits",
+    "amountOneColumn": "Une colonne, négative pour les sorties",
+    "amountTwoColumns": "Deux colonnes, toutes deux positives",
+    "currencyFileHint": "Utilisée pour chaque ligne, le fichier n'ayant pas de colonne de devise.",
+    "dateOrderAsk": "Quel jour est « {value} » ? Rien dans cette colonne ne le dit, car aucune de ses valeurs ne commence par un nombre supérieur à douze.",
+    "dateOrder": {
+      "dmy": "Jour, puis mois - 03/04 est le 3 avril",
+      "mdy": "Mois, puis jour - 03/04 est le 4 mars",
+      "ymd": "Année, puis mois, puis jour"
+    },
+    "currency": "Devise de chaque ligne",
+    "columnExample": "ex. {value}",
+    "columnStatus": "État",
+    "columnStatusHint": "La colonne qui dit si une ligne est passée.",
+    "skipStatusesTitle": "Laisser de côté",
+    "skipStatusesHint": "Un paiement renvoyé ou refusé est une ligne du fichier qui n'a jamais déplacé d'argent. Cochez les états qui veulent dire que la ligne n'a pas eu lieu ; tout ce qui reste décoché est importé.",
+    "skippedRows": "{count, plural, =1 {# ligne a été laissée} other {# lignes ont été laissées}} de côté, car {states} veut dire que le mouvement n'a pas eu lieu."
   }
 }

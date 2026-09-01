@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileUp,
+  Filter,
   Pencil,
   Search,
   Sparkles,
@@ -21,6 +22,7 @@ import {
   commitImportAction,
   openAccountsAction,
   previewImportAction,
+  shapeFileAction,
   type PreviewLine,
   type PreviewResult,
 } from '@/server/import-actions';
@@ -44,6 +46,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { decodeText } from '@altitude/shared';
+import { CUSTOM_PRESET_ID } from '@/lib/import-custom';
+import { MappingForm, type DraftMapping, type FileShapeView } from './mapping';
 import { cn } from '@/lib/utils';
 
 export interface PresetChoice {
@@ -58,6 +63,8 @@ interface Props {
   readonly accounts: readonly { id: string; name: string }[];
   /** Offered for the outside world, which no file names. */
   readonly openingAccountId: string | null;
+  /** Offered as the currency of a statement whose file does not say. */
+  readonly baseCurrency: string;
 }
 
 /** Everything one run of the importer knows. */
@@ -69,9 +76,24 @@ interface Run {
   readonly binding: Readonly<Record<string, string>>;
   /** One account for one transaction's counterpart, overriding the above. */
   readonly overrides: Readonly<Record<number, string>>;
+  /**
+   * The columns of a file nobody wrote a preset for, once they are named.
+   *
+   * Null for a coded preset, and null for a custom file until the mapping step
+   * is finished - which is what tells the preview to wait rather than asking
+   * the server to read a file with no description of it.
+   */
+  readonly mapping: DraftMapping | null;
 }
 
-const EMPTY: Run = { preset: null, filename: '', text: '', binding: {}, overrides: {} };
+const EMPTY: Run = {
+  preset: null,
+  filename: '',
+  text: '',
+  binding: {},
+  overrides: {},
+  mapping: null,
+};
 
 /** Above this, the review is folded by month. Below it, everything fits on a screen. */
 const FOLD_ABOVE = 20;
@@ -82,6 +104,7 @@ type Step =
   | { readonly type: 'bind'; readonly label: string; readonly accountId: string }
   | { readonly type: 'bindMany'; readonly binding: Readonly<Record<string, string>> }
   | { readonly type: 'counterpart'; readonly index: number; readonly accountId: string }
+  | { readonly type: 'mapping'; readonly mapping: DraftMapping }
   | { readonly type: 'reset' };
 
 /**
@@ -101,13 +124,22 @@ function reduce(state: Run, step: Step): Run {
     case 'file':
       // A new file means new labels and new line numbers, so every previous
       // answer is an answer to a question nobody asked.
-      return { ...state, filename: step.filename, text: step.text, binding: {}, overrides: {} };
+      return {
+        ...state,
+        filename: step.filename,
+        text: step.text,
+        binding: {},
+        overrides: {},
+        mapping: null,
+      };
     case 'bind':
       return { ...state, binding: { ...state.binding, [step.label]: step.accountId } };
     case 'bindMany':
       return { ...state, binding: { ...state.binding, ...step.binding } };
     case 'counterpart':
       return { ...state, overrides: { ...state.overrides, [step.index]: step.accountId } };
+    case 'mapping':
+      return { ...state, mapping: step.mapping };
     case 'reset':
       return EMPTY;
   }
@@ -121,7 +153,7 @@ function reduce(state: Run, step: Step): Run {
  * from the browser - which costs milliseconds and removes a whole class of
  * question about what a client could send.
  */
-export function Importer({ presets, accounts, openingAccountId }: Props) {
+export function Importer({ presets, accounts, openingAccountId, baseCurrency }: Props) {
   const t = useTranslations('import');
   const locale = useLocale();
 
@@ -129,6 +161,9 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState('');
+  /** What the file turned out to look like, and the answers being collected. */
+  const [shape, setShape] = useState<FileShapeView | null>(null);
+  const [draft, setDraft] = useState<DraftMapping>(BLANK_DRAFT);
   const [perLine, setPerLine] = useState(false);
   /** Months whose folded state a person has changed. See `isOpen`. */
   const [toggled, setToggled] = useState<Set<string>>(new Set());
@@ -150,7 +185,7 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
   /** The verdicts the current selection was seeded from. See below. */
   const seededFrom = useRef('');
 
-  const { preset, binding, overrides, text } = run;
+  const { preset, binding, overrides, text, mapping } = run;
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '';
 
   /**
@@ -162,10 +197,13 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
    */
   useEffect(() => {
     if (preset === null || text === '') return;
+    // A custom file has no reader until its columns are named.
+    if (preset.id === CUSTOM_PRESET_ID && mapping === null) return;
 
     const form = new FormData();
     form.set('preset', preset.id);
     form.set('text', text);
+    if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
     for (const [index, id] of Object.entries(overrides)) form.set(`counterpart:${index}`, id);
 
@@ -222,7 +260,7 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
         if (Object.keys(offered).length > 0) dispatch({ type: 'bindMany', binding: offered });
       });
     });
-  }, [preset, text, binding, overrides, openingAccountId]);
+  }, [preset, text, binding, overrides, mapping, openingAccountId]);
 
   function reset() {
     asked.current += 1;
@@ -235,9 +273,43 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
   }
 
   async function onFile(file: File) {
-    const contents = await file.text();
+    // Bytes, not `file.text()`. That method assumes UTF-8 and replaces
+    // everything else with U+FFFD, so a CP1252 export - which is what Excel on
+    // a French Windows writes - arrives with "VIREMENT SÉPA" already turned
+    // into "VIREMENT S?PA", and no care downstream brings the letter back.
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { text: contents } = decodeText(bytes);
+
     seededFrom.current = '';
+    setShape(null);
+    // The household's currency, as a real answer rather than a placeholder the
+    // control drew. Left blank, the mapping carried no currency at all and
+    // every row came back "no currency for this row, and none set".
+    setDraft({ ...BLANK_DRAFT, currency: baseCurrency });
     dispatch({ type: 'file', filename: file.name, text: contents });
+
+    // Described before anything is asked. The screen knows where the header is
+    // and how the dates are written because the file says so; asking a person
+    // to supply what it could work out is asking them to do its job.
+    if (preset?.id === CUSTOM_PRESET_ID) {
+      const form = new FormData();
+      form.set('text', contents);
+      start(() => {
+        void shapeFileAction(form).then((result) => {
+          if (result.error !== undefined) {
+            toast.error(result.error);
+            return;
+          }
+          const headers = result.headers ?? [];
+          const categories = result.categories ?? {};
+          setShape({ headers, sample: result.sample ?? [], dates: result.dates ?? {}, categories });
+          setDraft((current) => ({
+            ...current,
+            ...guess(headers, result.dates ?? {}, categories),
+          }));
+        });
+      });
+    }
   }
 
   /** Creates or matches every account nobody has chosen, in one press. */
@@ -246,6 +318,7 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
     const form = new FormData();
     form.set('preset', preset.id);
     form.set('text', text);
+    if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
 
     start(() => {
@@ -266,6 +339,7 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
     form.set('preset', preset.id);
     form.set('text', text);
     form.set('filename', run.filename);
+    if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
     form.set('selected', [...selected].join(','));
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
     for (const [index, id] of Object.entries(overrides)) form.set(`counterpart:${index}`, id);
@@ -346,25 +420,27 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
             </button>
           ))}
 
-          {/* Shown and visibly inert. A person whose bank is missing should see
-              that the path exists rather than conclude the feature does not.
-              Never filtered out: it is the answer to a search that found
-              nothing, so hiding it would empty the screen exactly when someone
-              has just learned their bank is not here. */}
-          <span
-            aria-disabled
-            className="text-muted-foreground flex items-center gap-3 rounded-2xl border border-dashed p-4"
+          {/* Never filtered out by the search: it is the answer to a search
+              that found nothing, so hiding it would empty the screen exactly
+              when somebody has just learned their bank is not here. */}
+          <button
+            type="button"
+            onClick={() => {
+              dispatch({
+                type: 'pick',
+                preset: { id: CUSTOM_PRESET_ID, name: t('custom'), monogram: 'CSV' },
+              });
+            }}
+            className="bg-card/60 hover:bg-muted/60 flex items-center gap-3 rounded-2xl border border-dashed p-4 text-left transition-colors"
           >
-            <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-xl">
+            <span className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-xl">
               <FileUp className="size-5" aria-hidden />
             </span>
             <span className="grid">
               <span className="text-[15px] font-medium">{t('custom')}</span>
-              <span className="text-xs">
-                {t('customSoon')} · {t('soon')}
-              </span>
+              <span className="text-muted-foreground text-xs">{t('customHint')}</span>
             </span>
-          </span>
+          </button>
         </div>
 
         {found.length === 0 && needle !== '' && (
@@ -375,7 +451,7 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
   }
 
   // --- Step two: the file -------------------------------------------------
-  if (preview === null) {
+  if (text === '') {
     return (
       <section className="grid gap-4">
         <Back onClick={reset} label={t('startOver')} />
@@ -394,6 +470,38 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
             }}
           />
         </label>
+      </section>
+    );
+  }
+
+  // --- Step two and a half: which column is what --------------------------
+  // Only for a file nobody wrote a preset for, and only until it is described.
+  if (preset.id === CUSTOM_PRESET_ID && mapping === null) {
+    return (
+      <section className="grid gap-4">
+        <Back onClick={reset} label={t('startOver')} />
+        {shape === null ? (
+          <p className="text-muted-foreground text-sm">{t('reading')}</p>
+        ) : (
+          <MappingForm
+            shape={shape}
+            draft={draft}
+            baseCurrency={baseCurrency}
+            onChange={setDraft}
+            onDone={() => {
+              dispatch({ type: 'mapping', mapping: draft });
+            }}
+          />
+        )}
+      </section>
+    );
+  }
+
+  if (preview === null) {
+    return (
+      <section className="grid gap-4">
+        <Back onClick={reset} label={t('startOver')} />
+        <p className="text-muted-foreground text-sm">{t('reading')}</p>
       </section>
     );
   }
@@ -534,6 +642,21 @@ export function Importer({ presets, accounts, openingAccountId }: Props) {
           </div>
         )}
       </div>
+
+      {/* Said, not hidden. A row left out on purpose is still a row somebody
+          can see in their own file, and a reader that dropped it silently would
+          be right about the balance and unable to explain itself. */}
+      {(preview.skipped ?? []).length > 0 && (
+        <Alert>
+          <Filter className="size-4" aria-hidden />
+          <AlertDescription>
+            {t('skippedRows', {
+              count: (preview.skipped ?? []).length,
+              states: [...new Set((preview.skipped ?? []).map((row) => row.reason))].join(', '),
+            })}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {(preview.problems ?? []).length > 0 && (
         <Alert variant="destructive">
@@ -963,4 +1086,103 @@ function Back({ onClick, label }: { onClick: () => void; label: string }) {
       {label}
     </button>
   );
+}
+
+/** Nothing chosen, and the date order a European statement most often uses. */
+const BLANK_DRAFT: DraftMapping = {
+  bookedOn: '',
+  description: '',
+  amountMode: 'one',
+  amount: '',
+  debit: '',
+  credit: '',
+  externalId: '',
+  status: '',
+  skipStatuses: [],
+  currency: '',
+  dateOrder: 'dmy',
+};
+
+/**
+ * A first answer, from the column names the file uses.
+ *
+ * Offered, not decided: every one of these is a control a person can change,
+ * and the screen shows the file above them. The point is that a statement whose
+ * columns are called "Date" and "Montant" should not need four answers to say
+ * what it plainly says.
+ *
+ * Matched without accents or case, because "Libellé" and "libelle" are the same
+ * word to everyone except a string comparison.
+ */
+function guess(
+  headers: readonly string[],
+  dates: Readonly<Record<string, { order: string; ambiguous: boolean }>>,
+  categories: Readonly<Record<string, readonly string[]>>,
+): Partial<DraftMapping> {
+  const fold = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .trim();
+
+  const find = (...words: string[]) =>
+    headers.find((name) => words.some((word) => fold(name).includes(word))) ?? '';
+
+  const debit = find('debit');
+  const credit = find('credit');
+  const amount = find('montant', 'amount', 'valeur');
+
+  // A column the file itself says holds dates beats one that only sounds like
+  // it does: `readShape` looked at the values, and a name did not.
+  const dated = Object.keys(dates);
+  const bookedOn = dated.find((name) => fold(name).includes('date')) ?? dated[0] ?? find('date');
+
+  const order = dates[bookedOn]?.order;
+
+  // A status column, from the ones the file repeats. Only its name is guessed;
+  // which of its values mean "did not happen" is a fact about the bank, and the
+  // screen asks rather than assuming that RENVOYE means what it looks like.
+  const status =
+    Object.keys(categories).find((name) =>
+      ['etat', 'statut', 'status', 'state'].includes(fold(name)),
+    ) ?? '';
+
+  return {
+    status,
+    bookedOn,
+    description: find('libelle', 'label', 'description', 'nature', 'operation'),
+    externalId: find('reference', 'numero', 'id'),
+    ...(debit !== '' && credit !== ''
+      ? { amountMode: 'two' as const, debit, credit }
+      : { amountMode: 'one' as const, amount }),
+    ...(order === 'dmy' || order === 'mdy' || order === 'ymd' ? { dateOrder: order } : {}),
+  };
+}
+
+/**
+ * The draft, as the domain wants it.
+ *
+ * The screen collects empty strings for "not chosen", which is what a select
+ * with no value gives; the mapping wants those fields absent. Two shapes rather
+ * than one, because a control that binds to `undefined` is a control React
+ * calls uncontrolled halfway through typing.
+ */
+function toColumnMapping(draft: DraftMapping) {
+  const named = (value: string) => (value.trim() === '' ? undefined : value);
+
+  return {
+    columns: {
+      bookedOn: draft.bookedOn,
+      ...(named(draft.description) === undefined ? {} : { description: draft.description }),
+      ...(draft.amountMode === 'one'
+        ? { amount: draft.amount }
+        : { debit: draft.debit, credit: draft.credit }),
+      ...(named(draft.externalId) === undefined ? {} : { externalId: draft.externalId }),
+      ...(named(draft.status) === undefined ? {} : { status: draft.status }),
+    },
+    ...(draft.skipStatuses.length === 0 ? {} : { skipStatuses: draft.skipStatuses }),
+    currency: draft.currency,
+    dateOrder: draft.dateOrder,
+  };
 }

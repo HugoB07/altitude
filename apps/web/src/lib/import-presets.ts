@@ -1,4 +1,14 @@
-import { looksLikeTradeRepublic, readTradeRepublic, type ImportReading } from '@altitude/core';
+import {
+  STATEMENT_ACCOUNT,
+  STATEMENT_COUNTERPART,
+  looksLikeTradeRepublic,
+  mappingFits,
+  readMapped,
+  readTradeRepublic,
+  type ColumnMapping,
+  type ImportReading,
+} from '@altitude/core';
+import { CUSTOM_PRESET_ID } from './import-custom';
 
 /**
  * The banks Altitude already knows how to read.
@@ -87,6 +97,34 @@ export const PRESETS: readonly Preset[] = [
     },
   },
 ];
+
+/**
+ * The bank nobody wrote a preset for.
+ *
+ * Not in `PRESETS`: it has no reader until somebody describes their file, and
+ * listing it there would put an entry in the picker that cannot read anything.
+ * The screen offers it separately and builds this once the columns are named.
+ *
+ * A synthetic preset rather than a branch through the import actions. Every
+ * step after the reading - binding accounts, deduplicating, previewing,
+ * writing, undoing - then works on it without knowing it is different, which is
+ * the whole reason a mapping and a coded preset produce the same `ImportReading`.
+ */
+export { CUSTOM_PRESET_ID };
+
+export function customPreset(mapping: ColumnMapping): Preset {
+  return {
+    id: CUSTOM_PRESET_ID,
+    name: 'custom',
+    monogram: 'CSV',
+    read: (text) => readMapped(text, mapping),
+    matches: (text) => mappingFits(text, mapping),
+    accounts: {
+      [STATEMENT_ACCOUNT]: { nameKey: 'statementAccount', kind: 'cash' },
+      [STATEMENT_COUNTERPART]: { nameKey: 'outside', kind: 'cash' },
+    },
+  };
+}
 
 export function presetById(id: string): Preset | undefined {
   return PRESETS.find((preset) => preset.id === id);

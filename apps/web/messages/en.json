@@ -193,7 +193,6 @@
     "chooseBank": "Choose your bank",
     "chooseFile": "Choose a file",
     "custom": "Other bank",
-    "customSoon": "Map the columns yourself",
     "soon": "soon",
     "step1": "Bank",
     "step2": "File",
@@ -234,7 +233,8 @@
       "tradeRepublicCto": "Trade Republic securities (CTO)",
       "tradeRepublicPea": "Trade Republic PEA",
       "securitiesOf": "{name} securities",
-      "outside": "Outside the household"
+      "outside": "Outside the household",
+      "statementAccount": "The account this statement is about"
     },
     "openAll": "Create the {count, plural, =1 {missing account} other {# missing accounts}}",
     "opened": "{count, plural, =0 {Everything was already there} =1 {# account created} other {# accounts created}}",
@@ -261,6 +261,37 @@
     "undoConfirm": "Undo the import",
     "cancel": "Cancel",
     "rolledBack": "{count, plural, =1 {# transaction reversed} other {# transactions reversed}}",
-    "unknownImport": "That import no longer exists."
+    "unknownImport": "That import no longer exists.",
+    "customHint": "Describe its columns yourself",
+    "reading": "Reading the file...",
+    "mappingTitle": "Which column is what",
+    "mappingHint": "Altitude found the separator, the header row and how the dates are written. What it cannot know is what each column means.",
+    "mappingDone": "Continue",
+    "columnDate": "Date",
+    "columnDescription": "Description",
+    "columnAmount": "Amount",
+    "columnDebit": "Debit (money out)",
+    "columnCredit": "Credit (money in)",
+    "columnReference": "Reference",
+    "columnReferenceHint": "The bank's own number for each line. With it, importing the same file twice adds nothing.",
+    "columnNone": "None",
+    "optional": "optional",
+    "amountShape": "How the amounts are written",
+    "amountOneColumn": "One column, negative for money out",
+    "amountTwoColumns": "Two columns, both positive",
+    "currencyFileHint": "Used for every row, since the file has no currency column.",
+    "dateOrderAsk": "Which day is \"{value}\"? Nothing in this column settles it, because no value in it has a number above twelve first.",
+    "dateOrder": {
+      "dmy": "Day, then month - 03/04 is 3 April",
+      "mdy": "Month, then day - 03/04 is 4 March",
+      "ymd": "Year, then month, then day"
+    },
+    "currency": "Currency of every row",
+    "columnExample": "e.g. {value}",
+    "columnStatus": "State",
+    "columnStatusHint": "The column saying whether a line went through.",
+    "skipStatusesTitle": "Leave these out",
+    "skipStatusesHint": "A reverted or refused payment is a line in the file that never moved money. Tick the states that mean the line did not happen; anything unticked is imported.",
+    "skippedRows": "{count, plural, =1 {# line was} other {# lines were}} left out, because {states} means the movement did not happen."
   }
 }
