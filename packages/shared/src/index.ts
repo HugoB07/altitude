@@ -3,6 +3,13 @@ export { Money, currency, isCurrencyCode, CurrencyMismatchError, type CurrencyCo
 export { ledgerDate, compareDates, todayIn, type LedgerDate } from './ledger-date';
 export { decodeText, type DecodedText } from './text';
 export {
+  checkUpload,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LINES,
+  MAX_UPLOAD_COLUMNS,
+  type UploadRefusal,
+} from './upload';
+export {
   isUuid,
   accountId,
   portfolioId,
