@@ -30,7 +30,7 @@
     "test:coverage": "vitest run packages/shared packages/core --exclude \"**/*.db.test.ts\" --coverage",
     "test:db": "vitest run packages/db .db.test.ts",
     "test:e2e": "pnpm --filter @altitude/web test:e2e",
-    "test:unit": "vitest run packages/shared packages/core --exclude \"**/*.db.test.ts\"",
+    "test:unit": "vitest run packages/shared packages/core apps/web/test --exclude \"**/*.db.test.ts\"",
     "test:watch": "vitest",
     "typecheck": "turbo run typecheck"
   },

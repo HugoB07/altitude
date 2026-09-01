@@ -2,7 +2,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['packages/*/test/**/*.test.ts'],
+    // `apps/web/test` holds guards about the application's own boundaries,
+    // not component tests. `e2e` is Playwright's and is not matched here.
+    include: ['packages/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts'],
     // Testcontainers pulls and boots a real PostgreSQL 17, which the default
     // 5 s timeout cannot cover on a cold image.
     testTimeout: 30_000,
