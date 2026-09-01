@@ -298,6 +298,8 @@
     "groupExtras": "Ce qui aide, si le fichier l'a",
     "groupExtrasHint": "Rien de tout cela n'est obligatoire. La référence est ce qui fait qu'importer deux fois le même fichier n'ajoute rien.",
     "groupStates": "Les lignes qui n'ont pas eu lieu",
-    "groupStatesHint": "Un relevé liste plus que des mouvements."
+    "groupStatesHint": "Un relevé liste plus que des mouvements.",
+    "mappingRemembered": "Lu avec la description gardée de {name}.",
+    "changeMapping": "Changer la façon de lire ce fichier"
   }
 }

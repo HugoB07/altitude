@@ -11,8 +11,11 @@ import {
   ImportNotFoundError,
   createAccount,
   findDuplicates,
+  fingerprintOf,
+  findMapping,
   parseMapping,
   readShape,
+  rememberMapping,
   listImports,
   rollbackImport,
   type AccountBinding,
@@ -666,6 +669,19 @@ export interface ShapeResult {
   readonly dates?: Readonly<Record<string, { order: string; ambiguous: boolean }>>;
   /** Columns repeating a handful of values, and which - a status column is one. */
   readonly categories?: Readonly<Record<string, readonly string[]>>;
+  /** What identifies this file's shape, sent back when the mapping is kept. */
+  readonly fingerprint?: string;
+  /**
+   * A mapping this household already has for a file of this shape.
+   *
+   * When it is here, the screen has nothing to ask: it was asked once, for this
+   * bank, and the answer is what makes the phase's exit criterion say "without
+   * manual intervention".
+   */
+  readonly remembered?: {
+    readonly name: string;
+    readonly mapping: unknown;
+  };
 }
 
 /**
@@ -677,7 +693,8 @@ export interface ShapeResult {
  * at "can't resolve 'fs'". The rule has a guard of its own now.
  */
 export async function shapeFileAction(formData: FormData): Promise<ShapeResult> {
-  await requireContext();
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
   const t = await getTranslations('import');
 
   const text = String(formData.get('text') ?? '');
@@ -686,11 +703,52 @@ export async function shapeFileAction(formData: FormData): Promise<ShapeResult> 
   const shape = readShape(text);
   if (shape.headers.length === 0) return { error: t('nothingToImport') };
 
+  const fingerprint = fingerprintOf(text, shape.delimiter);
+  const kept = await scoped((tx) => findMapping(tx, actor, fingerprint));
+
   return {
     delimiter: shape.delimiter,
     headers: shape.headers,
     sample: shape.sample,
     dates: shape.dates,
     categories: shape.categories,
+    fingerprint,
+    ...(kept === null ? {} : { remembered: { name: kept.name, mapping: kept.mapping } }),
   };
+}
+
+export interface RememberOutcome {
+  readonly error?: string;
+  readonly kept?: boolean;
+}
+
+/**
+ * Keeps the description a person just wrote, so the next file of this shape
+ * asks nothing.
+ *
+ * Called when the import is written rather than when the mapping screen is
+ * finished. A description that was never used to import anything is a guess
+ * nobody confirmed, and keeping it would answer the next import with it.
+ */
+export async function rememberMappingAction(formData: FormData): Promise<RememberOutcome> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+  const t = await getTranslations('import');
+
+  const fingerprint = String(formData.get('fingerprint') ?? '');
+  const raw = String(formData.get('mapping') ?? '');
+  if (fingerprint === '' || raw === '') return { error: t('genericError') };
+
+  try {
+    const kept = await scoped((tx) =>
+      rememberMapping(tx, actor, {
+        name: String(formData.get('name') ?? ''),
+        fingerprint,
+        mapping: JSON.parse(raw),
+      }),
+    );
+    return { kept: kept !== null };
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
 }

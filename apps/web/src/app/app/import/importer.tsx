@@ -22,6 +22,7 @@ import {
   commitImportAction,
   openAccountsAction,
   previewImportAction,
+  rememberMappingAction,
   shapeFileAction,
   type PreviewLine,
   type PreviewResult,
@@ -105,6 +106,7 @@ type Step =
   | { readonly type: 'bindMany'; readonly binding: Readonly<Record<string, string>> }
   | { readonly type: 'counterpart'; readonly index: number; readonly accountId: string }
   | { readonly type: 'mapping'; readonly mapping: DraftMapping }
+  | { readonly type: 'remap' }
   | { readonly type: 'reset' };
 
 /**
@@ -140,6 +142,11 @@ function reduce(state: Run, step: Step): Run {
       return { ...state, overrides: { ...state.overrides, [step.index]: step.accountId } };
     case 'mapping':
       return { ...state, mapping: step.mapping };
+    case 'remap':
+      // Back to the questions, keeping the file. The draft still holds the
+      // answers, so this reopens what was decided rather than a blank form -
+      // and a bank that changes a column is a correction, not a fresh start.
+      return { ...state, mapping: null, binding: {}, overrides: {} };
     case 'reset':
       return EMPTY;
   }
@@ -163,6 +170,8 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   const [query, setQuery] = useState('');
   /** What the file turned out to look like, and the answers being collected. */
   const [shape, setShape] = useState<FileShapeView | null>(null);
+  /** What identifies this file's shape, kept so the mapping can be stored under it. */
+  const fingerprint = useRef('');
   const [draft, setDraft] = useState<DraftMapping>(BLANK_DRAFT);
   const [perLine, setPerLine] = useState(false);
   /** Months whose folded state a person has changed. See `isOpen`. */
@@ -302,7 +311,19 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           }
           const headers = result.headers ?? [];
           const categories = result.categories ?? {};
+          fingerprint.current = result.fingerprint ?? '';
           setShape({ headers, sample: result.sample ?? [], dates: result.dates ?? {}, categories });
+
+          // Described once already. Nothing to ask: the preview runs straight
+          // away, which is what "without manual intervention" means.
+          const kept = toDraft(result.remembered?.mapping);
+          if (kept !== null) {
+            setDraft(kept);
+            dispatch({ type: 'mapping', mapping: kept });
+            toast.success(t('mappingRemembered', { name: result.remembered?.name ?? '' }));
+            return;
+          }
+
           setDraft((current) => ({
             ...current,
             ...guess(headers, result.dates ?? {}, categories),
@@ -351,6 +372,18 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           return;
         }
         toast.success(t('imported', { count: result.written ?? 0 }));
+
+        // Kept now rather than when the mapping screen was finished: a
+        // description that never imported anything is a guess nobody
+        // confirmed, and it would answer the next file of this shape.
+        if (mapping !== null && fingerprint.current !== '') {
+          const keep = new FormData();
+          keep.set('fingerprint', fingerprint.current);
+          keep.set('name', run.filename);
+          keep.set('mapping', JSON.stringify(toColumnMapping(mapping)));
+          void rememberMappingAction(keep);
+        }
+
         reset();
       });
     });
@@ -478,7 +511,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   // Only for a file nobody wrote a preset for, and only until it is described.
   if (preset.id === CUSTOM_PRESET_ID && mapping === null) {
     return (
-      <section className="grid gap-4">
+      <section className="grid grid-cols-1 gap-4">
         <Back onClick={reset} label={t('startOver')} />
         {shape === null ? (
           <p className="text-muted-foreground text-sm">{t('reading')}</p>
@@ -545,6 +578,23 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   return (
     <section className="grid gap-6">
       <Back onClick={reset} label={t('startOver')} />
+
+      {/* Only for a file that was described rather than read by a preset. The
+          description is kept once it has imported something, so this is how a
+          person corrects one - a column read as the value date, a state that
+          turned out to mean something else. */}
+      {preset.id === CUSTOM_PRESET_ID && (
+        <button
+          type="button"
+          onClick={() => {
+            dispatch({ type: 'remap' });
+          }}
+          className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1.5 text-xs font-medium underline underline-offset-4 transition-colors"
+        >
+          <Pencil className="size-3.5" aria-hidden />
+          {t('changeMapping')}
+        </button>
+      )}
 
       {preview.looksWrong === true && (
         <Alert>
@@ -1184,5 +1234,45 @@ function toColumnMapping(draft: DraftMapping) {
     ...(draft.skipStatuses.length === 0 ? {} : { skipStatuses: draft.skipStatuses }),
     currency: draft.currency,
     dateOrder: draft.dateOrder,
+  };
+}
+
+/**
+ * A stored mapping, back in the shape the controls bind to.
+ *
+ * The inverse of `toColumnMapping`, and it exists for the same reason: the
+ * domain leaves absent what the screen holds as an empty string, and a control
+ * bound to `undefined` is one React calls uncontrolled halfway through typing.
+ *
+ * Returns null for anything it does not recognise, so a row written by an older
+ * version means "ask again" rather than a half-filled form nobody can trust.
+ */
+function toDraft(stored: unknown): DraftMapping | null {
+  if (typeof stored !== 'object' || stored === null) return null;
+  const raw = stored as { columns?: Record<string, unknown>; [key: string]: unknown };
+  const columns = raw.columns;
+  if (typeof columns !== 'object' || columns === null) return null;
+
+  const text = (value: unknown) => (typeof value === 'string' ? value : '');
+  const bookedOn = text(columns['bookedOn']);
+  if (bookedOn === '') return null;
+
+  const amount = text(columns['amount']);
+  const order = raw['dateOrder'];
+
+  return {
+    bookedOn,
+    description: text(columns['description']),
+    amountMode: amount === '' ? 'two' : 'one',
+    amount,
+    debit: text(columns['debit']),
+    credit: text(columns['credit']),
+    externalId: text(columns['externalId']),
+    status: text(columns['status']),
+    skipStatuses: Array.isArray(raw['skipStatuses'])
+      ? raw['skipStatuses'].filter((value): value is string => typeof value === 'string')
+      : [],
+    currency: text(raw['currency']),
+    dateOrder: order === 'mdy' || order === 'ymd' ? order : 'dmy',
   };
 }

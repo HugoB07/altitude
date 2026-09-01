@@ -44,6 +44,8 @@ const PEA = join(__dirname, 'fixtures', 'trade-republic-pea.csv');
 const MANY = join(__dirname, 'fixtures', 'trade-republic-many.csv');
 /** A French statement: CP1252, semicolons, a junk header block, debit and credit apart. */
 const FRENCH = join(__dirname, 'fixtures', 'releve-francais.csv');
+/** The next month from the same bank: every row differs, the shape does not. */
+const FRENCH_LATER = join(__dirname, 'fixtures', 'releve-francais-2.csv');
 /** A statement with a state column, holding a card payment that was reverted. */
 const STATES = join(__dirname, 'fixtures', 'releve-etats.csv');
 
@@ -587,5 +589,42 @@ test('a line the statement says did not happen is left out, and said so', async 
     // short by exactly what was refunded.
     await page.goto('/app/accounts');
     await expect(page.getByText('€1,035.05')).toBeVisible();
+  });
+});
+
+test('a bank described once is not described again', async () => {
+  await expectNoConsoleErrors(async () => {
+    // The same statement as the test that described it, a month later: every
+    // row differs, the shape does not. That is what the fingerprint keys on.
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(FRENCH_LATER);
+
+    // No mapping screen. The description was kept when the first import was
+    // written, and the toast says which file it came from.
+    await expect(page.getByText(/Read with the description kept from/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+
+    // Straight to the accounts, already matched, and the rows read correctly -
+    // debit negated, thousands space and decimal comma understood.
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('Assurance habitation')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Create the/ })).toHaveCount(0);
+
+    // A kept description is not a decision a person is stuck with. A column
+    // read as the value date, a state that turned out to mean something else -
+    // this is how it gets corrected, with the answers still in the form.
+    await page.getByRole('button', { name: 'Change how this file is read' }).click();
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: /^Date/ })).toContainText('Date');
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Import 2 transactions' }).click();
+    await expect(page.getByText('2 transactions imported')).toBeVisible();
+
+    // 1,035.05 from before, plus 1,900 in and 340.50 out.
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€2,594.55')).toBeVisible();
   });
 });

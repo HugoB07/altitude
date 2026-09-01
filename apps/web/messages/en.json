@@ -298,6 +298,8 @@
     "groupExtras": "What helps, if the file has it",
     "groupExtrasHint": "None of these is required. The reference is what makes importing the same file twice add nothing.",
     "groupStates": "Lines that did not happen",
-    "groupStatesHint": "A statement lists more than movements."
+    "groupStatesHint": "A statement lists more than movements.",
+    "mappingRemembered": "Read with the description kept from {name}.",
+    "changeMapping": "Change how this file is read"
   }
 }
