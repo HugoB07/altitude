@@ -80,6 +80,7 @@ export {
   type FileShape,
 } from './import/mapped';
 export { parseAmount, fromDebitCredit, type ParsedAmount } from './import/numbers';
+export { normaliseLabel, trigramSimilarity } from './import/labels';
 export {
   EXTERNAL,
   SECURITIES_SUFFIX,
