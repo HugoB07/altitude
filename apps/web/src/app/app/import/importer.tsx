@@ -972,7 +972,7 @@ function Row({
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium">{line.description ?? line.kind}</span>
-            <Verdict kind={line.verdict} checked={checked} t={t} />
+            <Verdict kind={line.verdict} daysApart={line.daysApart} checked={checked} t={t} />
           </span>
           <span className="text-muted-foreground mt-0.5 block text-xs">
             {line.bookedOn} · {line.kind} ·{' '}
@@ -1104,10 +1104,12 @@ function Logo({ preset }: { preset: PresetChoice }) {
 
 function Verdict({
   kind,
+  daysApart,
   checked,
   t,
 }: {
   kind: string;
+  daysApart: number | null;
   checked: boolean;
   t: ReturnType<typeof useTranslations<'import'>>;
 }) {
@@ -1121,6 +1123,11 @@ function Verdict({
       )}
     >
       {kind === 'certain' ? t('verdictCertain') : t('verdictProbable')}
+      {/* Only when the dates differ. On the same day the badge is the whole
+          story, and appending "0 days apart" to it says nothing. */}
+      {kind === 'probable' && daysApart !== null && daysApart > 0
+        ? ` - ${t('verdictDaysApart', { days: daysApart })}`
+        : ''}
     </span>
   );
 }

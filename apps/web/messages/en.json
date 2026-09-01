@@ -206,6 +206,7 @@
     "verdictNew": "new",
     "verdictCertain": "already imported",
     "verdictProbable": "looks like a duplicate",
+    "verdictDaysApart": "{days, plural, =1 {# day apart} other {# days apart}}",
     "notCheckedYet": "Duplicates are checked once every account is chosen.",
     "problems": "Rows that could not be read",
     "commit": "Import {count, plural, =1 {# transaction} other {# transactions}}",

@@ -46,6 +46,8 @@ const MANY = join(__dirname, 'fixtures', 'trade-republic-many.csv');
 const FRENCH = join(__dirname, 'fixtures', 'releve-francais.csv');
 /** The next month from the same bank: every row differs, the shape does not. */
 const FRENCH_LATER = join(__dirname, 'fixtures', 'releve-francais-2.csv');
+/** The November debit again, written two days later, as a re-export does. */
+const FRENCH_AGAIN = join(__dirname, 'fixtures', 'releve-francais-3.csv');
 /** A statement with a state column, holding a card payment that was reverted. */
 const STATES = join(__dirname, 'fixtures', 'releve-etats.csv');
 
@@ -656,5 +658,23 @@ test('a wide statement scrolls inside its panel rather than pushing the page', a
       return box.scrollWidth > box.clientWidth;
     });
     expect(scrolls, 'the table is not scrollable, so its columns are unreachable').toBe(true);
+  });
+});
+
+test('a line the bank moved by two days is offered as a look-alike', async () => {
+  await expectNoConsoleErrors(async () => {
+    // The same direct debit as the November statement, dated the 7th instead
+    // of the 5th. A bank re-exporting a month writes the operation date one
+    // time and the value date the next, and on an exact-date match this came
+    // back as new - a second 340.50 nobody asked for.
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(FRENCH_AGAIN);
+
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+
+    // The distance is named. Without it a person is asked to judge a duplicate
+    // against a date they can see is not the same, with nothing said about why.
+    await expect(page.getByText('looks like a duplicate - 2 days apart')).toBeVisible();
   });
 });

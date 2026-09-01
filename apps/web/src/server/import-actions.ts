@@ -52,6 +52,14 @@ export interface PreviewLine {
   readonly description: string | null;
   readonly sourceLines: readonly number[];
   readonly verdict: Verdict['kind'];
+  /**
+   * Days between this line and the transaction it looks like, or null.
+   *
+   * Null for anything but a look-alike. Zero reads as "the same day", which
+   * the screen leaves unsaid; anything above it has to be said, or a person is
+   * asked to judge a match against a date they can see is different.
+   */
+  readonly daysApart: number | null;
   readonly entries: readonly {
     readonly label: string;
     readonly amount: string;
@@ -155,9 +163,9 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
   // Deduplication needs accounts, so until they are all chosen nothing has been
   // checked. The screen says so rather than calling every line new, which would
   // be a claim about something nobody has looked at.
-  const verdicts: Verdict['kind'][] = checked
-    ? (await scoped((tx) => findDuplicates(tx, actor, bound))).verdicts.map((v) => v.kind)
-    : reading.candidates.map(() => 'new');
+  const verdicts: Verdict[] = checked
+    ? [...(await scoped((tx) => findDuplicates(tx, actor, bound))).verdicts]
+    : reading.candidates.map(() => ({ kind: 'new' }) as const);
 
   return {
     checked,
@@ -171,7 +179,8 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
       kind: candidate.kind,
       description: candidate.description ?? null,
       sourceLines: candidate.sourceLines,
-      verdict: verdicts[index] ?? 'new',
+      verdict: verdicts[index]?.kind ?? 'new',
+      daysApart: verdicts[index]?.kind === 'probable' ? verdicts[index].daysApart : null,
       entries: candidate.entries.map((entry) => ({
         label: entry.account,
         amount: entry.amount,

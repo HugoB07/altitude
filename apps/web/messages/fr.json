@@ -206,6 +206,7 @@
     "verdictNew": "nouveau",
     "verdictCertain": "déjà importé",
     "verdictProbable": "ressemble à un doublon",
+    "verdictDaysApart": "{days, plural, =1 {# jour d'écart} other {# jours d'écart}}",
     "notCheckedYet": "Les doublons sont vérifiés une fois tous les comptes choisis.",
     "problems": "Lignes illisibles",
     "commit": "Importer {count, plural, =1 {# transaction} other {# transactions}}",
