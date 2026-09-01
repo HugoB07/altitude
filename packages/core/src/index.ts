@@ -60,7 +60,25 @@ export {
   AccountNotEmptyError,
   type NewAccount,
 } from './services/accounts';
-export { parseDelimited, parseRecords, sniffDelimiter } from './import/csv';
+export { parseDelimited, parseRecords, sniffDelimiter, findHeaderRow } from './import/csv';
+export {
+  dayPart,
+  detectDateOrder,
+  readDate,
+  type DateOrder,
+  type ColumnFormat,
+} from './import/dates';
+export {
+  readMapped,
+  readShape,
+  mappingFits,
+  parseMapping,
+  STATEMENT_ACCOUNT,
+  STATEMENT_COUNTERPART,
+  type ColumnMapping,
+  type FileShape,
+} from './import/mapped';
+export { parseAmount, fromDebitCredit, type ParsedAmount } from './import/numbers';
 export {
   EXTERNAL,
   SECURITIES_SUFFIX,

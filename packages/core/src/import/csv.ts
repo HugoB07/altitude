@@ -149,3 +149,39 @@ export function sniffDelimiter(
   }
   return best;
 }
+
+/**
+ * Which row is the header, when the file does not start with it.
+ *
+ * The first lines of a bank export are an identification block: the account
+ * holder, the IBAN, the period, a blank line. Read as a header, the first of
+ * them becomes the column names and every real row is discarded for having the
+ * wrong shape - reported as "this file has no date column", about a file that
+ * does.
+ *
+ * Found by stability rather than by looking for known names, which would only
+ * work for banks already known. A header is the first row whose field count is
+ * repeated by the rows after it: an identification block has one or two fields
+ * per line, and the table below it has the same count all the way down.
+ *
+ * Returns 0 for a file that starts with its header, which is most of them.
+ */
+export function findHeaderRow(rows: readonly string[][], confirmations = 3): number {
+  const filled = (row: readonly string[]) => row.filter((cell) => cell.trim() !== '').length;
+
+  for (const [index, row] of rows.entries()) {
+    const width = filled(row);
+    // One column is a sentence, not a table. Two is a label and a value, which
+    // is exactly what an identification block looks like.
+    if (width < 3) continue;
+
+    const following = rows.slice(index + 1, index + 1 + confirmations);
+    if (following.length === 0) continue;
+
+    // Counted against the row's total length, not its filled cells: a data row
+    // legitimately leaves cells empty, and a header does not.
+    if (following.every((next) => next.length === row.length)) return index;
+  }
+
+  return 0;
+}

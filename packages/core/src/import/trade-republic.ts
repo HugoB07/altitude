@@ -112,6 +112,7 @@ export function readTradeRepublic(text: string): ImportReading {
       securities: [],
       counterparts: [],
       problems: [{ line: 1, reason: `Not a Trade Republic export: no ${missing.join(', ')}` }],
+      skipped: [],
     };
   }
 
@@ -193,7 +194,7 @@ export function readTradeRepublic(text: string): ImportReading {
     }
   }
 
-  return { candidates, accounts, securities, counterparts, problems };
+  return { candidates, accounts, securities, counterparts, problems, skipped: [] };
 }
 
 /** One row that is a transaction on its own. */

@@ -130,4 +130,15 @@ export interface ImportReading {
    */
   readonly counterparts: readonly string[];
   readonly problems: readonly ImportProblem[];
+  /**
+   * Rows deliberately left out, and why.
+   *
+   * Not problems, and kept apart from them for that reason. A statement holds
+   * lines that did not happen - a card payment marked as reverted, an
+   * authorisation that never settled - and importing them puts money in a
+   * ledger that never moved. A reader that dropped them silently would be
+   * right about the balance and unable to say why it had ignored a row
+   * somebody can see in their own file.
+   */
+  readonly skipped: readonly ImportProblem[];
 }
