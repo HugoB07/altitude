@@ -555,6 +555,15 @@ test('a line the statement says did not happen is left out, and said so', async 
     await expect(page.getByRole('combobox', { name: /State/ })).toContainText('Etat');
     await expect(page.getByRole('group', { name: 'Leave these out' })).toBeVisible();
 
+    // The example under the state control reads out of the state column. It
+    // used to index into a shorter list and echo "Valeur actuelle", which is
+    // what the Produit column holds.
+    await expect(page.getByText('e.g. RENVOYÉ')).toBeVisible();
+
+    // And the file itself marks what has been named, so the questions and the
+    // evidence are not two lists to hold side by side.
+    await expect(page.getByRole('columnheader', { name: /Etat State/ })).toBeVisible();
+
     // Which states mean "did not happen" is a fact about the bank, so it is
     // asked. The values offered are the ones the file actually holds.
     await page.getByRole('checkbox', { name: 'RENVOYÉ' }).click();

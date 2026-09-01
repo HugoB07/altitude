@@ -292,6 +292,12 @@
     "columnStatusHint": "The column saying whether a line went through.",
     "skipStatusesTitle": "Leave these out",
     "skipStatusesHint": "A reverted or refused payment is a line in the file that never moved money. Tick the states that mean the line did not happen; anything unticked is imported.",
-    "skippedRows": "{count, plural, =1 {# line was} other {# lines were}} left out, because {states} means the movement did not happen."
+    "skippedRows": "{count, plural, =1 {# line was} other {# lines were}} left out, because {states} means the movement did not happen.",
+    "groupRequired": "What every line says",
+    "groupRequiredHint": "Without these two, the file cannot be read at all.",
+    "groupExtras": "What helps, if the file has it",
+    "groupExtrasHint": "None of these is required. The reference is what makes importing the same file twice add nothing.",
+    "groupStates": "Lines that did not happen",
+    "groupStatesHint": "A statement lists more than movements."
   }
 }

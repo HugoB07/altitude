@@ -292,6 +292,12 @@
     "columnStatusHint": "La colonne qui dit si une ligne est passée.",
     "skipStatusesTitle": "Laisser de côté",
     "skipStatusesHint": "Un paiement renvoyé ou refusé est une ligne du fichier qui n'a jamais déplacé d'argent. Cochez les états qui veulent dire que la ligne n'a pas eu lieu ; tout ce qui reste décoché est importé.",
-    "skippedRows": "{count, plural, =1 {# ligne a été laissée} other {# lignes ont été laissées}} de côté, car {states} veut dire que le mouvement n'a pas eu lieu."
+    "skippedRows": "{count, plural, =1 {# ligne a été laissée} other {# lignes ont été laissées}} de côté, car {states} veut dire que le mouvement n'a pas eu lieu.",
+    "groupRequired": "Ce que dit chaque ligne",
+    "groupRequiredHint": "Sans ces deux-là, le fichier ne peut pas être lu du tout.",
+    "groupExtras": "Ce qui aide, si le fichier l'a",
+    "groupExtrasHint": "Rien de tout cela n'est obligatoire. La référence est ce qui fait qu'importer deux fois le même fichier n'ajoute rien.",
+    "groupStates": "Les lignes qui n'ont pas eu lieu",
+    "groupStatesHint": "Un relevé liste plus que des mouvements."
   }
 }
