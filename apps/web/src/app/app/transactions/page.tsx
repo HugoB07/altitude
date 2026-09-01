@@ -16,6 +16,7 @@ import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
 import { Pagination } from '@/components/pagination';
 import { TransactionFilters, type FilterValues } from './filters';
+import { money } from '@/lib/money';
 import { Categorise } from './categorise';
 import { ReverseButton } from './reverse-button';
 
@@ -25,16 +26,6 @@ export const dynamic = 'force-dynamic';
 
 const PER_PAGE = 25;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** The one place a Decimal becomes a number, for display only (ADR-0006). */
-function money(amount: string, currency: string, locale: string, signed = false): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    ...(signed ? { signDisplay: 'exceptZero' as const } : {}),
-    maximumFractionDigits: 2,
-  }).format(Number(amount));
-}
 
 /**
  * The two sides of an ordinary movement, when there are exactly two.
