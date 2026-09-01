@@ -172,6 +172,8 @@ export const entries = pgTable(
     /** Rate to the household base currency, frozen at booking time. */
     fxRateToBase: numeric('fx_rate_to_base', { precision: 24, scale: 12 }),
     categoryId: uuid('category_id'),
+    /** The rule that decided the category, or null when a person did. */
+    categorisedBy: uuid('categorised_by'),
     memo: text('memo'),
   },
   (t) => [

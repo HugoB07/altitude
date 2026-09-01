@@ -33,6 +33,7 @@ export {
   type EquityKind,
   type LiabilityKind,
 } from './schema/structure';
+export { categories, categorisationRules } from './schema/categories';
 export {
   TRANSACTION_KINDS,
   TRANSACTION_SOURCES,

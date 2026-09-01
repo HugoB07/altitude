@@ -134,6 +134,13 @@
       "when": 1788272372454,
       "tag": "0018_transaction_dedupe_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788272373454,
+      "tag": "0019_categories_and_rules",
+      "breakpoints": true
     }
   ]
 }
