@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -48,6 +49,8 @@ const FRENCH = join(__dirname, 'fixtures', 'releve-francais.csv');
 const FRENCH_LATER = join(__dirname, 'fixtures', 'releve-francais-2.csv');
 /** The November debit again, written two days later, as a re-export does. */
 const FRENCH_AGAIN = join(__dirname, 'fixtures', 'releve-francais-3.csv');
+/** A statement carrying its running balance, which is what reconciling reads. */
+const BALANCES = join(__dirname, 'fixtures', 'releve-solde.csv');
 /** A statement with a state column, holding a card payment that was reverted. */
 const STATES = join(__dirname, 'fixtures', 'releve-etats.csv');
 
@@ -752,5 +755,65 @@ test('a file past what the application accepts is refused with the number', asyn
 
     // And nothing was read: the screen is still asking for a file.
     await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+  });
+});
+
+test('a statement is read back against its own balance column', async () => {
+  await expectNoConsoleErrors(async () => {
+    /**
+     * The phase's exit criterion, which is an export that reconciles to the
+     * statement (§17), and the consistency check the plan asks for on a
+     * balance column (§8.3).
+     *
+     * Two different things are shown, and only one of them is always
+     * meaningful. That every row moves the balance by its own amount is about
+     * the file alone. That the closing balance matches the ledger depends on
+     * the ledger already holding everything before it, which here it does not
+     * - so the screen states the gap rather than calling it an error.
+     */
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(BALANCES);
+
+    // The balance column is guessed from its name, like the others.
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: /Balance after the row/ })).toContainText(
+      'Solde',
+    );
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('Against the statement')).toBeVisible();
+    await expect(page.getByText('This statement ends at €3,514.30.')).toBeVisible();
+    // Every row agrees with the one before it, so nothing is reported.
+    await expect(page.getByText(/does not move by that row/)).toHaveCount(0);
+  });
+});
+
+test('a row whose balance does not follow its amount is named', async () => {
+  await expectNoConsoleErrors(async () => {
+    // The same statement with one sign flipped. The amount still parses, the
+    // date still parses, and the row would still import - which is exactly why
+    // this check exists: nothing else would notice.
+    const rows = readFileSync(BALANCES).toString('latin1').replace('-45,20', '45,20');
+
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'releve-solde-faux.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(rows, 'latin1'),
+    });
+
+    // Described again: the test above imported nothing, and a mapping is kept
+    // when a run is written rather than when the form is finished.
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    // Line 8, counting the identification block and the header, so it matches
+    // what a spreadsheet shows.
+    await expect(page.getByText(/the balance does not move by that row's amount/)).toBeVisible();
+    await expect(page.getByText(/: 8\./)).toBeVisible();
   });
 });

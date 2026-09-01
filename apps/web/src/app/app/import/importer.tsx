@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { checkUpload, decodeText } from '@altitude/shared';
+import { money } from '@/lib/money';
 import { CUSTOM_PRESET_ID } from '@/lib/import-custom';
 import { MappingForm, type DraftMapping, type FileShapeView } from './mapping';
 import { cn } from '@/lib/utils';
@@ -1009,6 +1010,12 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
         </DialogContent>
       </Dialog>
 
+      {/* Last thing before the button that writes, because it is the question
+          the button raises: does this end where the bank says it ends. */}
+      {preview.reconciliation !== undefined && (
+        <Reconciled reconciliation={preview.reconciliation} locale={locale} t={t} />
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="button"
@@ -1262,6 +1269,61 @@ function Side({
   );
 }
 
+/**
+ * The statement's closing balance against what the ledger would hold.
+ *
+ * The phase's exit criterion is an export that reconciles to the statement
+ * (§17), and this is where a person sees whether theirs does.
+ *
+ * Two different checks, deliberately shown together. The mismatches are about
+ * the file alone and are always meaningful: a balance that does not move by
+ * its own row's amount means something was misread. The gap is about the file
+ * against the ledger, and only means something when the ledger already holds
+ * everything that came before - so it is stated as a fact rather than as an
+ * error, and the sentence under it says what would explain it.
+ */
+function Reconciled({
+  reconciliation,
+  locale,
+  t,
+}: {
+  reconciliation: NonNullable<PreviewResult['reconciliation']>;
+  locale: string;
+  t: ReturnType<typeof useTranslations<'import'>>;
+}) {
+  const { closing, afterImport, gap, currency, mismatches } = reconciliation;
+  const agrees = gap === '0';
+
+  return (
+    <div className="grid grid-cols-1 gap-2 rounded-2xl border p-5">
+      <h2 className="text-[13px] font-semibold tracking-wide uppercase">{t('reconcileTitle')}</h2>
+
+      <p className="text-sm">
+        {t('reconcileStatement', { amount: money(closing, currency, locale) })}{' '}
+        {agrees
+          ? t('reconcileAgrees')
+          : t(gap.startsWith('-') ? 'reconcileOver' : 'reconcileUnder', {
+              after: money(afterImport, currency, locale),
+              // Read without its sign: which way it goes is in the sentence,
+              // and "-594.55 below it" says the opposite of what it means.
+              gap: money(gap.replace('-', ''), currency, locale),
+            })}
+      </p>
+
+      {!agrees && <p className="text-muted-foreground text-xs">{t('reconcileGapHint')}</p>}
+
+      {mismatches.length > 0 && (
+        <p className="text-sm">
+          {t('reconcileMismatches', {
+            count: mismatches.length,
+            lines: mismatches.map((one) => one.line).join(', '),
+          })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Candidates by `YYYY-MM`, newest first, keeping each month's own order. */
 function groupByMonth(lines: readonly PreviewLine[]): [string, PreviewLine[]][] {
   const months = new Map<string, PreviewLine[]>();
@@ -1401,6 +1463,7 @@ const BLANK_DRAFT: DraftMapping = {
   debit: '',
   credit: '',
   externalId: '',
+  balance: '',
   status: '',
   skipStatuses: [],
   currency: '',
@@ -1457,6 +1520,10 @@ function guess(
     bookedOn,
     description: find('libelle', 'label', 'description', 'nature', 'operation'),
     externalId: find('reference', 'numero', 'id'),
+    // "Solde" and not "Solde du compte au", which is a heading rather than a
+    // column - but a wrong guess here costs a control somebody changes, and
+    // the check it feeds is worth offering.
+    balance: find('solde', 'balance'),
     ...(debit !== '' && credit !== ''
       ? { amountMode: 'two' as const, debit, credit }
       : { amountMode: 'one' as const, amount }),
@@ -1484,6 +1551,7 @@ function toColumnMapping(draft: DraftMapping) {
         : { debit: draft.debit, credit: draft.credit }),
       ...(named(draft.externalId) === undefined ? {} : { externalId: draft.externalId }),
       ...(named(draft.status) === undefined ? {} : { status: draft.status }),
+      ...(named(draft.balance) === undefined ? {} : { balance: draft.balance }),
     },
     ...(draft.skipStatuses.length === 0 ? {} : { skipStatuses: draft.skipStatuses }),
     currency: draft.currency,
@@ -1522,6 +1590,7 @@ function toDraft(stored: unknown): DraftMapping | null {
     debit: text(columns['debit']),
     credit: text(columns['credit']),
     externalId: text(columns['externalId']),
+    balance: text(columns['balance']),
     status: text(columns['status']),
     skipStatuses: Array.isArray(raw['skipStatuses'])
       ? raw['skipStatuses'].filter((value): value is string => typeof value === 'string')

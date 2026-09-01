@@ -9,6 +9,7 @@ import {
   bindAccounts,
   commitImport,
   ImportNotFoundError,
+  STATEMENT_ACCOUNT,
   createAccount,
   findDuplicates,
   findImportsOfFile,
@@ -20,14 +21,17 @@ import {
   listImports,
   rollbackImport,
   type AccountBinding,
+  type BalanceReading,
   type BoundCandidate,
   type CandidateOverrides,
   type EntryRole,
   type Verdict,
 } from '@altitude/core';
 import {
+  Money,
   accountId as toAccountId,
   checkUpload,
+  dec,
   importId,
   isUuid,
   todayIn,
@@ -133,6 +137,25 @@ export interface PreviewResult {
    * date.
    */
   readonly alreadyImported?: { readonly filename: string; readonly at: string };
+  /**
+   * The statement's own balance, against what the ledger would hold.
+   *
+   * The phase's exit criterion is an export that "reconciles to the statement"
+   * (§17), and this is the number that says whether it does. Absent when the
+   * file has no balance column, which most broker exports do not.
+   */
+  readonly reconciliation?: {
+    /** What the last row of the file says the account holds. */
+    readonly closing: string;
+    /** What the account will hold once the ticked lines are written. */
+    readonly afterImport: string;
+    /** `closing` less `afterImport`. Zero is the answer everybody wants. */
+    readonly gap: string;
+    readonly currency: string;
+    /** Rows inside the file where the balance did not move by the amount. */
+    readonly mismatches: readonly { readonly line: number }[];
+    readonly checked: number;
+  };
   /** Every account the file needs, named. Cash and securities first, then counterparts. */
   readonly requested?: readonly RequestedAccount[];
   readonly lines?: readonly PreviewLine[];
@@ -217,9 +240,11 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
     : reading.candidates.map(() => ({ kind: 'new' }) as const);
 
   const seenBefore = await scoped((tx) => findImportsOfFile(tx, actor, text));
+  const reconciliation = reconcile(reading, bound, binding, existing);
 
   return {
     checked,
+    ...(reconciliation === undefined ? {} : { reconciliation }),
     ...(seenBefore[0] === undefined
       ? {}
       : {
@@ -442,6 +467,50 @@ export interface CommitOutcome {
   /** Existing transactions a person said were the same as a line of the file. */
   readonly merged?: number;
   readonly instruments?: number;
+}
+
+/**
+ * The statement's closing balance against what the ledger will hold.
+ *
+ * Only the account the statement is about: an import touches a counterpart
+ * too, and that side is the edge of the household rather than something a bank
+ * has an opinion about.
+ *
+ * Says nothing when the account has not been chosen yet, when the file has no
+ * balance column, or when the currencies differ. A comparison nobody can act
+ * on is worse than none - it invites reading a difference as an error when it
+ * is an apples-to-oranges sum.
+ */
+function reconcile(
+  reading: { balances?: BalanceReading },
+  bound: readonly BoundCandidate[],
+  binding: AccountBinding,
+  existing: readonly { accountId: string; balance: Money; currency: string }[],
+): PreviewResult['reconciliation'] {
+  const balances = reading.balances;
+  const accountId = binding[STATEMENT_ACCOUNT];
+  if (balances === undefined || accountId === undefined) return undefined;
+
+  const account = existing.find((one) => one.accountId === accountId);
+  if (account === undefined) return undefined;
+
+  // Every entry of the file that lands on that account, whatever the
+  // transaction shape around it.
+  const moved = bound
+    .flatMap((candidate) => candidate.entries)
+    .filter((entry) => entry.accountId === accountId && entry.currency === account.currency)
+    .reduce((total, entry) => total.plus(dec(entry.amount)), dec('0'));
+
+  const afterImport = account.balance.amount.plus(moved);
+
+  return {
+    closing: balances.closing,
+    afterImport: afterImport.toFixed(),
+    gap: dec(balances.closing).minus(afterImport).toFixed(),
+    currency: account.currency,
+    mismatches: balances.mismatches.map((one) => ({ line: one.line })),
+    checked: balances.checked,
+  };
 }
 
 /** The matched transaction, with its accounts named the way the household names them. */

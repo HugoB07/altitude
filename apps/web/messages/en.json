@@ -317,7 +317,16 @@
     "changeMapping": "Change how this file is read",
     "fileTooBig": "That file is over {limit} MB. Split it by year and import the parts.",
     "fileTooLong": "That file is over {limit} lines. Split it by year and import the parts.",
-    "alreadyImported": "You imported this exact file on {date}, as {name}. Importing it again will find every line already there."
+    "alreadyImported": "You imported this exact file on {date}, as {name}. Importing it again will find every line already there.",
+    "columnBalance": "Balance after the row",
+    "columnBalanceHint": "Optional. Used to check the file against itself and against your ledger - nothing is imported from it.",
+    "reconcileTitle": "Against the statement",
+    "reconcileStatement": "This statement ends at {amount}.",
+    "reconcileAgrees": "Importing all of its lines brings this account to exactly that.",
+    "reconcileGapHint": "That is expected if the ledger does not already hold everything before this statement, or if you leave lines out below.",
+    "reconcileMismatches": "{count, plural, =1 {On # row} other {On # rows}} the balance does not move by that row's amount, which means something was misread: {lines}.",
+    "reconcileUnder": "Importing all of its lines brings this account to {after}, which is {gap} below it.",
+    "reconcileOver": "Importing all of its lines brings this account to {after}, which is {gap} above it."
   },
   "categories": {
     "title": "Categories",

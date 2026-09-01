@@ -27,6 +27,13 @@ export interface DraftMapping {
   readonly debit: string;
   readonly credit: string;
   readonly externalId: string;
+  /**
+   * A column holding the running balance after each row.
+   *
+   * Read to check the file against itself and to compare its closing balance
+   * with what the ledger will hold. Nothing is imported from it.
+   */
+  readonly balance: string;
   /** A column whose value says whether the row happened. */
   readonly status: string;
   /** Values of that column whose rows are left out. */
@@ -100,6 +107,7 @@ export function MappingForm({
   claim(draft.description, t('columnDescription'));
   claim(draft.externalId, t('columnReference'));
   claim(draft.status, t('columnStatus'));
+  claim(draft.balance, t('columnBalance'));
   if (draft.amountMode === 'one') claim(draft.amount, t('columnAmount'));
   else {
     claim(draft.debit, t('columnDebit'));
@@ -271,6 +279,19 @@ export function MappingForm({
             hint={t('columnReferenceHint')}
             onChange={(value) => {
               set('externalId', value);
+            }}
+          />
+
+          <Column
+            id="map-balance"
+            sample={shape.sample}
+            label={t('columnBalance')}
+            headers={shape.headers}
+            value={draft.balance}
+            optional
+            hint={t('columnBalanceHint')}
+            onChange={(value) => {
+              set('balance', value);
             }}
           />
 

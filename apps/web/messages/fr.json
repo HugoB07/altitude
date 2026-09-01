@@ -317,7 +317,16 @@
     "changeMapping": "Changer la façon de lire ce fichier",
     "fileTooBig": "Ce fichier dépasse {limit} Mo. Découpez-le par année et importez les morceaux.",
     "fileTooLong": "Ce fichier dépasse {limit} lignes. Découpez-le par année et importez les morceaux.",
-    "alreadyImported": "Vous avez importé exactement ce fichier le {date}, sous le nom {name}. Le réimporter retrouvera chaque ligne déjà présente."
+    "alreadyImported": "Vous avez importé exactement ce fichier le {date}, sous le nom {name}. Le réimporter retrouvera chaque ligne déjà présente.",
+    "columnBalance": "Solde après l'opération",
+    "columnBalanceHint": "Facultatif. Sert à vérifier le fichier contre lui-même et contre votre grand livre, rien n'en est importé.",
+    "reconcileTitle": "Face au relevé",
+    "reconcileStatement": "Ce relevé se termine à {amount}.",
+    "reconcileAgrees": "En important toutes ses lignes, ce compte arrive exactement à ce montant.",
+    "reconcileGapHint": "C'est normal si le grand livre ne contient pas déjà tout ce qui précède ce relevé, ou si vous laissez des lignes de côté ci-dessous.",
+    "reconcileMismatches": "{count, plural, =1 {Sur # ligne} other {Sur # lignes}} le solde ne bouge pas du montant de la ligne, ce qui veut dire qu'une valeur a été mal lue : {lines}.",
+    "reconcileUnder": "En important toutes ses lignes, ce compte arrive à {after}, soit {gap} de moins.",
+    "reconcileOver": "En important toutes ses lignes, ce compte arrive à {after}, soit {gap} de plus."
   },
   "categories": {
     "title": "Catégories",
