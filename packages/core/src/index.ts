@@ -114,6 +114,7 @@ export {
   securitiesLabel,
 } from './import/trade-republic';
 export type {
+  BalanceReading,
   Candidate,
   CandidateEntry,
   CandidateInstrument,

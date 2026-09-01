@@ -197,6 +197,63 @@ describe('the currency cell', () => {
   });
 });
 
+describe('the balance column, read back against the amounts', () => {
+  /**
+   * The strong half of reconciling, and the half that needs nothing but the
+   * file. The plan asks for it as a consistency check (§8.3) and as the
+   * phase's exit criterion, which is an export that reconciles to the
+   * statement (§17).
+   */
+  const WITH_BALANCE = [
+    'Date;Libelle;Montant;Solde',
+    '01/04/2026;Loyer avril;-800,00;1 200,00',
+    '02/04/2026;Salaire;2 500,00;3 700,00',
+    '15/04/2026;Courses;-45,20;3 654,80',
+    '',
+  ].join('\n');
+
+  const MAP: ColumnMapping = {
+    columns: { bookedOn: 'Date', description: 'Libelle', amount: 'Montant', balance: 'Solde' },
+    currency: 'EUR',
+  };
+
+  it('says the closing balance and that every step agrees', () => {
+    const reading = readMapped(WITH_BALANCE, MAP);
+    expect(reading.balances?.closing).toBe('3654.8');
+    expect(reading.balances?.mismatches).toEqual([]);
+    // Two rows checked, not three: the first has nothing before it, and what
+    // it opened from is stated nowhere the reader can see.
+    expect(reading.balances?.checked).toBe(2);
+  });
+
+  it('names the row where the balance and the amount disagree', () => {
+    /**
+     * A sign misread, which is the failure this catches and which nothing else
+     * would: the amount parses, the date parses, the row imports, and the
+     * ledger ends up ninety euros from the bank with nothing to point at.
+     *
+     * The first row cannot be caught this way, whatever is wrong with it - the
+     * chain simply restarts from whatever balance that row states.
+     */
+    const wrong = WITH_BALANCE.replace('-45,20;3 654,80', '45,20;3 654,80');
+    const reading = readMapped(wrong, MAP);
+
+    expect(reading.balances?.mismatches).toEqual([
+      { line: 4, expected: '3745.2', found: '3654.8' },
+    ]);
+    // The other row still agrees, so the report points at one line rather than
+    // declaring the file broken.
+    expect(reading.balances?.checked).toBe(2);
+  });
+
+  it('says nothing at all when no balance column was mapped', () => {
+    // Most broker exports have none, and an absent check is not a failed one.
+    const { balance: _dropped, ...columns } = MAP.columns;
+    const reading = readMapped(WITH_BALANCE, { ...MAP, columns });
+    expect(reading.balances).toBeUndefined();
+  });
+});
+
 describe('mappingFits', () => {
   it('recognises a file a mapping can read', () => {
     expect(mappingFits(STATEMENT, MAPPING)).toBe(true);

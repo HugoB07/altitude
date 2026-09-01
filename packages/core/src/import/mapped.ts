@@ -3,7 +3,13 @@ import { readCurrency } from './currencies';
 import { sniffDelimiter, findHeaderRow, parseDelimited } from './csv';
 import { dayPart, detectDateOrder, readDate, type DateOrder } from './dates';
 import { fromDebitCredit, parseAmount } from './numbers';
-import type { Candidate, CandidateEntry, ImportProblem, ImportReading } from './types';
+import type {
+  BalanceReading,
+  Candidate,
+  CandidateEntry,
+  ImportProblem,
+  ImportReading,
+} from './types';
 
 /**
  * Reading a statement from a description of its columns.
@@ -56,6 +62,13 @@ export interface ColumnMapping {
      * ledger that never moved.
      */
     readonly status?: string;
+    /**
+     * The running balance after each row, which many French statements carry.
+     *
+     * Read to check the file against itself: on every row the balance has to
+     * move by exactly the amount. Nothing is imported from it.
+     */
+    readonly balance?: string;
   };
 
   /**
@@ -205,6 +218,15 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
 
   const candidates: Candidate[] = [];
   const skipped: ImportProblem[] = [];
+  /**
+   * The balance column, row by row, kept to be checked against the amounts.
+   *
+   * Collected rather than checked in place: the check is about a row and the
+   * one before it, and a row left out - a status meaning it did not happen, a
+   * date nobody could read - breaks the chain. Read them all, then walk the
+   * ones that were read, in order.
+   */
+  const running: { line: number; balance: string; amount: string }[] = [];
   for (const [index, row] of records.entries()) {
     // Counting the header and any junk above it, so the number matches what a
     // spreadsheet shows rather than an offset into an array.
@@ -251,6 +273,14 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
       continue;
     }
 
+    const balance =
+      mapping.columns.balance === undefined
+        ? null
+        : (parseAmount(row[mapping.columns.balance] ?? '')?.value ?? null);
+    if (balance !== null) {
+      running.push({ line, balance: balance.toFixed(), amount: amount.toFixed() });
+    }
+
     const description = (row[mapping.columns.description ?? ''] ?? '').trim();
     const externalId = (row[mapping.columns.externalId ?? ''] ?? '').trim();
     candidates.push({
@@ -276,6 +306,44 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
     counterparts: candidates.length === 0 ? [] : [STATEMENT_COUNTERPART],
     problems,
     skipped,
+    ...(running.length === 0 ? {} : { balances: checkBalances(running) }),
+  };
+}
+
+/**
+ * The balance column, read back against the amounts.
+ *
+ * On every row after the first, the balance has to have moved by exactly that
+ * row's amount. Where it has not, something was misread - a sign, a decimal
+ * comma, a row that is not a movement - and saying so before anything is
+ * written is the difference between catching it here and finding a ledger that
+ * disagrees with the bank by an amount nobody can place.
+ *
+ * The first row is not checked. There is nothing before it in the file, and
+ * the balance it opens from is not stated anywhere the reader can see.
+ */
+function checkBalances(
+  rows: readonly { line: number; balance: string; amount: string }[],
+): BalanceReading {
+  const mismatches: { line: number; expected: string; found: string }[] = [];
+
+  for (let at = 1; at < rows.length; at += 1) {
+    const previous = rows[at - 1]!;
+    const current = rows[at]!;
+    const expected = dec(previous.balance).plus(dec(current.amount));
+    if (!expected.equals(dec(current.balance))) {
+      mismatches.push({
+        line: current.line,
+        expected: expected.toFixed(),
+        found: current.balance,
+      });
+    }
+  }
+
+  return {
+    closing: rows[rows.length - 1]!.balance,
+    checked: Math.max(rows.length - 1, 0),
+    mismatches,
   };
 }
 
@@ -394,6 +462,7 @@ export function parseMapping(value: unknown): ColumnMapping | null {
       ...(named('currency') === undefined ? {} : { currency: named('currency')! }),
       ...(named('externalId') === undefined ? {} : { externalId: named('externalId')! }),
       ...(named('status') === undefined ? {} : { status: named('status')! }),
+      ...(named('balance') === undefined ? {} : { balance: named('balance')! }),
     },
     ...(skipStatuses === undefined || skipStatuses.length === 0 ? {} : { skipStatuses }),
     ...(currency === undefined || currency === '' ? {} : { currency }),

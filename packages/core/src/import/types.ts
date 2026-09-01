@@ -141,4 +141,39 @@ export interface ImportReading {
    * somebody can see in their own file.
    */
   readonly skipped: readonly ImportProblem[];
+  /**
+   * What the statement's own balance column says, when it has one.
+   *
+   * The plan asks for it twice: as a consistency check on debit and credit
+   * columns (§8.3) and as the phase's exit criterion, which is a three year
+   * export that "reconciles to the statement" (§17).
+   *
+   * Undefined when no balance column was mapped, which is not a problem - most
+   * broker exports have none.
+   */
+  readonly balances?: BalanceReading;
+}
+
+/**
+ * A statement's running balance, read back against the amounts.
+ *
+ * The strong half of reconciling is here and needs nothing but the file: on
+ * every row, the balance has to move by exactly the amount. When it does not,
+ * something was misread - a sign, a decimal comma, a row - and that is worth
+ * saying before anything is written, not after the ledger disagrees with the
+ * bank by an amount nobody can place.
+ */
+export interface BalanceReading {
+  /** The balance the last row of the file states, as an exact decimal string. */
+  readonly closing: string;
+  /** How many rows were checked against the one before them. */
+  readonly checked: number;
+  /** Rows where the balance moved by something other than the amount. */
+  readonly mismatches: readonly {
+    readonly line: number;
+    /** What the balance should have become, from the previous one plus the amount. */
+    readonly expected: string;
+    /** What the file actually says. */
+    readonly found: string;
+  }[];
 }
