@@ -5,6 +5,8 @@ import {
   TRANSACTION_STATUSES,
   accountBalances,
   listCategories,
+  listCounterparties,
+  listTags,
   listTransactions,
   type LedgerEntry,
   type LedgerLine,
@@ -18,6 +20,7 @@ import { Pagination } from '@/components/pagination';
 import { TransactionFilters, type FilterValues } from './filters';
 import { money } from '@/lib/money';
 import { Categorise } from './categorise';
+import { Tagging } from './tagging';
 import { ReverseButton } from './reverse-button';
 
 export const metadata = { title: 'Altitude' };
@@ -85,6 +88,12 @@ export default async function TransactionsPage({
       : 'all',
     from: DATE.test(raw('from')) ? raw('from') : '',
     to: DATE.test(raw('to')) ? raw('to') : '',
+    categoryId: UUID.test(raw('categoryId')) ? raw('categoryId') : '',
+    tagId: UUID.test(raw('tagId')) ? raw('tagId') : '',
+    // Not validated against a list: it is free text somebody may have typed or
+    // a bank may have written, and a name this household does not use simply
+    // matches nothing.
+    counterparty: raw('counterparty').slice(0, 200),
   };
 
   const active =
@@ -92,10 +101,15 @@ export default async function TransactionsPage({
     filters.kind !== '' ||
     filters.status !== 'all' ||
     filters.from !== '' ||
-    filters.to !== '';
+    filters.to !== '' ||
+    filters.categoryId !== '' ||
+    filters.tagId !== '' ||
+    filters.counterparty !== '';
 
   const accounts = await scoped((tx) => accountBalances(tx, ctx.actor));
   const categories = await scoped((tx) => listCategories(tx, ctx.actor));
+  const tags = await scoped((tx) => listTags(tx, ctx.actor));
+  const counterparties = await scoped((tx) => listCounterparties(tx, ctx.actor));
 
   const page = await scoped((tx) =>
     listTransactions(tx, ctx.actor, {
@@ -106,6 +120,9 @@ export default async function TransactionsPage({
       ...(filters.kind === '' ? {} : { kind: filters.kind }),
       ...(filters.from === '' ? {} : { from: ledgerDate(filters.from) }),
       ...(filters.to === '' ? {} : { to: ledgerDate(filters.to) }),
+      ...(filters.categoryId === '' ? {} : { categoryId: filters.categoryId }),
+      ...(filters.tagId === '' ? {} : { tagId: filters.tagId }),
+      ...(filters.counterparty === '' ? {} : { counterparty: filters.counterparty }),
     }),
   );
 
@@ -142,10 +159,13 @@ export default async function TransactionsPage({
           and the query, and left every field showing what had just been
           cleared. The key makes the URL the single source of truth. */}
       <TransactionFilters
-        key={`${filters.accountId}|${filters.kind}|${filters.status}|${filters.from}|${filters.to}`}
+        key={Object.values(filters).join('|')}
         accounts={accounts.map((a) => ({ id: a.accountId, name: a.name }))}
         kinds={TRANSACTION_KINDS}
         statuses={TRANSACTION_STATUSES}
+        categories={categories}
+        tags={tags}
+        counterparties={counterparties}
         value={filters}
         active={active}
       />
@@ -165,6 +185,7 @@ export default async function TransactionsPage({
                   locale={locale}
                   date={dates.format(new Date(`${entry.bookedOn}T00:00:00`))}
                   kindLabel={t(`transactionKind.${entry.kind}`)}
+                  tags={tags}
                   labels={{
                     reversed: t('transactions.reversed'),
                     isReversal: t('transactions.isReversal'),
@@ -217,6 +238,7 @@ function Card({
   labels,
   canReverse,
   categories,
+  tags,
 }: {
   entry: LedgerEntry;
   locale: string;
@@ -225,6 +247,7 @@ function Card({
   labels: { reversed: string; isReversal: string; reverse: string; to: string; lines: string };
   canReverse: boolean;
   categories: readonly { id: string; name: string }[];
+  tags: readonly { id: string; name: string }[];
 }) {
   const reversed = entry.reversedById !== null;
   const movement = asMovement(entry.lines);
@@ -235,19 +258,15 @@ function Card({
   return (
     <div className={`bg-card/60 rounded-2xl border p-4 sm:p-5 ${reversed ? 'opacity-70' : ''}`}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        {/* What it was, and what it is worth. Everything a person can change
+            about it moved to its own row below: a description, a menu, a name,
+            a button and three badges on one line is a line nobody reads, and a
+            long description pushed the rest off the card. */}
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2">
             <span className="truncate text-[15px] font-medium">
               {entry.description ?? kindLabel}
             </span>
-            {/* The category, and the way to change it, in one control. A
-                badge beside a menu would be the same fact twice. */}
-            <Categorise
-              transactionId={entry.id}
-              description={entry.description}
-              current={categoryId ?? ''}
-              categories={categories}
-            />
             {reversed && (
               <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase">
                 {labels.reversed}
@@ -275,6 +294,32 @@ function Card({
             {money(movement.amount.amount.toFixed(), movement.amount.currency, locale)}
           </p>
         )}
+      </div>
+
+      {/* The three things a person files a movement under, on their own row.
+          Controls first, then what they produced, so the eye finds the same
+          two menus in the same place on every card. */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <Categorise
+          transactionId={entry.id}
+          description={entry.description}
+          current={categoryId ?? ''}
+          categories={categories}
+        />
+        <Tagging transactionId={entry.id} current={entry.tags.map((tag) => tag.id)} tags={tags} />
+        {/* Who was on the other side, which no category says: groceries mixes
+            every shop. */}
+        {entry.counterparty !== null && (
+          <span className="text-muted-foreground text-xs">{entry.counterparty}</span>
+        )}
+        {entry.tags.map((tag) => (
+          <span
+            key={tag.id}
+            className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px]"
+          >
+            {tag.name}
+          </span>
+        ))}
       </div>
 
       {movement === null ? (

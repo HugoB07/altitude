@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, Trash2, Wand2, X } from 'lucide-react';
+import { Check, Plus, Trash2, Wand2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,8 +19,10 @@ import {
   applyRulesAction,
   createCategoryAction,
   createRuleAction,
+  createTagAction,
   deleteCategoryAction,
   deleteRuleAction,
+  deleteTagAction,
   previewRulesAction,
 } from '@/server/category-actions';
 
@@ -37,7 +40,10 @@ export interface RuleView {
   readonly priority: number;
   readonly pattern: string;
   readonly direction: string;
+  /** Empty when the rule sets no category, which is allowed. */
   readonly categoryName: string;
+  readonly counterparty: string | null;
+  readonly tagNames: readonly string[];
 }
 
 export interface CategoryView {
@@ -47,16 +53,21 @@ export interface CategoryView {
 
 export function Rules({
   categories,
+  tags,
   rules,
 }: {
   categories: readonly CategoryView[];
+  tags: readonly CategoryView[];
   rules: readonly RuleView[];
 }) {
   const t = useTranslations('categories');
   const [pending, start] = useTransition();
 
   const [name, setName] = useState('');
+  const [tagName, setTagName] = useState('');
   const [ruleName, setRuleName] = useState('');
+  const [ruleCounterparty, setRuleCounterparty] = useState('');
+  const [ruleTags, setRuleTags] = useState<readonly string[]>([]);
   const [pattern, setPattern] = useState('');
   const [direction, setDirection] = useState('out');
   const [category, setCategory] = useState('');
@@ -151,6 +162,79 @@ export function Rules({
         </form>
       </section>
 
+      <section className="grid grid-cols-1 gap-3 rounded-2xl border p-5">
+        <div>
+          <h2 className="text-[13px] font-semibold tracking-wide uppercase">{t('tagsTitle')}</h2>
+          <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('tagsHint')}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {tags.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t('noTagsYet')}</p>
+          ) : (
+            tags.map((one) => (
+              <span
+                key={one.id}
+                className="bg-muted flex items-center gap-1 rounded-full py-1 pr-1 pl-2.5 text-xs"
+              >
+                {one.name}
+                <button
+                  type="button"
+                  disabled={pending}
+                  aria-label={t('deleteTag', { name: one.name })}
+                  title={t('deleteTagHint')}
+                  className="hover:bg-foreground/10 flex size-4 items-center justify-center rounded-full transition-colors"
+                  onClick={() => {
+                    const form = new FormData();
+                    form.set('id', one.id);
+                    submit(
+                      () => deleteTagAction(form),
+                      () => {
+                        toast.success(t('tagDeleted'));
+                      },
+                    );
+                  }}
+                >
+                  <X className="size-3" aria-hidden />
+                </button>
+              </span>
+            ))
+          )}
+        </div>
+
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData();
+            form.set('name', tagName);
+            submit(
+              () => createTagAction(form),
+              () => {
+                setTagName('');
+              },
+            );
+          }}
+        >
+          <div className="grid gap-1.5">
+            <Label htmlFor="tag-name">{t('tagName')}</Label>
+            <Input
+              id="tag-name"
+              value={tagName}
+              onChange={(event) => {
+                setTagName(event.target.value);
+              }}
+              placeholder={t('tagPlaceholder')}
+              className="sm:w-64"
+            />
+          </div>
+          <Button type="submit" variant="outline" disabled={pending || tagName.trim() === ''}>
+            <Plus className="size-4" aria-hidden />
+            {t('addTag')}
+          </Button>
+        </form>
+      </section>
+
       <section className="grid grid-cols-1 gap-4 rounded-2xl border p-5">
         <div>
           <h2 className="text-[13px] font-semibold tracking-wide uppercase">{t('rulesTitle')}</h2>
@@ -178,8 +262,23 @@ export function Rules({
                     })}
                   </span>
                 </span>
-                <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs">
-                  {rule.categoryName}
+                <span className="flex shrink-0 flex-wrap items-center gap-1">
+                  {rule.categoryName !== '' && (
+                    <span className="bg-muted rounded-full px-2.5 py-1 text-xs">
+                      {rule.categoryName}
+                    </span>
+                  )}
+                  {rule.counterparty !== null && (
+                    <span className="text-muted-foreground text-xs">{rule.counterparty}</span>
+                  )}
+                  {rule.tagNames.map((tag) => (
+                    <span
+                      key={tag}
+                      className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </span>
                 <Button
                   type="button"
@@ -206,7 +305,7 @@ export function Rules({
         )}
 
         <form
-          className="grid grid-cols-1 items-start gap-3 border-t pt-4 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-5 border-t pt-4"
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData();
@@ -214,93 +313,159 @@ export function Rules({
             form.set('pattern', pattern);
             form.set('direction', direction);
             form.set('categoryId', category);
+            form.set('counterparty', ruleCounterparty);
+            form.set('tagIds', ruleTags.join(','));
             submit(
               () => createRuleAction(form),
               () => {
                 setRuleName('');
                 setPattern('');
+                setRuleCounterparty('');
+                setRuleTags([]);
                 toast.success(t('ruleAdded'));
               },
             );
           }}
         >
-          <div className="grid gap-1.5">
-            <Label htmlFor="rule-name">{t('ruleName')}</Label>
-            <Input
-              id="rule-name"
-              value={ruleName}
-              onChange={(event) => {
-                setRuleName(event.target.value);
-              }}
-              placeholder={t('rulePlaceholder')}
-            />
-          </div>
+          <fieldset className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2">
+            <legend className="text-muted-foreground col-span-full mb-2 text-[11px] font-medium tracking-wide uppercase">
+              {t('ruleWhen')}
+            </legend>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="rule-pattern">{t('rulePattern')}</Label>
-            <Input
-              id="rule-pattern"
-              value={pattern}
-              onChange={(event) => {
-                setPattern(event.target.value);
-              }}
-              placeholder={t('patternPlaceholder')}
-            />
-            {/* Said once, here, because it is the one thing about these rules
+            <div className="grid gap-1.5">
+              <Label htmlFor="rule-name">{t('ruleName')}</Label>
+              <Input
+                id="rule-name"
+                value={ruleName}
+                onChange={(event) => {
+                  setRuleName(event.target.value);
+                }}
+                placeholder={t('rulePlaceholder')}
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="rule-pattern">{t('rulePattern')}</Label>
+              <Input
+                id="rule-pattern"
+                value={pattern}
+                onChange={(event) => {
+                  setPattern(event.target.value);
+                }}
+                placeholder={t('patternPlaceholder')}
+              />
+              {/* Said once, here, because it is the one thing about these rules
                 that is not obvious: they read a cleaned-up label, not the raw
                 line, which is what makes a rule outlive next month's file. */}
-            <p className="text-muted-foreground text-xs">{t('patternHint')}</p>
-          </div>
+              <p className="text-muted-foreground text-xs">{t('patternHint')}</p>
+            </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="rule-direction">{t('ruleDirection')}</Label>
-            <Select
-              name="rule-direction"
-              value={direction}
-              onValueChange={(value) => {
-                setDirection(value ?? 'out');
-              }}
-            >
-              <SelectTrigger id="rule-direction" className="w-full">
-                <SelectValue>{t(`direction.${direction}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="out">{t('direction.out')}</SelectItem>
-                <SelectItem value="in">{t('direction.in')}</SelectItem>
-                <SelectItem value="any">{t('direction.any')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="rule-direction">{t('ruleDirection')}</Label>
+              <Select
+                name="rule-direction"
+                value={direction}
+                onValueChange={(value) => {
+                  setDirection(value ?? 'out');
+                }}
+              >
+                <SelectTrigger id="rule-direction" className="w-full">
+                  <SelectValue>{t(`direction.${direction}`)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="out">{t('direction.out')}</SelectItem>
+                  <SelectItem value="in">{t('direction.in')}</SelectItem>
+                  <SelectItem value="any">{t('direction.any')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </fieldset>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="rule-category">{t('ruleCategory')}</Label>
-            <Select
-              name="rule-category"
-              value={category}
-              onValueChange={(value) => {
-                setCategory(value ?? '');
-              }}
-            >
-              <SelectTrigger id="rule-category" className="w-full">
-                <SelectValue>
-                  {categories.find((one) => one.id === category)?.name ?? t('chooseCategory')}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((one) => (
-                  <SelectItem key={one.id} value={one.id}>
-                    {one.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <fieldset className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2">
+            <legend className="text-muted-foreground col-span-full mb-2 text-[11px] font-medium tracking-wide uppercase">
+              {t('ruleThen')}
+            </legend>
 
-          <div className="sm:col-span-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="rule-category">{t('ruleCategory')}</Label>
+              <Select
+                name="rule-category"
+                value={category}
+                onValueChange={(value) => {
+                  setCategory(value ?? '');
+                }}
+              >
+                <SelectTrigger id="rule-category" className="w-full">
+                  <SelectValue>
+                    {categories.find((one) => one.id === category)?.name ?? t('chooseCategory')}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((one) => (
+                    <SelectItem key={one.id} value={one.id}>
+                      {one.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {tags.length > 0 && (
+              <div className="grid gap-1.5">
+                <Label>{t('ruleTags')}</Label>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {tags.map((tag) => {
+                    const on = ruleTags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          setRuleTags(
+                            on ? ruleTags.filter((one) => one !== tag.id) : [...ruleTags, tag.id],
+                          );
+                        }}
+                        aria-pressed={on}
+                        className={cn(
+                          'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors',
+                          on
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'border-dashed hover:bg-muted',
+                        )}
+                      >
+                        {on && <Check className="size-3" aria-hidden />}
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-muted-foreground text-xs">{t('ruleTagsHint')}</p>
+              </div>
+            )}
+            <div className="col-span-full grid gap-1.5">
+              <Label htmlFor="rule-counterparty">{t('ruleCounterparty')}</Label>
+              <Input
+                id="rule-counterparty"
+                value={ruleCounterparty}
+                onChange={(event) => {
+                  setRuleCounterparty(event.target.value);
+                }}
+                placeholder={t('ruleCounterpartyPlaceholder')}
+              />
+              <p className="text-muted-foreground text-xs">{t('ruleCounterpartyHint')}</p>
+            </div>
+          </fieldset>
+
+          <div>
+            {/* A rule needs a condition and at least one effect. Any one of the
+                three will do: a rule that only tags a trip is a rule. */}
             <Button
               type="submit"
               disabled={
-                pending || ruleName.trim() === '' || pattern.trim() === '' || category === ''
+                pending ||
+                ruleName.trim() === '' ||
+                pattern.trim() === '' ||
+                (category === '' && ruleCounterparty.trim() === '' && ruleTags.length === 0)
               }
             >
               <Plus className="size-4" aria-hidden />

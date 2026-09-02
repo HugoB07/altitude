@@ -21,12 +21,20 @@ export interface FilterValues {
   readonly status: string;
   readonly from: string;
   readonly to: string;
+  /** What a movement was for, who was on the other side, and what it belonged to. */
+  readonly categoryId: string;
+  readonly counterparty: string;
+  readonly tagId: string;
 }
 
 interface Props {
   readonly accounts: readonly { id: string; name: string }[];
   readonly kinds: readonly string[];
   readonly statuses: readonly string[];
+  readonly categories: readonly { id: string; name: string }[];
+  readonly tags: readonly { id: string; name: string }[];
+  /** Names already recorded, so the filter is a choice rather than a spelling test. */
+  readonly counterparties: readonly string[];
   readonly value: FilterValues;
   readonly active: boolean;
 }
@@ -43,7 +51,16 @@ interface Props {
  * pages there are, so keeping the old number would land the reader on page 7 of
  * a result that now has two - or on nothing at all.
  */
-export function TransactionFilters({ accounts, kinds, statuses, value, active }: Props) {
+export function TransactionFilters({
+  accounts,
+  kinds,
+  statuses,
+  categories,
+  tags,
+  counterparties,
+  value,
+  active,
+}: Props) {
   const t = useTranslations('transactions');
   const kindLabel = useTranslations('transactionKind');
 
@@ -52,6 +69,9 @@ export function TransactionFilters({ accounts, kinds, statuses, value, active }:
   const [accountId, setAccountId] = useState(value.accountId);
   const [kind, setKind] = useState(value.kind);
   const [status, setStatus] = useState(value.status);
+  const [categoryId, setCategoryId] = useState(value.categoryId);
+  const [tagId, setTagId] = useState(value.tagId);
+  const [counterparty, setCounterparty] = useState(value.counterparty);
 
   const accountName = accounts.find((a) => a.id === accountId)?.name ?? t('anyAccount');
   const statusLabel = (key: string) =>
@@ -83,7 +103,10 @@ export function TransactionFilters({ accounts, kinds, statuses, value, active }:
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      {/* Three per row rather than five: eight controls across one line is a
+          line nobody reads, and the three new ones are as long-labelled as the
+          old ones. */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="grid gap-1.5">
           <Label htmlFor="accountId">{t('filterAccount')}</Label>
           <Select name="accountId" value={accountId} onValueChange={(v) => setAccountId(v ?? '')}>
@@ -117,6 +140,79 @@ export function TransactionFilters({ accounts, kinds, statuses, value, active }:
             </SelectContent>
           </Select>
         </div>
+
+        {/* Only offered when there is something to offer. A select with one
+            item saying "any" is a control that teaches nothing. */}
+        {categories.length > 0 && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="categoryId">{t('filterCategory')}</Label>
+            <Select
+              name="categoryId"
+              value={categoryId}
+              onValueChange={(v) => setCategoryId(v ?? '')}
+            >
+              <SelectTrigger id="categoryId" className="w-full">
+                <SelectValue>
+                  {categories.find((one) => one.id === categoryId)?.name ?? t('anyCategory')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t('anyCategory')}</SelectItem>
+                {categories.map((one) => (
+                  <SelectItem key={one.id} value={one.id}>
+                    {one.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {tags.length > 0 && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="tagId">{t('filterTag')}</Label>
+            <Select name="tagId" value={tagId} onValueChange={(v) => setTagId(v ?? '')}>
+              <SelectTrigger id="tagId" className="w-full">
+                <SelectValue>
+                  {tags.find((one) => one.id === tagId)?.name ?? t('anyTag')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t('anyTag')}</SelectItem>
+                {tags.map((one) => (
+                  <SelectItem key={one.id} value={one.id}>
+                    {one.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {counterparties.length > 0 && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="counterparty">{t('filterCounterparty')}</Label>
+            <Select
+              name="counterparty"
+              value={counterparty}
+              onValueChange={(v) => setCounterparty(v ?? '')}
+            >
+              <SelectTrigger id="counterparty" className="w-full">
+                <SelectValue>
+                  {counterparty === '' ? t('anyCounterparty') : counterparty}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t('anyCounterparty')}</SelectItem>
+                {counterparties.map((one) => (
+                  <SelectItem key={one} value={one}>
+                    {one}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="grid gap-1.5">
           <Label htmlFor="status">{t('filterStatus')}</Label>

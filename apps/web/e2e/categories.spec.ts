@@ -64,8 +64,8 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
     await page.goto('/app/categories');
     await expect(page.getByRole('heading', { name: 'Categories', level: 1 })).toBeVisible();
 
-    await page.getByLabel('Name').fill('Groceries');
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByLabel('Category name').fill('Groceries');
+    await page.getByRole('button', { name: 'Add category' }).click();
     await expect(page.getByText('Groceries').first()).toBeVisible();
 
     await page.getByLabel('What this rule is for').fill('Supermarkets');
@@ -74,8 +74,30 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
     await page.getByLabel('Words to look for').fill('carrefour|leclerc');
     await page.getByLabel('Files it under').click();
     await page.getByRole('option', { name: 'Groceries' }).click();
+    // A tag, so the rule form has one to offer.
+    await page.getByLabel('Tag name').fill('spain-2027');
+    await page.getByRole('button', { name: 'Add tag' }).click();
+    await expect(page.getByText('spain-2027').first()).toBeVisible();
+
     await page.getByRole('button', { name: 'Add rule' }).click();
     await expect(page.getByText('carrefour|leclerc')).toBeVisible();
+
+    // --- A rule with no category at all ------------------------------------
+    /**
+     * Which is why the column stopped being mandatory. A rule that marks every
+     * line of a trip decides no category, and refusing it would mean tags could
+     * only ever be applied by hand.
+     */
+    await page.getByLabel('What this rule is for').fill('Trip');
+    await page.getByLabel('Words to look for').fill('madrid|barcelona');
+    // Inside the rule's own "then" block: the tag also appears in the list
+    // above, where the same name is a delete button.
+    await page
+      .getByRole('group', { name: /Then do this/ })
+      .getByRole('button', { name: 'spain-2027' })
+      .click();
+    await page.getByRole('button', { name: 'Add rule' }).click();
+    await expect(page.getByText('madrid|barcelona')).toBeVisible();
 
     // --- The count comes before the act ------------------------------------
     await page.getByRole('button', { name: 'See what would change' }).click();
@@ -105,8 +127,8 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
      * a rule every time you corrected it is a tool you stop correcting.
      */
     await page.goto('/app/categories');
-    await page.getByLabel('Name').fill('Household');
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByLabel('Category name').fill('Household');
+    await page.getByRole('button', { name: 'Add category' }).click();
     await expect(page.getByText('Household').first()).toBeVisible();
 
     await page.goto('/app/transactions');

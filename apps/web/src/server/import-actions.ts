@@ -62,6 +62,8 @@ export interface PreviewLine {
   readonly bookedOn: string;
   readonly kind: string;
   readonly description: string | null;
+  /** Who the bank says was on the other side, where it says so. */
+  readonly counterparty: string | null;
   readonly sourceLines: readonly number[];
   readonly verdict: Verdict['kind'];
   /**
@@ -262,6 +264,7 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
       bookedOn: candidate.bookedOn,
       kind: candidate.kind,
       description: candidate.description ?? null,
+      counterparty: candidate.counterparty ?? null,
       sourceLines: candidate.sourceLines,
       verdict: verdicts[index]?.kind ?? 'new',
       daysApart: verdicts[index]?.kind === 'probable' ? verdicts[index].daysApart : null,

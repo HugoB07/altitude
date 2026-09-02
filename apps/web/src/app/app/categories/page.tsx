@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { listCategories, listRules } from '@altitude/core';
+import { listCategories, listRules, listTags } from '@altitude/core';
 import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
 import { Rules } from './rules';
@@ -20,6 +20,7 @@ export default async function CategoriesPage() {
   const t = await getTranslations('categories');
   const categories = await scoped((tx) => listCategories(tx, ctx.actor));
   const rules = await scoped((tx) => listRules(tx, ctx.actor));
+  const tags = await scoped((tx) => listTags(tx, ctx.actor));
 
   return (
     <div className="grid grid-cols-1 gap-8">
@@ -30,6 +31,7 @@ export default async function CategoriesPage() {
 
       <Rules
         categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+        tags={tags}
         rules={rules.map((rule) => ({
           id: rule.id,
           name: rule.name,
@@ -42,6 +44,8 @@ export default async function CategoriesPage() {
                 ? 'out'
                 : 'in',
           categoryName: rule.categoryName,
+          counterparty: rule.counterparty,
+          tagNames: rule.tagNames,
         }))}
       />
     </div>

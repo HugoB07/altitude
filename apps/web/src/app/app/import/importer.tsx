@@ -1086,6 +1086,15 @@ function Row({
             <Verdict kind={line.verdict} daysApart={line.daysApart} checked={checked} t={t} />
           </span>
           <span className="text-muted-foreground mt-0.5 block text-xs">
+            {/* Named by the bank, not guessed. Shown here because a person
+                reviewing an import wants to know it landed - it is the one
+                field they cannot check by reading the amounts. */}
+            {line.counterparty !== null && (
+              <>
+                {line.counterparty}
+                <span aria-hidden> · </span>
+              </>
+            )}
             {line.bookedOn} · {line.kind} ·{' '}
             {t('sourceLines', {
               count: line.sourceLines.length,
@@ -1464,6 +1473,7 @@ const BLANK_DRAFT: DraftMapping = {
   credit: '',
   externalId: '',
   balance: '',
+  counterparty: '',
   status: '',
   skipStatuses: [],
   currency: '',
@@ -1524,6 +1534,7 @@ function guess(
     // column - but a wrong guess here costs a control somebody changes, and
     // the check it feeds is worth offering.
     balance: find('solde', 'balance'),
+    counterparty: find('counterparty', 'beneficiaire', 'tiers', 'payee'),
     ...(debit !== '' && credit !== ''
       ? { amountMode: 'two' as const, debit, credit }
       : { amountMode: 'one' as const, amount }),
@@ -1552,6 +1563,7 @@ function toColumnMapping(draft: DraftMapping) {
       ...(named(draft.externalId) === undefined ? {} : { externalId: draft.externalId }),
       ...(named(draft.status) === undefined ? {} : { status: draft.status }),
       ...(named(draft.balance) === undefined ? {} : { balance: draft.balance }),
+      ...(named(draft.counterparty) === undefined ? {} : { counterparty: draft.counterparty }),
     },
     ...(draft.skipStatuses.length === 0 ? {} : { skipStatuses: draft.skipStatuses }),
     currency: draft.currency,
@@ -1591,6 +1603,7 @@ function toDraft(stored: unknown): DraftMapping | null {
     credit: text(columns['credit']),
     externalId: text(columns['externalId']),
     balance: text(columns['balance']),
+    counterparty: text(columns['counterparty']),
     status: text(columns['status']),
     skipStatuses: Array.isArray(raw['skipStatuses'])
       ? raw['skipStatuses'].filter((value): value is string => typeof value === 'string')

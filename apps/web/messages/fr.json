@@ -171,7 +171,13 @@
     "statusReversed": "Transactions contrepassées seules",
     "emptyFiltered": "Aucune transaction ne correspond à ces filtres.",
     "clearDate": "Effacer cette date",
-    "anyDate": "N'importe quand"
+    "anyDate": "N'importe quand",
+    "filterCategory": "Catégorie",
+    "anyCategory": "N'importe quelle catégorie",
+    "filterTag": "Étiquette",
+    "anyTag": "N'importe quelle étiquette",
+    "filterCounterparty": "Contrepartie",
+    "anyCounterparty": "N'importe qui"
   },
   "transactionKind": {
     "buy": "achat",
@@ -326,16 +332,18 @@
     "reconcileGapHint": "C'est normal si le grand livre ne contient pas déjà tout ce qui précède ce relevé, ou si vous laissez des lignes de côté ci-dessous.",
     "reconcileMismatches": "{count, plural, =1 {Sur # ligne} other {Sur # lignes}} le solde ne bouge pas du montant de la ligne, ce qui veut dire qu'une valeur a été mal lue : {lines}.",
     "reconcileUnder": "En important toutes ses lignes, ce compte arrive à {after}, soit {gap} de moins.",
-    "reconcileOver": "En important toutes ses lignes, ce compte arrive à {after}, soit {gap} de plus."
+    "reconcileOver": "En important toutes ses lignes, ce compte arrive à {after}, soit {gap} de plus.",
+    "columnCounterparty": "Qui était en face",
+    "columnCounterpartyHint": "Facultatif. Le commerçant, l'employeur. Rare sur un relevé, courant sur un virement - sinon une règle peut le lire dans le libellé."
   },
   "categories": {
     "title": "Catégories",
     "description": "À quoi servent vos mouvements, décidé par des règles que vous écrivez. Rien n'est deviné, et chaque catégorie remonte à une règle.",
     "categoriesTitle": "Vos catégories",
     "categoriesHint": "Ajoutez celles que vous utilisez vraiment. Une catégorie sans règle reste une catégorie où classer quelque chose à la main.",
-    "categoryName": "Nom",
+    "categoryName": "Nom de la catégorie",
     "categoryPlaceholder": "Courses",
-    "addCategory": "Ajouter",
+    "addCategory": "Ajouter la catégorie",
     "noCategories": "Aucune catégorie pour le moment.",
     "nameRequired": "Donnez un nom à la catégorie.",
     "rulesTitle": "Règles",
@@ -377,6 +385,25 @@
     "ruleAddedFrom": "Règle ajoutée pour {pattern}",
     "deleteCategory": "Supprimer {name}",
     "deleteCategoryHint": "Supprime aussi les règles qui classent dedans. Les transactions gardent leur historique et perdent l'étiquette.",
-    "categoryDeleted": "Catégorie supprimée"
+    "categoryDeleted": "Catégorie supprimée",
+    "tagThis": "Étiquettes de cette transaction",
+    "noTags": "Étiqueter",
+    "tagCount": "{count, plural, =1 {# étiquette} other {# étiquettes}}",
+    "tagsTitle": "Vos étiquettes",
+    "tagsHint": "Une étiquette traverse les catégories. Une semaine en Espagne, ce sont des restaurants, de l'essence et un hôtel : chacun garde sa catégorie, et l'étiquette « espagne-2027 » dit ce que le voyage a coûté. Un mouvement en porte zéro, une ou cinq, donc les étiquettes ne s'additionnent pas jusqu'à votre total - c'est ce qui les distingue des catégories.",
+    "tagName": "Nom de l'étiquette",
+    "tagPlaceholder": "espagne-2027",
+    "addTag": "Ajouter l'étiquette",
+    "noTagsYet": "Aucune étiquette pour le moment.",
+    "deleteTag": "Supprimer {name}",
+    "deleteTagHint": "La retire de chaque transaction qui la porte, et des règles qui l'appliquent.",
+    "tagDeleted": "Étiquette supprimée",
+    "ruleCounterparty": "Nomme la contrepartie",
+    "ruleCounterpartyPlaceholder": "Carrefour",
+    "ruleCounterpartyHint": "Sans effet quand la banque l'a déjà nommée : ce que dit le fichier vaut mieux qu'un motif.",
+    "ruleTags": "Et pose ces étiquettes",
+    "ruleTagsHint": "Cliquez pour en choisir autant que vous voulez. Contrairement à la catégorie, une règle peut en poser plusieurs.",
+    "ruleWhen": "Quand une ligne ressemble à ça",
+    "ruleThen": "Alors fais ceci"
   }
 }

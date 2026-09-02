@@ -171,7 +171,13 @@
     "statusReversed": "Only reversed transactions",
     "emptyFiltered": "No transaction matches these filters.",
     "clearDate": "Clear this date",
-    "anyDate": "Any date"
+    "anyDate": "Any date",
+    "filterCategory": "Category",
+    "anyCategory": "Any category",
+    "filterTag": "Tag",
+    "anyTag": "Any tag",
+    "filterCounterparty": "Counterparty",
+    "anyCounterparty": "Anyone"
   },
   "transactionKind": {
     "buy": "purchase",
@@ -326,16 +332,18 @@
     "reconcileGapHint": "That is expected if the ledger does not already hold everything before this statement, or if you leave lines out below.",
     "reconcileMismatches": "{count, plural, =1 {On # row} other {On # rows}} the balance does not move by that row's amount, which means something was misread: {lines}.",
     "reconcileUnder": "Importing all of its lines brings this account to {after}, which is {gap} below it.",
-    "reconcileOver": "Importing all of its lines brings this account to {after}, which is {gap} above it."
+    "reconcileOver": "Importing all of its lines brings this account to {after}, which is {gap} above it.",
+    "columnCounterparty": "Who was on the other side",
+    "columnCounterpartyHint": "Optional. The shop, the employer. Rare on a statement, common on a transfer - a rule can read it from the description instead."
   },
   "categories": {
     "title": "Categories",
     "description": "What your movements were for, decided by rules you write. Nothing is guessed, and every category can be traced to one rule.",
     "categoriesTitle": "Your categories",
     "categoriesHint": "Add the ones you actually use. A category with no rule is still a category you can file something under by hand.",
-    "categoryName": "Name",
+    "categoryName": "Category name",
     "categoryPlaceholder": "Groceries",
-    "addCategory": "Add",
+    "addCategory": "Add category",
     "noCategories": "No categories yet.",
     "nameRequired": "Give the category a name.",
     "rulesTitle": "Rules",
@@ -377,6 +385,25 @@
     "ruleAddedFrom": "Rule added for {pattern}",
     "deleteCategory": "Delete {name}",
     "deleteCategoryHint": "Deletes the rules that file into it. Transactions keep their history and lose the label.",
-    "categoryDeleted": "Category deleted"
+    "categoryDeleted": "Category deleted",
+    "tagThis": "Tags on this transaction",
+    "noTags": "Tag",
+    "tagCount": "{count, plural, =1 {# tag} other {# tags}}",
+    "tagsTitle": "Your tags",
+    "tagsHint": "A tag cuts across categories. A week in Spain is restaurants, fuel and a hotel: each keeps its own category, and the tag “spain-2027” says what the trip cost. A movement carries none, one or five, so tags do not add up to your total - that is what separates them from categories.",
+    "tagName": "Tag name",
+    "tagPlaceholder": "spain-2027",
+    "addTag": "Add tag",
+    "noTagsYet": "No tags yet.",
+    "deleteTag": "Delete {name}",
+    "deleteTagHint": "Removes it from every transaction that carries it, and from the rules that apply it.",
+    "tagDeleted": "Tag deleted",
+    "ruleCounterparty": "Names the other side as",
+    "ruleCounterpartyPlaceholder": "Carrefour",
+    "ruleCounterpartyHint": "Ignored where the bank already named it: what the file says beats what a pattern guesses.",
+    "ruleTags": "And puts these tags on it",
+    "ruleTagsHint": "Click to pick as many as you like. Unlike the category, a rule can apply several.",
+    "ruleWhen": "When a line looks like this",
+    "ruleThen": "Then do this to it"
   }
 }

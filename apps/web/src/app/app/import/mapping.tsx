@@ -34,6 +34,8 @@ export interface DraftMapping {
    * with what the ledger will hold. Nothing is imported from it.
    */
   readonly balance: string;
+  /** A column naming who was on the other side, where the bank gives one. */
+  readonly counterparty: string;
   /** A column whose value says whether the row happened. */
   readonly status: string;
   /** Values of that column whose rows are left out. */
@@ -108,6 +110,7 @@ export function MappingForm({
   claim(draft.externalId, t('columnReference'));
   claim(draft.status, t('columnStatus'));
   claim(draft.balance, t('columnBalance'));
+  claim(draft.counterparty, t('columnCounterparty'));
   if (draft.amountMode === 'one') claim(draft.amount, t('columnAmount'));
   else {
     claim(draft.debit, t('columnDebit'));
@@ -279,6 +282,19 @@ export function MappingForm({
             hint={t('columnReferenceHint')}
             onChange={(value) => {
               set('externalId', value);
+            }}
+          />
+
+          <Column
+            id="map-counterparty"
+            sample={shape.sample}
+            label={t('columnCounterparty')}
+            headers={shape.headers}
+            value={draft.counterparty}
+            optional
+            hint={t('columnCounterpartyHint')}
+            onChange={(value) => {
+              set('counterparty', value);
             }}
           />
 

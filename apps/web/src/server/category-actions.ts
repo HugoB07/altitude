@@ -7,15 +7,18 @@ import {
   applyRules,
   createCategory,
   createRule,
+  createTag,
   deleteCategory,
   deleteRule,
+  deleteTag,
   listCategories,
   listRules,
   setTransactionCategory,
+  setTransactionTags,
   suggestPattern,
   type ApplyResult,
 } from '@altitude/core';
-import { categoryId } from '@altitude/shared';
+import { categoryId, isUuid } from '@altitude/shared';
 import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
@@ -61,10 +64,19 @@ export async function createRuleAction(formData: FormData): Promise<CategoryOutc
   const name = String(formData.get('name') ?? '').trim();
   const pattern = String(formData.get('pattern') ?? '').trim();
   const category = String(formData.get('categoryId') ?? '');
+  const counterparty = String(formData.get('counterparty') ?? '').trim();
+  const tagIds = String(formData.get('tagIds') ?? '')
+    .split(',')
+    .filter((id) => isUuid(id));
   const priority = Number(formData.get('priority') ?? '100');
   const direction = String(formData.get('direction') ?? 'any');
 
-  if (name === '' || pattern === '' || category === '') return { error: t('ruleIncomplete') };
+  // A condition, and at least one of the three effects. A rule that files
+  // nothing, names nobody and tags nothing is a rule that does nothing.
+  if (name === '' || pattern === '') return { error: t('ruleIncomplete') };
+  if (category === '' && counterparty === '' && tagIds.length === 0) {
+    return { error: t('ruleIncomplete') };
+  }
 
   /**
    * The sign, as a question rather than a pair of number fields.
@@ -90,7 +102,9 @@ export async function createRuleAction(formData: FormData): Promise<CategoryOutc
           descriptionMatches: pattern,
           ...(bounds[direction] === undefined ? {} : { amountBetween: bounds[direction] }),
         },
-        categoryId: categoryId(category),
+        ...(category === '' ? {} : { categoryId: categoryId(category) }),
+        ...(counterparty === '' ? {} : { counterparty }),
+        ...(tagIds.length === 0 ? {} : { tagIds }),
       }),
     );
     // Null means the conditions did not survive being read back, which for a
@@ -212,6 +226,64 @@ export async function setCategoryAction(
 
     const suggestion = description === '' ? '' : suggestPattern(description);
     return suggestion === '' ? { ok: true } : { ok: true, suggestion };
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+}
+
+/** Replaces the tags on one transaction with the set that was ticked. */
+export async function setTagsAction(formData: FormData): Promise<CategoryOutcome> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  const transactionId = String(formData.get('transactionId') ?? '');
+  if (!isUuid(transactionId)) return { ok: true };
+
+  const tagIds = String(formData.get('tagIds') ?? '')
+    .split(',')
+    .filter((id) => isUuid(id));
+
+  try {
+    await scoped((tx) => setTransactionTags(tx, actor, { transactionId, tagIds }));
+    revalidatePath('/app/transactions');
+    return { ok: true };
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+}
+
+export async function createTagAction(formData: FormData): Promise<CategoryOutcome> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+  const t = await getTranslations('categories');
+
+  const name = String(formData.get('name') ?? '').trim();
+  if (name === '') return { error: t('nameRequired') };
+
+  try {
+    const made = await scoped((tx) => createTag(tx, actor, { id: randomUUID(), name }));
+    if (made === null) return { error: t('nameRequired') };
+    revalidatePath('/app/categories');
+    revalidatePath('/app/transactions');
+    return { ok: true };
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+}
+
+/** Removes a tag, and every mark it made. The database cascades both. */
+export async function deleteTagAction(formData: FormData): Promise<CategoryOutcome> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+
+  const id = String(formData.get('id') ?? '');
+  if (id === '') return { ok: true };
+
+  try {
+    await scoped((tx) => deleteTag(tx, actor, id));
+    revalidatePath('/app/categories');
+    revalidatePath('/app/transactions');
+    return { ok: true };
   } catch (error) {
     return { error: await toMessage(error) };
   }
