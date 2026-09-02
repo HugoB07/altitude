@@ -32,7 +32,17 @@ export interface CategorisationRule {
   /** Lower runs first. */
   readonly priority: number;
   readonly conditions: RuleConditions;
-  readonly categoryId: string;
+  /**
+   * What a match does. A rule needs at least one of these and may have all.
+   *
+   * They are three different kinds of answer. A category is exclusive - one per
+   * entry - so categories sum to the total. A counterparty is a name, and
+   * answers what no category can: how much at this shop. Tags are neither, and
+   * a movement carries as many as somebody wants.
+   */
+  readonly categoryId: string | null;
+  readonly counterparty: string | null;
+  readonly tagIds: readonly string[];
   /** Whether a match ends the pass. */
   readonly stopOnMatch: boolean;
 }
@@ -55,9 +65,15 @@ export interface Categorisable {
 }
 
 export interface Categorised {
-  readonly categoryId: string;
-  /** The rule that decided, so the screen can say which one and a person can edit it. */
-  readonly ruleId: string;
+  readonly categoryId: string | null;
+  /**
+   * The rule that decided the category, so a later pass can tell its own work
+   * from a person's and the screen can say which one.
+   */
+  readonly ruleId: string | null;
+  readonly counterparty: string | null;
+  /** Every tag every matching rule asked for, in the order first seen. */
+  readonly tagIds: readonly string[];
 }
 
 /**
@@ -115,12 +131,18 @@ function fits(rule: CategorisationRule, line: Categorisable, label: string): boo
 }
 
 /**
- * The category this entry lands in, or null when no rule describes it.
+ * What the rules make of this entry, or null when none describes it.
  *
  * Rules are taken in the order given, which the caller sorts by priority. A
  * rule with `stopOnMatch` ends the pass; without it the pass continues and a
  * later rule may take over, which is how a broad rule and a narrow one live
  * together.
+ *
+ * The three effects accumulate differently, and deliberately. A category and a
+ * counterparty are single values, so a later rule replaces an earlier one -
+ * "everything from this shop is groceries, except the line that is rent". Tags
+ * are a set, so they add up: a rule that tags every purchase abroad and a rule
+ * that tags every restaurant both apply to dinner in Madrid.
  */
 export function categorise(
   line: Categorisable,
@@ -130,13 +152,27 @@ export function categorise(
 
   const label = line.description === null ? '' : normaliseLabel(line.description);
 
-  let found: Categorised | null = null;
+  let categoryId: string | null = null;
+  let ruleId: string | null = null;
+  let counterparty: string | null = null;
+  const tagIds = new Set<string>();
+  let matched = false;
+
   for (const rule of rules) {
     if (!fits(rule, line, label)) continue;
-    found = { categoryId: rule.categoryId, ruleId: rule.id };
+    matched = true;
+
+    if (rule.categoryId !== null) {
+      categoryId = rule.categoryId;
+      ruleId = rule.id;
+    }
+    if (rule.counterparty !== null) counterparty = rule.counterparty;
+    for (const tag of rule.tagIds) tagIds.add(tag);
+
     if (rule.stopOnMatch) break;
   }
-  return found;
+
+  return matched ? { categoryId, ruleId, counterparty, tagIds: [...tagIds] } : null;
 }
 
 /**

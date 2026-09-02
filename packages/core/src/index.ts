@@ -30,6 +30,7 @@ export {
 } from './auth/policy';
 export {
   postTransaction,
+  listCounterparties,
   listTransactions,
   reverseTransactionById,
   AlreadyReversedError,
@@ -101,6 +102,11 @@ export {
   deleteRule,
   applyRules,
   setTransactionCategory,
+  listTags,
+  createTag,
+  deleteTag,
+  setTransactionTags,
+  type Tag,
   type Category,
   type StoredRule,
   type NewRule,

@@ -21,6 +21,8 @@ const rule = (over: Partial<CategorisationRule> = {}): CategorisationRule => ({
   priority: 100,
   conditions: { descriptionMatches: 'carrefour|leclerc|intermarche' },
   categoryId: GROCERIES,
+  counterparty: null,
+  tagIds: [],
   stopOnMatch: true,
   ...over,
 });
@@ -37,7 +39,12 @@ describe('categorise', () => {
     // The raw text carries a date and a card number that change every month.
     // A rule written in March has to still work in September.
     const found = categorise(entry('CARTE 12/03 CARREFOUR MARKET 4972'), [rule()]);
-    expect(found).toEqual({ categoryId: GROCERIES, ruleId: 'rule-1' });
+    expect(found).toEqual({
+      categoryId: GROCERIES,
+      ruleId: 'rule-1',
+      counterparty: null,
+      tagIds: [],
+    });
   });
 
   it('ignores case and accents on both sides', () => {
@@ -98,7 +105,7 @@ describe('categorise', () => {
       conditions: { descriptionMatches: 'carrefour.*loyer' },
       categoryId: RENT,
     });
-    expect(categorise(entry('CARREFOUR LOYER'), [broad, narrow])).toEqual({
+    expect(categorise(entry('CARREFOUR LOYER'), [broad, narrow])).toMatchObject({
       categoryId: RENT,
       ruleId: 'b',
     });
@@ -166,5 +173,58 @@ describe('suggestPattern', () => {
   it('gives back nothing when there is nothing but boilerplate', () => {
     // Better an empty field somebody fills than a rule that matches every line.
     expect(suggestPattern('CARTE 12/03 4972')).toBe('');
+  });
+});
+
+describe('the three effects a rule can have', () => {
+  /**
+   * They accumulate differently, and that is the whole distinction between
+   * them. A category is exclusive - one per entry, so categories sum to the
+   * total - and a counterparty is a single name, so a later rule replaces an
+   * earlier one. Tags are a set and add up: a rule that tags everything abroad
+   * and a rule that tags every restaurant both apply to dinner in Madrid.
+   */
+  it('takes the last category and the last counterparty, and every tag', () => {
+    const abroad = rule({
+      id: 'a',
+      conditions: { descriptionMatches: 'madrid' },
+      categoryId: null,
+      tagIds: ['tag-spain'],
+      stopOnMatch: false,
+    });
+    const dining = rule({
+      id: 'b',
+      conditions: { descriptionMatches: 'restaurante' },
+      categoryId: GROCERIES,
+      counterparty: 'Casa Paco',
+      tagIds: ['tag-eating-out'],
+      stopOnMatch: false,
+    });
+    const later = rule({
+      id: 'c',
+      conditions: { descriptionMatches: 'restaurante' },
+      categoryId: RENT,
+      counterparty: 'Casa Paco SL',
+      tagIds: ['tag-spain'],
+    });
+
+    expect(categorise(entry('RESTAURANTE MADRID'), [abroad, dining, later])).toEqual({
+      categoryId: RENT,
+      ruleId: 'c',
+      counterparty: 'Casa Paco SL',
+      tagIds: ['tag-spain', 'tag-eating-out'],
+    });
+  });
+
+  it('matches with no category at all, for a rule that only tags', () => {
+    // Which is why the column stopped being mandatory: a rule that marks every
+    // line of a trip is a rule, and it decides no category.
+    const marking = rule({ categoryId: null, tagIds: ['tag-spain'] });
+    expect(categorise(entry('CARREFOUR CITY'), [marking])).toEqual({
+      categoryId: null,
+      ruleId: null,
+      counterparty: null,
+      tagIds: ['tag-spain'],
+    });
   });
 });

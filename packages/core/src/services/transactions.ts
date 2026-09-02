@@ -289,6 +289,10 @@ export interface LedgerEntry {
   readonly bookedOn: string;
   readonly kind: string;
   readonly description: string | null;
+  /** Who was on the other side: the shop, the employer. Null until something reads it. */
+  readonly counterparty: string | null;
+  /** Labels that cut across categories, on the transaction rather than its sides. */
+  readonly tags: readonly { readonly id: string; readonly name: string }[];
   readonly source: string;
   /** Set when this transaction cancels another one. */
   readonly reversesId: TransactionId | null;
@@ -322,6 +326,29 @@ export interface TransactionPage {
 export const TRANSACTION_STATUSES = ['all', 'reversal', 'reversed'] as const;
 export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 
+/**
+ * Every counterparty this household has recorded, for the filter to offer.
+ *
+ * Distinct over the same partial index the filter uses, so it is an index-only
+ * scan over the rows that have one rather than a pass over the table. Capped,
+ * because a select nobody can read is not a select - and a household with more
+ * than five hundred distinct shops has outgrown a dropdown anyway.
+ */
+export async function listCounterparties(tx: Database, actor: Actor): Promise<readonly string[]> {
+  assertCan(actor, 'transaction:read', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  const rows = await tx.execute<{ counterparty: string }>(sql`
+    SELECT DISTINCT t.counterparty
+      FROM transactions t
+     WHERE t.counterparty IS NOT NULL
+     ORDER BY t.counterparty
+     LIMIT 500
+  `);
+
+  return [...rows].map((row) => row.counterparty);
+}
+
 export interface ListOptions {
   /** 1-based. Clamped into range rather than refused. */
   readonly page?: number;
@@ -332,6 +359,23 @@ export interface ListOptions {
   readonly to?: LedgerDate;
   readonly kind?: string;
   readonly status?: TransactionStatus;
+  /**
+   * The three filters that make a label worth having.
+   *
+   * A category nobody can filter by is a label, not a feature: "what did I
+   * spend on groceries" is the question it was created to answer, and the
+   * answer lives here.
+   *
+   * Each is written the way the existing filter of its shape is. `categoryId`
+   * and `tagId` are EXISTS over a child table, like `accountId`, and each has
+   * an index of the same shape as the one that filter uses. `counterparty` is
+   * a column of `transactions`, like `kind`, and has an index in the same form:
+   * household, the column, then the ordering pair, so matching rows come back
+   * sorted without a sort step.
+   */
+  readonly categoryId?: string;
+  readonly counterparty?: string;
+  readonly tagId?: string;
 }
 
 const MAX_PER_PAGE = 200;
@@ -396,6 +440,19 @@ export async function listTransactions(
     options.from === undefined ? undefined : sql`t.booked_on >= ${options.from}::date`,
     options.to === undefined ? undefined : sql`t.booked_on <= ${options.to}::date`,
     options.kind === undefined || options.kind === '' ? undefined : sql`t.kind = ${options.kind}`,
+    options.categoryId === undefined
+      ? undefined
+      : sql`EXISTS (SELECT 1 FROM entries e
+                     WHERE e.transaction_id = t.id
+                       AND e.category_id = ${options.categoryId}::uuid)`,
+    options.counterparty === undefined || options.counterparty === ''
+      ? undefined
+      : sql`t.counterparty = ${options.counterparty}`,
+    options.tagId === undefined
+      ? undefined
+      : sql`EXISTS (SELECT 1 FROM transactions_tags tt
+                     WHERE tt.transaction_id = t.id
+                       AND tt.tag_id = ${options.tagId}::uuid)`,
     options.status === undefined || options.status === 'all'
       ? undefined
       : options.status === 'reversal'
@@ -447,8 +504,10 @@ export async function listTransactions(
     kind: string;
     description: string | null;
     source: string;
+    counterparty: string | null;
     reverses_id: string | null;
     reversed_by_id: string | null;
+    tags: { id: string; name: string }[];
     lines: {
       account_id: string;
       account_name: string;
@@ -476,8 +535,19 @@ export async function listTransactions(
            t.kind,
            t.description,
            t.source,
+           t.counterparty,
            t.reverses_id,
            (SELECT r.id FROM transactions r WHERE r.reverses_id = t.id LIMIT 1) AS reversed_by_id,
+           -- Evaluated for the page's rows only, like the entries below: the
+           -- CTE above is MATERIALIZED precisely so these run twenty-five times
+           -- and not once per row scanned to reach the offset.
+           COALESCE(
+             (SELECT json_agg(json_build_object('id', g.id, 'name', g.name) ORDER BY g.name)
+                FROM transactions_tags tt
+                JOIN tags g ON g.id = tt.tag_id
+               WHERE tt.transaction_id = t.id),
+             '[]'::json
+           ) AS tags,
            COALESCE(
              (SELECT json_agg(json_build_object(
                        'account_id', e.account_id,
@@ -505,6 +575,8 @@ export async function listTransactions(
       kind: row.kind,
       description: row.description,
       source: row.source,
+      counterparty: row.counterparty,
+      tags: row.tags,
       reversesId: row.reverses_id as TransactionId | null,
       reversedById: row.reversed_by_id as TransactionId | null,
       lines: row.lines.map((line) => ({

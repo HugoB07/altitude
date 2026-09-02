@@ -17,6 +17,10 @@ import { createClient, withHousehold, type Client } from '@altitude/db';
 import {
   applyRules,
   createCategory,
+  createTag,
+  listTags,
+  listTransactions,
+  setTransactionTags,
   createRule,
   deleteRule,
   listCategories,
@@ -373,5 +377,102 @@ describe('a rule belongs to one household', () => {
 
   it('refuses an actor whose household is not the one the connection is scoped to', async () => {
     await expect(as(owner, (tx) => listRules(tx, stranger))).rejects.toThrow();
+  });
+});
+
+/**
+ * Tags, counterparties, and the filters that make all three worth having.
+ *
+ * A category nobody can filter by is a label rather than a feature, and the
+ * transactions tab is where the question gets asked - "what did I spend at
+ * this shop", "what did that trip cost".
+ */
+describe('tags and counterparties', () => {
+  const SPAIN = 'aaaa7777-0000-4000-8000-000000000001';
+  const TRIP = 'bbbb7777-0000-4000-8000-000000000001';
+  const HOME = 'bbbb7777-0000-4000-8000-000000000002';
+
+  it('keeps a tag and gives back the one that exists rather than a second', async () => {
+    const made = await as(owner, (tx) => createTag(tx, owner, { id: SPAIN, name: 'Espagne 2027' }));
+    expect(made?.name).toBe('Espagne 2027');
+
+    const again = await as(owner, (tx) =>
+      createTag(tx, owner, { id: 'aaaa7777-0000-4000-8000-00000000000f', name: 'espagne 2027' }),
+    );
+    expect(again?.id).toBe(SPAIN);
+    expect(await as(owner, (tx) => listTags(tx, owner))).toHaveLength(1);
+  });
+
+  it('marks a transaction, and replaces rather than adding on a second call', async () => {
+    await spend(TRIP, '2027-03-04', '62.40', 'RESTAURANTE MADRID');
+    await spend(HOME, '2027-03-05', '20.00', 'BOULANGERIE DU PARC');
+
+    await as(owner, (tx) =>
+      setTransactionTags(tx, owner, { transactionId: TRIP, tagIds: [SPAIN] }),
+    );
+    // Ticking and unticking has to be able to remove one, so a set replaces.
+    await as(owner, (tx) =>
+      setTransactionTags(tx, owner, { transactionId: TRIP, tagIds: [SPAIN] }),
+    );
+
+    const page = await as(owner, (tx) => listTransactions(tx, owner, { tagId: SPAIN }));
+    expect(page.total).toBe(1);
+    expect(page.transactions[0]?.id).toBe(TRIP);
+    expect(page.transactions[0]?.tags.map((one) => one.name)).toEqual(['Espagne 2027']);
+  });
+
+  it('applies a rule that only tags, which has no category at all', async () => {
+    await as(owner, (tx) =>
+      createRule(tx, owner, {
+        id: 'cccc7777-0000-4000-8000-000000000001',
+        name: 'Voyage Espagne',
+        priority: 1,
+        conditions: { descriptionMatches: 'madrid|barcelona' },
+        tagIds: [SPAIN],
+        stopOnMatch: false,
+      }),
+    );
+    // And one that only names who was on the other side.
+    await as(owner, (tx) =>
+      createRule(tx, owner, {
+        id: 'cccc7777-0000-4000-8000-000000000002',
+        name: 'Boulangerie',
+        priority: 2,
+        conditions: { descriptionMatches: 'boulangerie du parc' },
+        counterparty: 'Boulangerie du Parc',
+      }),
+    );
+
+    const done = await as(owner, (tx) => applyRules(tx, owner));
+    expect(done.named).toBeGreaterThanOrEqual(1);
+
+    const named = await as(owner, (tx) =>
+      listTransactions(tx, owner, { counterparty: 'Boulangerie du Parc' }),
+    );
+    expect(named.total).toBe(1);
+    expect(named.transactions[0]?.id).toBe(HOME);
+  });
+
+  it('filters by category, which is the question categories exist to answer', async () => {
+    const page = await as(owner, (tx) => listTransactions(tx, owner, { categoryId: RENT }));
+    // Whatever else the suite has filed there, every row it returns is filed
+    // there - which is what the filter claims.
+    expect(page.total).toBeGreaterThan(0);
+    for (const entry of page.transactions) {
+      expect(entry.lines.some((line) => line.categoryId === RENT)).toBe(true);
+    }
+  });
+
+  it('leaves a transaction alone when the bank already named the other side', async () => {
+    // A name the file carried is better evidence than a pattern somebody wrote.
+    await admin.unsafe(`ALTER ROLE altitude SET row_security = off;`);
+    await admin`UPDATE transactions SET counterparty = 'Panaderia' WHERE id = ${HOME}::uuid`;
+    await admin.unsafe(`ALTER ROLE altitude RESET row_security;`);
+
+    await as(owner, (tx) => applyRules(tx, owner));
+
+    const [row] = await admin<{ counterparty: string }[]>`
+      SELECT counterparty FROM transactions WHERE id = ${HOME}::uuid`;
+    expect(row?.counterparty).toBe('Panaderia');
   });
 });
