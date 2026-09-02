@@ -67,6 +67,18 @@ export interface Candidate {
   readonly bookedOn: LedgerDate;
   readonly kind: string;
   readonly description?: string;
+  /**
+   * Who was on the other side: the shop, the employer, the person.
+   *
+   * Not the counterpart account, which is the double-entry sense of the word
+   * and is bound on the preview screen. This is a name, and it answers "how
+   * much at Carrefour this year", which no category can - "groceries" mixes
+   * every shop.
+   *
+   * Some banks give it outright; most do not, and a rule reads it from the
+   * description instead.
+   */
+  readonly counterparty?: string;
   readonly entries: readonly CandidateEntry[];
   /**
    * The lines of the file this came from, 1-based and counting the header.

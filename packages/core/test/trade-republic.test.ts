@@ -319,3 +319,70 @@ describe('the shape of the file itself', () => {
     expect(reading.problems[0]?.reason).toContain('account_type');
   });
 });
+
+describe('who was on the other side', () => {
+  /**
+   * The exporter names them, and nothing read it until now.
+   *
+   * Worth reading because no category answers it: "groceries" mixes every
+   * shop, and a name the bank gives is better evidence than any rule written
+   * against a description.
+   *
+   * Both paths, because a transfer between two accounts of the same broker is
+   * two rows read by different code - and that one dropped the name silently.
+   */
+  const named = (rows: readonly string[]) => readTradeRepublic([HEADER, ...rows, ''].join('\n'));
+
+  it('reads it on a row that stands alone', () => {
+    const reading = named([
+      row({
+        date: '20/05/2026',
+        account_type: 'DEFAULT',
+        category: 'CASH',
+        type: 'TRANSFER_INSTANT_INBOUND',
+        amount: '140.000000',
+        currency: 'EUR',
+        counterparty_name: 'M. LEROY',
+      }),
+    ]);
+    expect(reading.candidates[0]?.counterparty).toBe('M. LEROY');
+  });
+
+  it('reads it on a transfer the file writes as two rows', () => {
+    const reading = named([
+      row({
+        date: '20/05/2026',
+        account_type: 'DEFAULT',
+        category: 'CASH',
+        type: 'TRANSFER_OUT',
+        amount: '-50.000000',
+        currency: 'EUR',
+        counterparty_name: 'PEA',
+      }),
+      row({
+        date: '20/05/2026',
+        account_type: 'PEA',
+        category: 'CASH',
+        type: 'TRANSFER_IN',
+        amount: '50.000000',
+        currency: 'EUR',
+      }),
+    ]);
+    expect(reading.candidates).toHaveLength(1);
+    expect(reading.candidates[0]?.counterparty).toBe('PEA');
+  });
+
+  it('leaves it unset when the column is empty, rather than storing a blank', () => {
+    const reading = named([
+      row({
+        date: '20/05/2026',
+        account_type: 'DEFAULT',
+        category: 'CASH',
+        type: 'TRANSFER_INSTANT_INBOUND',
+        amount: '140.000000',
+        currency: 'EUR',
+      }),
+    ]);
+    expect(reading.candidates[0]?.counterparty).toBeUndefined();
+  });
+});

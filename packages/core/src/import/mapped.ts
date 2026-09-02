@@ -54,6 +54,13 @@ export interface ColumnMapping {
     /** The bank's own identifier, which is what makes a second import add nothing. */
     readonly externalId?: string;
     /**
+     * Who was on the other side, where the bank names them.
+     *
+     * Rare on a statement and common on a transfer. Where it is absent, a
+     * categorisation rule reads it from the description instead.
+     */
+    readonly counterparty?: string;
+    /**
      * A column saying whether the row happened.
      *
      * A statement lists more than movements: a card payment that was reverted,
@@ -282,6 +289,7 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
     }
 
     const description = (row[mapping.columns.description ?? ''] ?? '').trim();
+    const counterparty = (row[mapping.columns.counterparty ?? ''] ?? '').trim();
     const externalId = (row[mapping.columns.externalId ?? ''] ?? '').trim();
     candidates.push({
       ...(externalId === '' ? {} : { externalId }),
@@ -291,6 +299,7 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
       // yours; that is what the counterpart control on the preview is for.
       kind: amount.isNegative() ? 'withdrawal' : 'deposit',
       ...(description === '' ? {} : { description }),
+      ...(counterparty === '' ? {} : { counterparty }),
       sourceLines: [line],
       entries: [
         entry(STATEMENT_ACCOUNT, amount.toFixed(), code),
@@ -463,6 +472,7 @@ export function parseMapping(value: unknown): ColumnMapping | null {
       ...(named('externalId') === undefined ? {} : { externalId: named('externalId')! }),
       ...(named('status') === undefined ? {} : { status: named('status')! }),
       ...(named('balance') === undefined ? {} : { balance: named('balance')! }),
+      ...(named('counterparty') === undefined ? {} : { counterparty: named('counterparty')! }),
     },
     ...(skipStatuses === undefined || skipStatuses.length === 0 ? {} : { skipStatuses }),
     ...(currency === undefined || currency === '' ? {} : { currency }),

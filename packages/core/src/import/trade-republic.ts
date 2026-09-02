@@ -151,6 +151,13 @@ export function readTradeRepublic(text: string): ImportReading {
 
     candidates.push({
       ...externalId(out.data),
+      // Read here too, and not only in `single`. A transfer between two
+      // accounts of the same broker is two rows, and it took the other path -
+      // so a name the file carried on it was dropped without a word.
+      ...(out.data['counterparty_name']?.trim() === '' ||
+      out.data['counterparty_name'] === undefined
+        ? {}
+        : { counterparty: out.data['counterparty_name'].trim() }),
       bookedOn: date,
       kind: 'transfer',
       ...describe(out.data),
@@ -216,8 +223,13 @@ function single(row: Row): Candidate | { reason: string } {
   if (code === null) return { reason: `Unreadable currency "${currency}"` };
 
   const kind = LEDGER_KINDS[type] ?? 'adjustment';
+  // The exporter names who was on the other side of a transfer, and nothing
+  // read it until now. A column the file already carries beats a rule anybody
+  // has to write.
+  const counterparty = (data['counterparty_name'] ?? '').trim();
   const common = {
     ...externalId(data),
+    ...(counterparty === '' ? {} : { counterparty }),
     bookedOn: date,
     kind,
     ...describe(data),

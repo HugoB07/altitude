@@ -435,6 +435,7 @@ export async function commitImport(
       // outright, without a person being asked about it again.
       dedupeHash: dedupeHashOf(candidate),
       ...(candidate.description === undefined ? {} : { description: candidate.description }),
+      ...(candidate.counterparty === undefined ? {} : { counterparty: candidate.counterparty }),
       ...(candidate.externalId === undefined ? {} : { externalId: candidate.externalId }),
       entries: candidate.entries.map((entry) => ({
         accountId: entry.accountId,
