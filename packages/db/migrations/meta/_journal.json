@@ -148,6 +148,13 @@
       "when": 1788272374454,
       "tag": "0020_import_file_fingerprint",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788272375454,
+      "tag": "0021_counterparties_and_tags",
+      "breakpoints": true
     }
   ]
 }
