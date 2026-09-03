@@ -62,7 +62,7 @@ const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
  * rather than the five-digit serial numbers Excel stores, and two months on two
  * sheets. Invented figures, like every other fixture here.
  */
-async function statement(): Promise<Buffer> {
+async function statement(tag: string): Promise<Buffer> {
   const book = new ExcelJS.Workbook();
 
   // First and empty on purpose: a cover sheet is common, and "read the first
@@ -72,13 +72,13 @@ async function statement(): Promise<Buffer> {
   const march = book.addWorksheet('Mars');
   march.addRow(['Releve du compte']);
   march.addRow(['Date', 'Libelle', 'Montant']);
-  march.addRow([new Date(Date.UTC(2026, 2, 4)), 'ABONNEMENT INVENTE', -19.9]);
-  march.addRow([new Date(Date.UTC(2026, 2, 20)), 'REMBOURSEMENT INVENTE', 45.5]);
+  march.addRow([new Date(Date.UTC(2026, 2, 4)), `ABONNEMENT ${tag}`, -19.9]);
+  march.addRow([new Date(Date.UTC(2026, 2, 20)), `REMBOURSEMENT ${tag}`, 45.5]);
 
   const april = book.addWorksheet('Avril');
   april.addRow(['Releve du compte']);
   april.addRow(['Date', 'Libelle', 'Montant']);
-  april.addRow([new Date(Date.UTC(2026, 3, 8)), 'COTISATION INVENTEE', -7.2]);
+  april.addRow([new Date(Date.UTC(2026, 3, 8)), `COTISATION ${tag}`, -7.2]);
 
   return Buffer.from(await book.xlsx.writeBuffer());
 }
@@ -851,7 +851,7 @@ test('a spreadsheet is read as the statement it is', async () => {
     await page.getByRole('button', { name: 'Other bank' }).click();
     await page
       .locator('input[type="file"]')
-      .setInputFiles({ name: 'releve.xlsx', mimeType: XLSX, buffer: await statement() });
+      .setInputFiles({ name: 'releve.xlsx', mimeType: XLSX, buffer: await statement('INVENTE') });
 
     // Not self-describing, unlike OFX: a bank's spreadsheet is a bank's CSV
     // with formatting on top, and its columns still have to be named.
@@ -888,13 +888,22 @@ test('another sheet of the same workbook is read without asking for the file aga
   await expectNoConsoleErrors(async () => {
     await page.goto('/app/import');
     await page.getByRole('button', { name: 'Other bank' }).click();
-    await page
-      .locator('input[type="file"]')
-      .setInputFiles({ name: 'releve.xlsx', mimeType: XLSX, buffer: await statement() });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'releve-2.xlsx',
+      mimeType: XLSX,
+      buffer: await statement('DEUXIEME'),
+    });
 
-    // Described once already, so this one goes straight past the columns.
+    // Straight past the columns: the header is the one described a moment ago,
+    // and the description is kept under the shape of the file rather than
+    // under its name.
+    //
+    // Its own labels, though, so nothing here is a duplicate of what the test
+    // above imported. A duplicate is drawn beside the transaction it matches,
+    // which puts one description on screen three times and turns an assertion
+    // about it into a question about how far the reading has got.
     await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
-    await expect(page.getByText('ABONNEMENT INVENTE')).toBeVisible();
+    await expect(page.getByText('ABONNEMENT DEUXIEME')).toBeVisible();
 
     // The browser cannot re-open a file it was handed, so the workbook is kept
     // and the other sheet is read from it. Asking somebody to find the file a
@@ -903,8 +912,8 @@ test('another sheet of the same workbook is read without asking for the file aga
     await page.getByRole('combobox', { name: 'Sheet' }).click();
     await page.getByRole('option', { name: 'Avril' }).click();
 
-    await expect(page.getByText('COTISATION INVENTEE')).toBeVisible();
-    await expect(page.getByText('ABONNEMENT INVENTE')).toHaveCount(0);
+    await expect(page.getByText('COTISATION DEUXIEME')).toBeVisible();
+    await expect(page.getByText('ABONNEMENT DEUXIEME')).toHaveCount(0);
   });
 });
 
