@@ -47,9 +47,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { checkUpload, decodeText } from '@altitude/shared';
+import { checkUpload, decodeText, describesItself, sniffFormat } from '@altitude/shared';
 import { money } from '@/lib/money';
 import { CUSTOM_PRESET_ID } from '@/lib/import-custom';
+import { CURRENCIES, currencyLabel } from '@/lib/currencies';
 import { Contribute } from './contribute';
 import { MappingForm, type DraftMapping, type FileShapeView } from './mapping';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,15 @@ interface Run {
    * the server to read a file with no description of it.
    */
   readonly mapping: DraftMapping | null;
+  /**
+   * The currency of a file whose format carries none.
+   *
+   * QIF only, and null until it is answered. The plan asks for it at import
+   * time (§8.1) rather than guessed: reading a Swiss statement as euros
+   * because euros are common is the worst kind of wrong - every figure
+   * plausible and every one of them false.
+   */
+  readonly currency: string | null;
 }
 
 const EMPTY: Run = {
@@ -96,6 +106,7 @@ const EMPTY: Run = {
   binding: {},
   overrides: {},
   mapping: null,
+  currency: null,
 };
 
 /** Above this, the review is folded by month. Below it, everything fits on a screen. */
@@ -103,11 +114,18 @@ const FOLD_ABOVE = 20;
 
 type Step =
   | { readonly type: 'pick'; readonly preset: PresetChoice }
-  | { readonly type: 'file'; readonly filename: string; readonly text: string }
+  | {
+      readonly type: 'file';
+      readonly filename: string;
+      readonly text: string;
+      /** Set when the file turned out to say what it is, whatever was picked. */
+      readonly preset?: PresetChoice;
+    }
   | { readonly type: 'bind'; readonly label: string; readonly accountId: string }
   | { readonly type: 'bindMany'; readonly binding: Readonly<Record<string, string>> }
   | { readonly type: 'counterpart'; readonly index: number; readonly accountId: string }
   | { readonly type: 'mapping'; readonly mapping: DraftMapping }
+  | { readonly type: 'currency'; readonly currency: string }
   | { readonly type: 'remap' }
   | { readonly type: 'reset' };
 
@@ -130,11 +148,17 @@ function reduce(state: Run, step: Step): Run {
       // answer is an answer to a question nobody asked.
       return {
         ...state,
+        // A file that names its own format wins over what was picked. Reading
+        // an OFX with a bank's CSV reader produces nothing, and the person who
+        // picked the bank was answering a question about a file they had not
+        // handed over yet.
+        ...(step.preset === undefined ? {} : { preset: step.preset }),
         filename: step.filename,
         text: step.text,
         binding: {},
         overrides: {},
         mapping: null,
+        currency: null,
       };
     case 'bind':
       return { ...state, binding: { ...state.binding, [step.label]: step.accountId } };
@@ -144,6 +168,8 @@ function reduce(state: Run, step: Step): Run {
       return { ...state, overrides: { ...state.overrides, [step.index]: step.accountId } };
     case 'mapping':
       return { ...state, mapping: step.mapping };
+    case 'currency':
+      return { ...state, currency: step.currency };
     case 'remap':
       // Back to the questions, keeping the file. The draft still holds the
       // answers, so this reopens what was decided rather than a blank form -
@@ -186,6 +212,13 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   const [perLine, setPerLine] = useState(false);
   /** Months whose folded state a person has changed. See `isOpen`. */
   const [toggled, setToggled] = useState<Set<string>>(new Set());
+  /**
+   * The currency a format that carries none is read in, before it is answered.
+   *
+   * Seeded from the household's own, which is the right answer nearly always -
+   * so the question is one press rather than a hunt through a list.
+   */
+  const [chosen, setChosen] = useState(baseCurrency);
   const [pending, start] = useTransition();
 
   /** The counterpart rail, scrolled by its own buttons rather than by a bar. */
@@ -204,7 +237,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   /** The verdicts the current selection was seeded from. See below. */
   const seededFrom = useRef('');
 
-  const { preset, binding, overrides, text, mapping } = run;
+  const { preset, binding, overrides, text, mapping, currency } = run;
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '';
 
   /**
@@ -218,11 +251,14 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     if (preset === null || text === '') return;
     // A custom file has no reader until its columns are named.
     if (preset.id === CUSTOM_PRESET_ID && mapping === null) return;
+    // And a QIF has no amounts until somebody says what they are in.
+    if (preset.id === 'qif' && currency === null) return;
 
     const form = new FormData();
     form.set('preset', preset.id);
     form.set('text', text);
     if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
+    if (currency !== null) form.set('currency', currency);
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
     for (const [index, id] of Object.entries(overrides)) form.set(`counterpart:${index}`, id);
 
@@ -279,7 +315,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
         if (Object.keys(offered).length > 0) dispatch({ type: 'bindMany', binding: offered });
       });
     });
-  }, [preset, text, binding, overrides, mapping, openingAccountId]);
+  }, [preset, text, binding, overrides, mapping, currency, openingAccountId]);
 
   function reset() {
     asked.current += 1;
@@ -317,13 +353,31 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
       return;
     }
 
+    // What kind of file this is, before the preset that was picked matters.
+    // OFX and QIF say so themselves, and a person who picked "other bank" and
+    // handed over an OFX should not then be asked which column is the date.
+    const format = sniffFormat(contents);
+    const named = describesItself(format)
+      ? { id: format, name: format.toUpperCase(), monogram: format.toUpperCase() }
+      : undefined;
+
     seededFrom.current = '';
     setShape(null);
     // The household's currency, as a real answer rather than a placeholder the
     // control drew. Left blank, the mapping carried no currency at all and
     // every row came back "no currency for this row, and none set".
     setDraft({ ...BLANK_DRAFT, currency: baseCurrency });
-    dispatch({ type: 'file', filename: file.name, text: contents });
+    dispatch({
+      type: 'file',
+      filename: file.name,
+      text: contents,
+      ...(named === undefined ? {} : { preset: named }),
+    });
+
+    if (named !== undefined) {
+      toast.success(t('formatRecognised', { format: named.name }));
+      return;
+    }
 
     // Described before anything is asked. The screen knows where the header is
     // and how the dates are written because the file says so; asking a person
@@ -368,6 +422,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     form.set('preset', preset.id);
     form.set('text', text);
     if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
+    if (currency !== null) form.set('currency', currency);
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
 
     start(() => {
@@ -389,6 +444,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     form.set('text', text);
     form.set('filename', run.filename);
     if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
+    if (currency !== null) form.set('currency', currency);
     form.set('selected', [...selected].join(','));
     form.set(
       'merged',
@@ -530,7 +586,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           <span className="text-sm">{preset.name}</span>
           <input
             type="file"
-            accept=".csv,text/csv,text/plain"
+            accept=".csv,.tsv,.ofx,.qfx,.qif,text/csv,text/plain"
             className="sr-only"
             disabled={pending}
             onChange={(event) => {
@@ -562,6 +618,59 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
             }}
           />
         )}
+      </section>
+    );
+  }
+
+  // --- Step two and a half, the other one: what are these amounts in? -----
+  // QIF carries no currency at all, and the plan says it is asked for at import
+  // time rather than guessed (§8.1). A wrong answer here is invisible: every
+  // figure stays plausible and every one of them is false.
+  if (preset.id === 'qif' && currency === null) {
+    return (
+      <section className="grid gap-4">
+        <Back onClick={reset} label={t('startOver')} />
+        <div className="bg-card/60 grid max-w-md gap-4 rounded-2xl border p-5">
+          <div className="grid gap-1">
+            <h2 className="text-[13px] font-semibold tracking-wide uppercase">
+              {t('formatCurrencyTitle')}
+            </h2>
+            <p className="text-muted-foreground text-sm">{t('formatCurrencyHint')}</p>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="format-currency">{t('formatCurrencyLabel')}</Label>
+            <Select
+              name="format-currency"
+              value={chosen}
+              onValueChange={(value) => {
+                setChosen(value ?? baseCurrency);
+              }}
+            >
+              <SelectTrigger id="format-currency" className="w-full">
+                <SelectValue>{currencyLabel(chosen)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((one) => (
+                  <SelectItem key={one.code} value={one.code}>
+                    {one.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            type="button"
+            className="w-fit"
+            onClick={() => {
+              dispatch({ type: 'currency', currency: chosen });
+            }}
+          >
+            {t('mappingDone')}
+            <ChevronRight className="size-4" aria-hidden />
+          </Button>
+        </div>
       </section>
     );
   }

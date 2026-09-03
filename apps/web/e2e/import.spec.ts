@@ -51,6 +51,10 @@ const FRENCH_LATER = join(__dirname, 'fixtures', 'releve-francais-2.csv');
 const FRENCH_AGAIN = join(__dirname, 'fixtures', 'releve-francais-3.csv');
 /** A statement carrying its running balance, which is what reconciling reads. */
 const BALANCES = join(__dirname, 'fixtures', 'releve-solde.csv');
+/** A file that says what it is: OFX 1.x, the SGML dialect, from a French bank. */
+const OFX = join(__dirname, 'fixtures', 'releve.ofx');
+/** The other self-describing one, which carries no currency at all. */
+const QIF = join(__dirname, 'fixtures', 'releve.qif');
 /** A statement with a state column, holding a card payment that was reverted. */
 const STATES = join(__dirname, 'fixtures', 'releve-etats.csv');
 
@@ -800,6 +804,89 @@ test('a file past what the application accepts is refused with the number', asyn
 
     // And nothing was read: the screen is still asking for a file.
     await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+  });
+});
+
+test('a file that says what it is asks nothing about its columns', async () => {
+  await expectNoConsoleErrors(async () => {
+    /**
+     * The plan calls OFX deterministic: "structured format, no mapping screen
+     * needed" (§8.1). So the test is as much about what is absent as about
+     * what is read - a person who picked "other bank" and handed over an OFX
+     * is not asked which column is the date, because the file already said.
+     */
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(OFX);
+
+    await expect(page.getByText(/Read as OFX/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+
+    // The account is the one the file names, not "the statement account": OFX
+    // carries the number, and a file with two statements names two.
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('00042424242').first()).toBeVisible();
+
+    // Read out of the file: an entity decoded, a timestamp with a zone reduced
+    // to its day, and a payee that came from the structured field rather than
+    // from a label that happens to hold a shop's name.
+    await expect(page.getByText('INTERETS & AGIOS')).toBeVisible();
+    await expect(page.getByText('Societe Inventee SAS').first()).toBeVisible();
+
+    await page.getByRole('button', { name: /^Create the/ }).click();
+    await expect(page.getByText(/account(s)? created/)).toBeVisible();
+
+    // LEDGERBAL, which is the half of reconciling OFX can support: there is no
+    // running balance per row, so nothing to read back line by line. Shown
+    // once the account is bound, because until then there is no ledger to
+    // compare it against - and the account it belongs to is the one the file
+    // named, not the "ACCOUNT" a described CSV would have used.
+    await expect(page.getByText('This statement ends at €1,758.63.')).toBeVisible();
+
+    // Nothing was in this account before, so the file's own closing balance is
+    // what the ledger should hold once every line is in.
+    await expect(
+      page.getByText('Importing all of its lines brings this account to exactly that.'),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Import 3 transactions' }).click();
+    await expect(page.getByText('3 transactions imported')).toBeVisible();
+
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€1,758.63')).toBeVisible();
+  });
+});
+
+test('a format that carries no currency is asked which one, not guessed', async () => {
+  await expectNoConsoleErrors(async () => {
+    // QIF has no currency field at all. The plan says it is asked for at import
+    // time (§8.1), and the reason is that a wrong answer is invisible: every
+    // figure stays plausible and every one of them is false.
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(QIF);
+
+    await expect(page.getByText(/Read as QIF/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+
+    await expect(page.getByRole('heading', { name: 'What are these amounts in' })).toBeVisible();
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    // The account name came out of the !Account block, and the date order out
+    // of the file: 28/01 is no month's twenty-eighth, so 05/01 is January.
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('Compte QIF').first()).toBeVisible();
+    await expect(page.getByText('PRLV ASSURANCE INVENTEE')).toBeVisible();
+
+    await page.getByRole('button', { name: /^Create the/ }).click();
+    await expect(page.getByText(/account(s)? created/)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Import 2 transactions' }).click();
+    await expect(page.getByText('2 transactions imported')).toBeVisible();
+
+    // 500 in and 120 out, read with the household's own currency as offered.
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€380.00')).toBeVisible();
   });
 });
 

@@ -350,6 +350,7 @@ function checkBalances(
   }
 
   return {
+    account: STATEMENT_ACCOUNT,
     closing: rows[rows.length - 1]!.balance,
     checked: Math.max(rows.length - 1, 0),
     mismatches,

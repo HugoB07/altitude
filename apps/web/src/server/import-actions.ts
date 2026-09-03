@@ -10,10 +10,10 @@ import {
   bindAccounts,
   commitImport,
   ImportNotFoundError,
-  STATEMENT_ACCOUNT,
   createAccount,
   customPreset,
   findDuplicates,
+  formatPresetById,
   findImportsOfFile,
   fingerprintOf,
   findMapping,
@@ -36,6 +36,7 @@ import {
   accountId as toAccountId,
   checkUpload,
   dec,
+  isCurrencyCode,
   importId,
   isUuid,
   todayIn,
@@ -207,10 +208,10 @@ async function refuseOversized(text: string): Promise<string | null> {
 
 export async function previewImportAction(formData: FormData): Promise<PreviewResult> {
   await ensureTenantIsolation();
-  const { actor } = await requireContext();
+  const { actor, baseCurrency } = await requireContext();
   const t = await getTranslations('import');
 
-  const preset = resolvePreset(formData);
+  const preset = resolvePreset(formData, baseCurrency);
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
@@ -494,7 +495,11 @@ function reconcile(
   existing: readonly { accountId: string; balance: Money; currency: string }[],
 ): PreviewResult['reconciliation'] {
   const balances = reading.balances;
-  const accountId = binding[STATEMENT_ACCOUNT];
+  // The account the file says the balance is about. A described CSV says
+  // `ACCOUNT`; an OFX file says its own number, and reading either from one
+  // hardcoded label was how a reconciliation went missing on a format that
+  // states its closing balance outright.
+  const accountId = balances === undefined ? undefined : binding[balances.account];
   if (balances === undefined || accountId === undefined) return undefined;
 
   const account = existing.find((one) => one.accountId === accountId);
@@ -538,10 +543,10 @@ function describeMatch(
 
 export async function commitImportAction(formData: FormData): Promise<CommitOutcome> {
   await ensureTenantIsolation();
-  const { actor } = await requireContext();
+  const { actor, baseCurrency } = await requireContext();
   const t = await getTranslations('import');
 
-  const preset = resolvePreset(formData);
+  const preset = resolvePreset(formData, baseCurrency);
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
@@ -667,7 +672,7 @@ export async function openAccountsAction(formData: FormData): Promise<OpenedAcco
   const { actor, baseCurrency } = await requireContext();
   const t = await getTranslations('import');
 
-  const preset = resolvePreset(formData);
+  const preset = resolvePreset(formData, baseCurrency);
   if (preset === undefined) return { error: t('unknownPreset') };
 
   const text = String(formData.get('text') ?? '');
@@ -838,8 +843,14 @@ export async function rollbackImportAction(formData: FormData): Promise<Rollback
  * unchecked one produces a reader that indexes every row by `undefined` and
  * reports the whole file as unreadable.
  */
-function resolvePreset(formData: FormData): Preset | undefined {
+function resolvePreset(formData: FormData, baseCurrency: string): Preset | undefined {
   const id = String(formData.get('preset') ?? '');
+
+  // A format before a bank. OFX and QIF describe themselves, so the reader
+  // comes from what the file is rather than from what anybody picked.
+  const format = formatPresetById(id, currencyAsked(formData, baseCurrency));
+  if (format !== null) return format;
+
   if (id !== CUSTOM_PRESET_ID) return presetById(id);
 
   const raw = String(formData.get('mapping') ?? '');
@@ -851,6 +862,24 @@ function resolvePreset(formData: FormData): Preset | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The currency a format that carries none is read in.
+ *
+ * QIF only. The screen asks, and the answer travels with every request the way
+ * the mapping does - nothing about how to read a file is remembered between
+ * actions, so two requests cannot disagree about it.
+ *
+ * Checked rather than trusted: it came from a browser, and an unchecked code
+ * reaches the ledger, which would refuse the whole import at the last step
+ * instead of here.
+ */
+function currencyAsked(formData: FormData, fallback: string): string {
+  const asked = String(formData.get('currency') ?? '')
+    .trim()
+    .toUpperCase();
+  return isCurrencyCode(asked) ? asked : fallback;
 }
 
 export interface ShapeResult {

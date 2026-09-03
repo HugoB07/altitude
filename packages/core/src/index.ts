@@ -123,9 +123,13 @@ export {
   PRESETS,
   CUSTOM_PRESET_ID,
   customPreset,
+  formatPreset,
+  formatPresetById,
   presetById,
   type Preset,
 } from './import/presets/index';
+export { looksLikeOfx, readOfx } from './import/ofx';
+export { looksLikeQif, readQif } from './import/qif';
 export {
   parsePresetDefinition,
   PresetError,

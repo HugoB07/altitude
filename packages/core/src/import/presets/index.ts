@@ -1,3 +1,4 @@
+import type { FileFormat } from '@altitude/shared';
 import { findHeaderRow, parseDelimited, sniffDelimiter } from '../csv';
 import {
   mappingFits,
@@ -6,6 +7,8 @@ import {
   STATEMENT_COUNTERPART,
   type ColumnMapping,
 } from '../mapped';
+import { looksLikeOfx, readOfx } from '../ofx';
+import { looksLikeQif, readQif } from '../qif';
 import { looksLikeTradeRepublic, readTradeRepublic } from '../trade-republic';
 import type { ImportReading } from '../types';
 import {
@@ -133,6 +136,59 @@ export const PRESETS: readonly Preset[] = load();
 
 export function presetById(id: string): Preset | undefined {
   return PRESETS.find((preset) => preset.id === id);
+}
+
+/**
+ * The preset for a file that needs no preset.
+ *
+ * OFX and QIF are formats rather than banks: the file says what every value is,
+ * so there is nothing to name and nothing to remember between imports (§8.1,
+ * "mapping is deterministic, no mapping screen needed"). A bank that exports
+ * one of them is covered without anybody writing anything.
+ *
+ * Still a `Preset`, for the same reason `customPreset` is: everything after the
+ * reading - binding accounts, deduplicating, previewing, writing, undoing -
+ * then works on it unchanged. The id lands in `imports.source`, so the history
+ * says `ofx` where another run says `trade-republic`, which is exactly as much
+ * as is true about where it came from.
+ *
+ * The currency is only QIF's. The format carries none at all, and the plan says
+ * it is asked for at import time - so it arrives from the screen rather than
+ * being guessed here, and this is the one reader whose result depends on an
+ * answer that is not in the file.
+ */
+export function formatPreset(format: FileFormat, currency: string): Preset | null {
+  switch (format) {
+    case 'ofx':
+      return {
+        id: 'ofx',
+        name: 'OFX',
+        country: 'XX',
+        monogram: 'OFX',
+        accounts: STATEMENT_ACCOUNTS,
+        read: readOfx,
+        matches: looksLikeOfx,
+      };
+    case 'qif':
+      return {
+        id: 'qif',
+        name: 'QIF',
+        country: 'XX',
+        monogram: 'QIF',
+        accounts: STATEMENT_ACCOUNTS,
+        read: (text) => readQif(text, currency),
+        matches: looksLikeQif,
+      };
+    case 'delimited':
+      // Not a format with a reader: a delimited file is a bank's own idea of
+      // one, which is what presets and the mapping screen are for.
+      return null;
+  }
+}
+
+/** The same, addressed the way a request addresses it. */
+export function formatPresetById(id: string, currency: string): Preset | null {
+  return id === 'ofx' || id === 'qif' ? formatPreset(id, currency) : null;
 }
 
 /**

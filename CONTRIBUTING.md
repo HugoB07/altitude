@@ -135,6 +135,9 @@ no compiler.
    `packages/core/src/import/presets/index.ts`, and refuses anything the loader would
    refuse: an unknown field, an id that is not kebab-case, a mapping with no date column.
 
+A bank that exports OFX or QIF needs no preset at all. Those formats say what every value
+is, so the file is read as it arrives and there is nothing to name or to ship.
+
 A bank whose export is not one row per movement needs more than a mapping. A broker that
 splits one transfer across two rows, or carries an ISIN and a quantity, needs a reader in
 `packages/core/src/import/`, and its preset names that reader instead of describing

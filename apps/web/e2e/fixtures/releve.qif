@@ -1,0 +1,14 @@
+!Account
+NCompte QIF
+TBank
+^
+!Type:Bank
+D05/01/2026
+T-120,00
+PPRLV ASSURANCE INVENTEE
+^
+D28/01/2026
+T500,00
+PVIR EPARGNE
+MReference EP-2026-01
+^

@@ -176,6 +176,15 @@ export interface ImportReading {
  * bank by an amount nobody can place.
  */
 export interface BalanceReading {
+  /**
+   * The label of the account this balance belongs to.
+   *
+   * Named rather than assumed. A described CSV is one statement about one
+   * account and could leave it implicit; an OFX file names its account and can
+   * hold two, and comparing the ledger against whichever label came first is
+   * how a reconciliation quietly answers about the wrong account.
+   */
+  readonly account: string;
   /** The balance the last row of the file states, as an exact decimal string. */
   readonly closing: string;
   /** How many rows were checked against the one before them. */
