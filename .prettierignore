@@ -6,3 +6,8 @@ coverage/
 LICENSE
 docs/plan/altitude-plan.html
 docs/plan/parts/
+
+# Written by the test run, not by hand. Reformatting them makes the snapshot
+# they are compared against fail on the next `pnpm format`.
+packages/core/test/presets/*.expected.json
+

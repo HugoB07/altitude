@@ -50,6 +50,7 @@ import {
 import { checkUpload, decodeText } from '@altitude/shared';
 import { money } from '@/lib/money';
 import { CUSTOM_PRESET_ID } from '@/lib/import-custom';
+import { Contribute } from './contribute';
 import { MappingForm, type DraftMapping, type FileShapeView } from './mapping';
 import { cn } from '@/lib/utils';
 
@@ -649,16 +650,24 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           person corrects one - a column read as the value date, a state that
           turned out to mean something else. */}
       {preset.id === CUSTOM_PRESET_ID && (
-        <button
-          type="button"
-          onClick={() => {
-            dispatch({ type: 'remap' });
-          }}
-          className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1.5 text-xs font-medium underline underline-offset-4 transition-colors"
-        >
-          <Pencil className="size-3.5" aria-hidden />
-          {t('changeMapping')}
-        </button>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              dispatch({ type: 'remap' });
+            }}
+            className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1.5 text-xs font-medium underline underline-offset-4 transition-colors"
+          >
+            <Pencil className="size-3.5" aria-hidden />
+            {t('changeMapping')}
+          </button>
+
+          {/* Next to correcting the description rather than next to the button
+              that writes: both are about the description of the file, and this
+              one is worth offering while a screen of correctly read rows is
+              still the evidence that it works. */}
+          {mapping !== null && <Contribute mapping={toColumnMapping(mapping)} />}
+        </div>
       )}
 
       {preview.looksWrong === true && (

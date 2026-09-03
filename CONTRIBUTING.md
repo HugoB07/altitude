@@ -23,9 +23,12 @@ in `README.md` before starting anything above them.
 - **Critique of the plan.** Read `docs/plan/` - particularly §5 (data model), §6
   (calculation engine) and §7 (bank synchronisation). If a modelling decision is wrong,
   now is when it is cheap to fix. Open a discussion, not a pull request.
-- **Anonymised bank and broker export samples.** These are the single most valuable
-  contribution before code exists. Every import preset needs a real-world file to test
-  against, and no one person has an account at every bank. Read the anonymisation
+- **Import presets.** The intended entry point, and the one that needs no TypeScript:
+  a JSON file, a sample statement, and the application writes most of it for you. See
+  [Adding a bank](#adding-a-bank).
+- **Anonymised bank and broker export samples.** Every import preset needs a real-world
+  file to test against, and no one person has an account at every bank. If you cannot
+  write the preset yourself, the sample alone is worth sending. Read the anonymisation
   section below first - it is not optional.
 - **ETF exposure data.** Country and sector breakdowns for widely held ETFs, with an
   as-of date and a cited source. This is what makes the geographic globe meaningful.
@@ -39,8 +42,6 @@ in `README.md` before starting anything above them.
 
 ### What is useful once the importer lands
 
-- **Import presets** - the intended entry point for new contributors: a JSON file plus a
-  test fixture, no TypeScript required. Format documented in `docs/plan/` §8.4.
 - Bug fixes, tests, documentation.
 - Feature work that is already on the roadmap. Please claim the issue first.
 
@@ -112,6 +113,32 @@ Before attaching any export file:
 
 If you would not post it in a public forum, do not attach it. When in doubt, describe the
 format in an issue and we will work out the fixture together.
+
+## Adding a bank
+
+A preset is data, not code (plan §8.4). It lives at
+`packages/core/src/import/presets/<country>/<id>.json`, and adding one is four files and
+no compiler.
+
+1. **Describe your statement.** Import it through **Other bank** and name its columns.
+   Most of the answers are filled in already: where the header is, what separates the
+   fields, how the dates are written.
+2. **Press "Contribute this bank"** once the preview reads correctly, give it a name and a
+   two-letter country code, and copy what it shows. That file holds the names of your
+   columns and nothing from inside your statement. Save it at the path the dialog names.
+3. **Add a sample** at `packages/core/test/presets/<id>.sample.csv`, anonymised against
+   the checklist above. Twenty rows is plenty: one of each shape is the point.
+4. **Run `pnpm test`.** The first run writes `packages/core/test/presets/<id>.expected.json`,
+   which is what your preset reads out of your sample. Read it line by line before you
+   commit it: it is the assertion, and a wrong one locks in a wrong reading. The same run
+   tells you the single line to add to `FILES` in
+   `packages/core/src/import/presets/index.ts`, and refuses anything the loader would
+   refuse: an unknown field, an id that is not kebab-case, a mapping with no date column.
+
+A bank whose export is not one row per movement needs more than a mapping. A broker that
+splits one transfer across two rows, or carries an ISIN and a quantity, needs a reader in
+`packages/core/src/import/`, and its preset names that reader instead of describing
+columns. Open a discussion first: that half is not a drop-in file.
 
 ## Reporting bugs
 

@@ -634,6 +634,51 @@ test('a bank described once is not described again', async () => {
   });
 });
 
+test('a bank described once can be described for everybody else', async () => {
+  await expectNoConsoleErrors(async () => {
+    // The last step of §8.4. A preset is a JSON file, so the description this
+    // person wrote for themselves is already the thing that would ship - and
+    // until this existed, turning one into the other meant writing TypeScript.
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(FRENCH_LATER);
+
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Contribute this bank' }).click();
+    const dialogue = page.getByRole('dialog');
+    await expect(dialogue).toBeVisible();
+
+    // Nothing to copy until there is something the loader would accept.
+    await expect(dialogue.getByText(/Give a name and a two-letter country code/)).toBeVisible();
+    await expect(dialogue.getByRole('button', { name: 'Copy the file' })).toBeDisabled();
+
+    await dialogue.getByLabel('Bank name').fill('Banque Inventée');
+    await dialogue.getByLabel('Country').fill('fr');
+
+    // Where it goes, and what is in it: the accent gone from the id, the
+    // country upper-cased, a monogram nobody was asked for, and the columns
+    // this screen worked out on its own.
+    await expect(
+      dialogue.getByText('packages/core/src/import/presets/fr/banque-inventee.json'),
+    ).toBeVisible();
+    await expect(dialogue.getByText('"id": "banque-inventee"')).toBeVisible();
+    await expect(dialogue.getByText('"country": "FR"')).toBeVisible();
+    await expect(dialogue.getByText('"monogram": "BI"')).toBeVisible();
+    await expect(dialogue.getByText('"bookedOn": "Date"')).toBeVisible();
+
+    // Nothing from inside the file. Column names say which bank this is; rows
+    // say what somebody spent, and those never leave the instance.
+    await expect(dialogue.getByText('Assurance habitation')).toHaveCount(0);
+
+    await expect(dialogue.getByRole('button', { name: 'Copy the file' })).toBeEnabled();
+    // Named 'Done' rather than 'Close': the dialog's own dismiss control is
+    // already a Close, and two of them is two identical answers on one screen.
+    await dialogue.getByRole('button', { name: 'Done' }).click();
+    await expect(dialogue).toHaveCount(0);
+  });
+});
+
 test('a wide statement scrolls inside its panel rather than pushing the page', async () => {
   await expectNoConsoleErrors(async () => {
     // The Trade Republic export read through the "other bank" path, for its

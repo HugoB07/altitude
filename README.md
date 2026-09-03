@@ -21,24 +21,25 @@ real estate and liabilities - on your server, in your database.
 > Republic, or any bank at all by naming its columns on screen - with duplicates flagged
 > and the whole run undoable in one press.
 >
-> A bank is described once: the columns you named are kept and found again by the shape
-> of the next file, so the following month asks nothing. Where a statement carries its
-> running balance, the file is read back against it - every row has to move the balance by
-> its own amount - and its closing balance is compared with what your ledger will hold.
-> Movements are filed by rules you write: ordered, readable, and traceable to one line, so
-> "why is this in groceries" has an answer. A rule can also name who was on the other
-> side, the shop or the employer, and tag what cuts across categories: a week away is
-> restaurants and fuel and a hotel, each keeping its own category. All three are filters
-> in the transactions tab.
+> A bank is described once: the columns you named are kept and found again by the shape of
+> the next file, so the following month asks nothing - and that description can be handed
+> back as a preset file, which is how a bank described by one person ends up described for
+> everybody. Where a statement carries its running balance, the file is read back against
+> it - every row has to move the balance by its own amount - and its closing balance is
+> compared with what your ledger will hold. Movements are filed by rules you write:
+> ordered, readable, and traceable to one line, so "why is this in groceries" has an
+> answer. A rule can also name who was on the other side, the shop or the employer, and
+> tag what cuts across categories: a week away is restaurants and fuel and a hotel, each
+> keeping its own category. All three are filters in the transactions tab.
 >
 > What is missing from phase 2: only CSV is read - not XLSX, OFX, QIF, CAMT, and not PDF,
 > which matters more than the plan assumed, since some French banks (Crédit Agricole among
-> them) offer a monthly statement as a PDF and little else; a mapping cannot yet be
-> contributed back as a preset, so exactly one bank ships with a reader and a first file
-> from any other has to be described by hand - which is the whole of what stands between
-> this and the phase being done; and the import runs inside the request rather than in a
-> worker, so a very large file will outlast its own timeout. There is no market data and
-> no history at all - those are phase 3. See the [roadmap](#roadmap).
+> them) offer a monthly statement as a PDF and little else; one bank ships with a preset,
+> because a preset needs a real file to test against and no one person has an account
+> everywhere, so a first file from anywhere else is described by hand before it is
+> described for good; and the import runs inside the request rather than in a worker, so a
+> very large file will outlast its own timeout. There is no market data and no history at
+> all - those are phase 3. See the [roadmap](#roadmap).
 
 ## Why
 
@@ -91,18 +92,14 @@ The domain core is open to contributions: `packages/shared` and `packages/core`.
 useful, and needing no TypeScript: critique of the plan, anonymised bank export samples,
 and ETF exposure data.
 
-Adding a bank is close to being the easiest entry point. A reader is already a
-`ColumnMapping` - which column is the date, which is the amount, how the statement writes
-a state meaning "this did not happen" - the screen builds one for any file, and it is
-kept for next time. What is missing is the last step: turning one of those into a preset
-that ships in the repository, so a bank described once is described for everyone.
+Adding a bank is the easiest entry point, and it needs no TypeScript. A preset is a JSON
+file: import a statement through "Other bank", name its columns, and when the preview
+reads correctly press "Contribute this bank". The screen writes the file and says where it
+goes. Add an anonymised sample next to it, run the tests once to generate the reading they
+assert against, read that reading line by line, and open a pull request.
 
-Until that lands, the most useful thing you can send is an anonymised export of a bank
-nobody has covered - read the anonymisation checklist in
-[CONTRIBUTING.md](CONTRIBUTING.md) first.
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the anonymisation checklist
-before attaching any export file.
+The step-by-step is in [CONTRIBUTING.md](CONTRIBUTING.md), and so is the anonymisation
+checklist. Read it before attaching any export file.
 
 ## Security
 

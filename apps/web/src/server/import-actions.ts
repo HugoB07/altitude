@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import {
+  CUSTOM_PRESET_ID,
   SECURITIES_SUFFIX,
   accountBalances,
   bindAccounts,
@@ -11,11 +12,13 @@ import {
   ImportNotFoundError,
   STATEMENT_ACCOUNT,
   createAccount,
+  customPreset,
   findDuplicates,
   findImportsOfFile,
   fingerprintOf,
   findMapping,
   parseMapping,
+  presetById,
   readShape,
   rememberMapping,
   listImports,
@@ -25,6 +28,7 @@ import {
   type BoundCandidate,
   type CandidateOverrides,
   type EntryRole,
+  type Preset,
   type Verdict,
 } from '@altitude/core';
 import {
@@ -37,7 +41,6 @@ import {
   todayIn,
   transactionId,
 } from '@altitude/shared';
-import { CUSTOM_PRESET_ID, customPreset, presetById, type Preset } from '@/lib/import-presets';
 import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
@@ -306,7 +309,7 @@ function describeAccounts(
   existing: readonly { accountId: string; name: string; closedOn: string | null }[] = [],
 ): RequestedAccount[] {
   const named = (label: string): string => {
-    const known = preset.accounts?.[label];
+    const known = preset.accounts[label];
     if (known !== undefined) return t(`account.${known.nameKey}`);
 
     // The securities side of an account is named after it, so a dictionary that
@@ -336,7 +339,7 @@ function describeAccounts(
       label,
       name,
       nature,
-      kind: preset.accounts?.[label]?.kind ?? (nature === 'securities' ? 'securities' : 'cash'),
+      kind: preset.accounts[label]?.kind ?? (nature === 'securities' ? 'securities' : 'cash'),
       accountId: chosen ?? already?.accountId ?? null,
       ...(already === undefined ? {} : { suggested: true }),
     };
@@ -373,7 +376,7 @@ function mergedIntoTheirCash(
   const merged: Record<string, string> = {};
   for (const label of reading.securities) {
     const cash = label.slice(0, -SECURITIES_SUFFIX.length);
-    if (preset.accounts?.[cash]?.holdsSharesToo === true) merged[label] = cash;
+    if (preset.accounts[cash]?.holdsSharesToo === true) merged[label] = cash;
   }
   return merged;
 }

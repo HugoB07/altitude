@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
  * This has now happened four times: a preset registry imported for a datalist,
  * a text decoder imported for an upload, and twice more. The fourth got past
  * the first version of this check, which read one file: `importer.tsx` imported
- * a constant from `lib/import-presets`, which imports the readers, which import
+ * a constant from a preset registry, which imports the readers, which import
  * core. The client file named nothing forbidden and pulled the driver in all
  * the same, so the check follows the chain now.
  *

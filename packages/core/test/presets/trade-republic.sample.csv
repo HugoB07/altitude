@@ -1,0 +1,6 @@
+datetime;date;account_type;category;type;asset_class;name;symbol;shares;price;amount;fee;tax;currency;original_amount;original_currency;fx_rate;description;transaction_id;counterparty_name;counterparty_iban;payment_reference;mcc_code
+2026-05-18T09:12:00Z;18/05/2026;DEFAULT;CASH;TRANSFER_OUT;;;;;;-100.000000;;;EUR;;;;Versement PEA;tx-0001;;;;
+2026-05-18T09:12:00Z;18/05/2026;PEA;CASH;TRANSFER_IN;;;;;;100.000000;;;EUR;;;;Versement PEA;tx-0002;;;;
+2026-05-19T10:03:00Z;19/05/2026;PEA;SECURITY;BUY;STOCK;Societe Inventee;FR0000000001;2.000000;25.000000;-50.000000;;;EUR;;;;Achat Societe Inventee;tx-0003;;;;
+2026-05-31T23:00:00Z;31/05/2026;DEFAULT;CASH;INTEREST_PAYMENT;;;;;;4.000000;;-0.600000;EUR;;;;Interets mai;tx-0004;;;;
+2026-06-02T18:41:00Z;02/06/2026;DEFAULT;CASH;TRANSFER_INSTANT_OUTBOUND;;;;;;-12.500000;;;EUR;;;;Boulangerie;tx-0005;Boulangerie Inventee;;;

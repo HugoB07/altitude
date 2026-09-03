@@ -1,0 +1,118 @@
+{
+  "candidates": [
+    {
+      "externalId": "tx-0001",
+      "bookedOn": "2026-05-18",
+      "kind": "transfer",
+      "description": "Versement PEA",
+      "sourceLines": [
+        2,
+        3
+      ],
+      "entries": [
+        {
+          "account": "DEFAULT",
+          "amount": "-100",
+          "currency": "EUR"
+        },
+        {
+          "account": "PEA",
+          "amount": "100",
+          "currency": "EUR"
+        }
+      ]
+    },
+    {
+      "externalId": "tx-0003",
+      "bookedOn": "2026-05-19",
+      "kind": "buy",
+      "description": "Achat Societe Inventee",
+      "sourceLines": [
+        4
+      ],
+      "entries": [
+        {
+          "account": "PEA",
+          "amount": "-50",
+          "currency": "EUR"
+        },
+        {
+          "account": "PEA:SECURITIES",
+          "amount": "50",
+          "currency": "EUR",
+          "quantity": "2.000000",
+          "unitPrice": "25.000000",
+          "instrument": {
+            "isin": "FR0000000001",
+            "name": "Societe Inventee",
+            "currency": "EUR",
+            "kind": "equity"
+          }
+        }
+      ]
+    },
+    {
+      "externalId": "tx-0004",
+      "bookedOn": "2026-05-31",
+      "kind": "interest",
+      "description": "Interets mai",
+      "sourceLines": [
+        5
+      ],
+      "entries": [
+        {
+          "account": "DEFAULT",
+          "amount": "4",
+          "currency": "EUR",
+          "role": "gross"
+        },
+        {
+          "account": "DEFAULT",
+          "amount": "-0.6",
+          "currency": "EUR",
+          "role": "withholdingTax"
+        },
+        {
+          "account": "EXTERNAL",
+          "amount": "-3.4",
+          "currency": "EUR",
+          "role": "netCredited"
+        }
+      ]
+    },
+    {
+      "externalId": "tx-0005",
+      "counterparty": "Boulangerie Inventee",
+      "bookedOn": "2026-06-02",
+      "kind": "withdrawal",
+      "description": "Boulangerie",
+      "sourceLines": [
+        6
+      ],
+      "entries": [
+        {
+          "account": "DEFAULT",
+          "amount": "-12.5",
+          "currency": "EUR"
+        },
+        {
+          "account": "EXTERNAL",
+          "amount": "12.5",
+          "currency": "EUR"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    "DEFAULT",
+    "PEA"
+  ],
+  "securities": [
+    "PEA:SECURITIES"
+  ],
+  "counterparts": [
+    "EXTERNAL"
+  ],
+  "problems": [],
+  "skipped": []
+}

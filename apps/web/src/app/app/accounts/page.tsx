@@ -1,12 +1,11 @@
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { CREATABLE_KINDS, accountBalances, type AccountBalance } from '@altitude/core';
+import { CREATABLE_KINDS, PRESETS, accountBalances, type AccountBalance } from '@altitude/core';
 import { Money } from '@altitude/shared';
 import { Coins } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getContext, getSessionUser, scoped } from '@/server/context';
 import { ensureTenantIsolation } from '@/server/startup';
-import { PRESETS } from '@/lib/import-presets';
 import { AccountRow } from './account-row';
 import { NewAccount } from './new-account';
 

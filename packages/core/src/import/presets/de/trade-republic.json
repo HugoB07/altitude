@@ -1,0 +1,15 @@
+{
+  "$comment": "A coded reader, because this export is not one row per transaction: a transfer between two of your own accounts is two rows to pair, a purchase carries an ISIN and a quantity and splits into cash and holding, and interest arrives with tax already deducted. The cash of an account is the current account and the shares bought with it sit in the CTO next to it, so DEFAULT is two accounts. A PEA is one account holding both, which is what holdsSharesToo says.",
+  "id": "trade-republic",
+  "name": "Trade Republic",
+  "country": "DE",
+  "monogram": "TR",
+  "logo": "/banks/trade-republic.jpeg",
+  "institution": "Trade Republic",
+  "reader": "trade-republic",
+  "accounts": {
+    "DEFAULT": { "nameKey": "tradeRepublicCurrent", "kind": "cash" },
+    "DEFAULT:SECURITIES": { "nameKey": "tradeRepublicCto", "kind": "securities" },
+    "PEA": { "nameKey": "tradeRepublicPea", "kind": "securities", "holdsSharesToo": true }
+  }
+}

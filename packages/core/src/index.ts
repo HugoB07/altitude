@@ -119,6 +119,23 @@ export {
   readTradeRepublic,
   securitiesLabel,
 } from './import/trade-republic';
+export {
+  PRESETS,
+  CUSTOM_PRESET_ID,
+  customPreset,
+  presetById,
+  type Preset,
+} from './import/presets/index';
+export {
+  parsePresetDefinition,
+  PresetError,
+  PRESET_ACCOUNT_KINDS,
+  CODED_READERS,
+  type CodedReader,
+  type PresetAccount,
+  type PresetAccountKind,
+  type PresetDefinition,
+} from './import/presets/schema';
 export type {
   BalanceReading,
   Candidate,
