@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import ExcelJS from 'exceljs';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -51,6 +52,37 @@ const FRENCH_LATER = join(__dirname, 'fixtures', 'releve-francais-2.csv');
 const FRENCH_AGAIN = join(__dirname, 'fixtures', 'releve-francais-3.csv');
 /** A statement carrying its running balance, which is what reconciling reads. */
 const BALANCES = join(__dirname, 'fixtures', 'releve-solde.csv');
+const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/**
+ * A workbook, built here rather than committed.
+ *
+ * A binary fixture is a blob nobody can read in a diff, and what matters about
+ * this one is what is in the cells: a junk row above the header, real dates
+ * rather than the five-digit serial numbers Excel stores, and two months on two
+ * sheets. Invented figures, like every other fixture here.
+ */
+async function statement(): Promise<Buffer> {
+  const book = new ExcelJS.Workbook();
+
+  // First and empty on purpose: a cover sheet is common, and "read the first
+  // sheet" would read nothing at all.
+  book.addWorksheet('Couverture');
+
+  const march = book.addWorksheet('Mars');
+  march.addRow(['Releve du compte']);
+  march.addRow(['Date', 'Libelle', 'Montant']);
+  march.addRow([new Date(Date.UTC(2026, 2, 4)), 'ABONNEMENT INVENTE', -19.9]);
+  march.addRow([new Date(Date.UTC(2026, 2, 20)), 'REMBOURSEMENT INVENTE', 45.5]);
+
+  const april = book.addWorksheet('Avril');
+  april.addRow(['Releve du compte']);
+  april.addRow(['Date', 'Libelle', 'Montant']);
+  april.addRow([new Date(Date.UTC(2026, 3, 8)), 'COTISATION INVENTEE', -7.2]);
+
+  return Buffer.from(await book.xlsx.writeBuffer());
+}
+
 /** A file that says what it is: OFX 1.x, the SGML dialect, from a French bank. */
 const OFX = join(__dirname, 'fixtures', 'releve.ofx');
 /** The other self-describing one, which carries no currency at all. */
@@ -804,6 +836,75 @@ test('a file past what the application accepts is refused with the number', asyn
 
     // And nothing was read: the screen is still asking for a file.
     await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+  });
+});
+
+test('a spreadsheet is read as the statement it is', async () => {
+  await expectNoConsoleErrors(async () => {
+    /**
+     * XLSX enters differently from every other format: it is not text, so the
+     * file itself crosses to the server and one sheet comes back as CSV. From
+     * that moment it is a CSV run, which is the whole design - the mapping
+     * screen, the presets and the remembered description all work unchanged.
+     */
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles({ name: 'releve.xlsx', mimeType: XLSX, buffer: await statement() });
+
+    // Not self-describing, unlike OFX: a bank's spreadsheet is a bank's CSV
+    // with formatting on top, and its columns still have to be named.
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+
+    // The cover sheet holds nothing, so the first sheet with rows was read.
+    await expect(page.getByText('Read from the Mars sheet.')).toBeVisible();
+
+    // The junk row above the header did not shift anything, and the dates came
+    // back as dates rather than as the five-digit numbers Excel stores - which
+    // is the trap the plan names, and it settles the order outright.
+    await expect(page.getByRole('combobox', { name: /^Date/ })).toContainText('Date');
+    await expect(page.getByText(/^e\.g\. 2026-03-04/).first()).toBeVisible();
+    await expect(page.getByText(/Which day is/)).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('ABONNEMENT INVENTE')).toBeVisible();
+    await expect(page.getByText('REMBOURSEMENT INVENTE')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Import 2 transactions' }).click();
+    await expect(page.getByText('2 transactions imported')).toBeVisible();
+
+    // The amounts, read out of numeric cells rather than out of text, and
+    // neither of them a float artefact of the conversion.
+    await page.goto('/app/transactions');
+    await expect(page.getByText('ABONNEMENT INVENTE')).toBeVisible();
+    await expect(page.getByText('€19.90').first()).toBeVisible();
+    await expect(page.getByText('€45.50').first()).toBeVisible();
+  });
+});
+
+test('another sheet of the same workbook is read without asking for the file again', async () => {
+  await expectNoConsoleErrors(async () => {
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles({ name: 'releve.xlsx', mimeType: XLSX, buffer: await statement() });
+
+    // Described once already, so this one goes straight past the columns.
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('ABONNEMENT INVENTE')).toBeVisible();
+
+    // The browser cannot re-open a file it was handed, so the workbook is kept
+    // and the other sheet is read from it. Asking somebody to find the file a
+    // second time to see the sheet next to the one they got is how an import
+    // screen loses people.
+    await page.getByRole('combobox', { name: 'Sheet' }).click();
+    await page.getByRole('option', { name: 'Avril' }).click();
+
+    await expect(page.getByText('COTISATION INVENTEE')).toBeVisible();
+    await expect(page.getByText('ABONNEMENT INVENTE')).toHaveCount(0);
   });
 });
 

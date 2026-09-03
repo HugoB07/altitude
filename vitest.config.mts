@@ -1,6 +1,16 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // `server-only` throws on import unless the bundler resolves its
+      // `react-server` condition, which vitest does not. Stubbed so a module
+      // can carry the guard and still be unit-tested - the guard is what stops
+      // a client component importing ExcelJS, and it stays in the build.
+      'server-only': fileURLToPath(new URL('./apps/web/test/stub-server-only.ts', import.meta.url)),
+    },
+  },
   test: {
     // `apps/web/test` holds guards about the application's own boundaries,
     // not component tests. `e2e` is Playwright's and is not matched here.

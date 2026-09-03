@@ -42,6 +42,7 @@ import {
   todayIn,
   transactionId,
 } from '@altitude/shared';
+import { readSpreadsheet } from './spreadsheet';
 import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
@@ -204,6 +205,67 @@ async function refuseOversized(text: string): Promise<string | null> {
   return refused.reason === 'bytes'
     ? t('fileTooBig', { limit: Math.round(refused.limit / (1024 * 1024)) })
     : t('fileTooLong', { limit: refused.limit });
+}
+
+export interface SpreadsheetResult {
+  readonly error?: string;
+  /** The chosen sheet as delimited text, which is a CSV run from here on. */
+  readonly text?: string;
+  readonly sheets?: readonly string[];
+  readonly sheet?: string;
+}
+
+/**
+ * A spreadsheet, turned into the text every other path already carries.
+ *
+ * The one action that takes a file rather than a string. XLSX is not text, so
+ * the browser cannot decode it and send it the way it sends a CSV - and reading
+ * a zip archive in a browser bundle would mean shipping the library to
+ * everybody who ever opens the import screen.
+ *
+ * What comes back is a CSV run. The mapping screen, the presets, the remembered
+ * description keyed on the header: all of it works on the text, and none of it
+ * knows a spreadsheet was involved.
+ */
+export async function readSpreadsheetAction(formData: FormData): Promise<SpreadsheetResult> {
+  await ensureTenantIsolation();
+  await requireContext();
+  const t = await getTranslations('import');
+
+  const file = formData.get('file');
+  if (!(file instanceof File)) return { error: t('genericError') };
+
+  // The compressed size, before anything is expanded. The browser checks this
+  // too; this is where it is enforced.
+  const refused = checkUpload(file.size);
+  if (refused !== null) {
+    return { error: t('fileTooBig', { limit: Math.round(refused.limit / (1024 * 1024)) }) };
+  }
+
+  const wanted = String(formData.get('sheet') ?? '');
+  const read = await readSpreadsheet(new Uint8Array(await file.arrayBuffer()), wanted || undefined);
+
+  if ('reason' in read) {
+    switch (read.reason) {
+      case 'unreadable':
+        return { error: t('notASpreadsheet') };
+      case 'empty':
+        return { error: t('nothingToImport') };
+      case 'tooLarge':
+        return { error: t('fileTooBig', { limit: Math.round(read.limit / (1024 * 1024)) }) };
+      case 'tooManyRows':
+        return { error: t('fileTooLong', { limit: read.limit }) };
+      case 'tooManyColumns':
+        return { error: t('tooManyColumns', { limit: read.limit }) };
+    }
+  }
+
+  // Checked again on what it became. A small archive can hold a large sheet,
+  // and every step after this one carries the text rather than the file.
+  const oversized = await refuseOversized(read.text);
+  if (oversized !== null) return { error: oversized };
+
+  return { text: read.text, sheets: read.sheets, sheet: read.sheet };
 }
 
 export async function previewImportAction(formData: FormData): Promise<PreviewResult> {

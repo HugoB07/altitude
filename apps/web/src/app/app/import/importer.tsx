@@ -22,6 +22,7 @@ import {
   commitImportAction,
   openAccountsAction,
   previewImportAction,
+  readSpreadsheetAction,
   rememberMappingAction,
   shapeFileAction,
   type PreviewLine,
@@ -47,7 +48,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { checkUpload, decodeText, describesItself, sniffFormat } from '@altitude/shared';
+import {
+  checkUpload,
+  decodeText,
+  describesItself,
+  sniffBytes,
+  sniffFormat,
+} from '@altitude/shared';
 import { money } from '@/lib/money';
 import { CUSTOM_PRESET_ID } from '@/lib/import-custom';
 import { CURRENCIES, currencyLabel } from '@/lib/currencies';
@@ -219,6 +226,19 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
    * so the question is one press rather than a hunt through a list.
    */
   const [chosen, setChosen] = useState(baseCurrency);
+  /**
+   * The workbook a run came from, when it came from one.
+   *
+   * Kept so another sheet can be read without asking for the file again - the
+   * browser cannot re-open a file it was handed, and asking somebody to find
+   * it a second time to look at the sheet next to the one they got is the kind
+   * of small indignity that makes people give up on an import screen.
+   */
+  const [workbook, setWorkbook] = useState<{
+    readonly file: File;
+    readonly sheets: readonly string[];
+    readonly sheet: string;
+  } | null>(null);
   const [pending, start] = useTransition();
 
   /** The counterpart rail, scrolled by its own buttons rather than by a bar. */
@@ -325,6 +345,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     setSelected(new Set());
     setPerLine(false);
     setToggled(new Set());
+    setWorkbook(null);
   }
 
   async function onFile(file: File) {
@@ -337,11 +358,31 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
       return;
     }
 
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    // A spreadsheet is not text, and running one through a text decoder gives a
+    // screenful of replacement characters - which reads as "this file is
+    // empty" rather than as "this is a spreadsheet". Asked from the first
+    // bytes, before anything tries.
+    const binary = sniffBytes(bytes);
+    if (binary === 'legacy-excel') {
+      toast.error(t('legacyExcel'));
+      return;
+    }
+    if (binary === 'xlsx') {
+      // The plan asks for this to be said rather than assumed (§8.7). A macro
+      // workbook is the same format with code attached, the reader takes the
+      // data and never the code, and a person handing one over deserves to
+      // know which of the two happened.
+      if (/\.xlsm$/i.test(file.name)) toast.info(t('macrosIgnored'));
+      openWorkbook(file);
+      return;
+    }
+
     // Bytes, not `file.text()`. That method assumes UTF-8 and replaces
     // everything else with U+FFFD, so a CP1252 export - which is what Excel on
     // a French Windows writes - arrives with "VIREMENT SÉPA" already turned
     // into "VIREMENT S?PA", and no care downstream brings the letter back.
-    const bytes = new Uint8Array(await file.arrayBuffer());
     const { text: contents } = decodeText(bytes);
 
     // Lines only after decoding, because that is when there are lines. A file
@@ -353,6 +394,42 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
       return;
     }
 
+    setWorkbook(null);
+    accept(file.name, contents);
+  }
+
+  /**
+   * A workbook, converted on the server and then treated as any other file.
+   *
+   * The conversion is the only step that knows a spreadsheet was involved.
+   * What comes back is delimited text, so the mapping screen, the presets and
+   * the description kept from last month all work on it unchanged.
+   */
+  function openWorkbook(file: File, sheet?: string) {
+    const form = new FormData();
+    form.set('file', file);
+    if (sheet !== undefined) form.set('sheet', sheet);
+
+    start(() => {
+      void readSpreadsheetAction(form).then((result) => {
+        if (result.error !== undefined || result.text === undefined) {
+          toast.error(result.error ?? t('genericError'));
+          return;
+        }
+
+        const sheets = result.sheets ?? [];
+        setWorkbook({ file, sheets, sheet: result.sheet ?? '' });
+        // Said only when there was a choice to make. A workbook with one sheet
+        // has nothing to report, and a toast on every import is noise.
+        if (sheets.length > 1) toast.success(t('sheetRead', { sheet: result.sheet ?? '' }));
+
+        accept(file.name, result.text);
+      });
+    });
+  }
+
+  /** Everything that happens once a run has text, whatever the file was. */
+  function accept(filename: string, contents: string) {
     // What kind of file this is, before the preset that was picked matters.
     // OFX and QIF say so themselves, and a person who picked "other bank" and
     // handed over an OFX should not then be asked which column is the date.
@@ -369,7 +446,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     setDraft({ ...BLANK_DRAFT, currency: baseCurrency });
     dispatch({
       type: 'file',
-      filename: file.name,
+      filename,
       text: contents,
       ...(named === undefined ? {} : { preset: named }),
     });
@@ -586,7 +663,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           <span className="text-sm">{preset.name}</span>
           <input
             type="file"
-            accept=".csv,.tsv,.ofx,.qfx,.qif,text/csv,text/plain"
+            accept=".csv,.tsv,.ofx,.qfx,.qif,.xlsx,.xlsm,text/csv,text/plain"
             className="sr-only"
             disabled={pending}
             onChange={(event) => {
@@ -599,12 +676,48 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     );
   }
 
+  /**
+   * Which sheet of the workbook this run came from, when there is a choice.
+   *
+   * Not a step of its own. A workbook nearly always has one sheet worth
+   * reading, and a screen between the file and the columns would be a question
+   * with one answer - so the first sheet holding rows is read straight away and
+   * this sits next to the run, for the workbook where that was the wrong guess.
+   */
+  const sheets =
+    workbook !== null && workbook.sheets.length > 1 ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <Label htmlFor="sheet" className="text-muted-foreground text-xs font-medium">
+          {t('sheetLabel')}
+        </Label>
+        <Select
+          name="sheet"
+          value={workbook.sheet}
+          onValueChange={(value) => {
+            if (value !== null && value !== workbook.sheet) openWorkbook(workbook.file, value);
+          }}
+        >
+          <SelectTrigger id="sheet" size="sm" className="w-56" disabled={pending}>
+            <SelectValue>{workbook.sheet}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {workbook.sheets.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    ) : null;
+
   // --- Step two and a half: which column is what --------------------------
   // Only for a file nobody wrote a preset for, and only until it is described.
   if (preset.id === CUSTOM_PRESET_ID && mapping === null) {
     return (
       <section className="grid grid-cols-1 gap-4">
         <Back onClick={reset} label={t('startOver')} />
+        {sheets}
         {shape === null ? (
           <p className="text-muted-foreground text-sm">{t('reading')}</p>
         ) : (
@@ -778,6 +891,8 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           {mapping !== null && <Contribute mapping={toColumnMapping(mapping)} />}
         </div>
       )}
+
+      {sheets}
 
       {preview.looksWrong === true && (
         <Alert>

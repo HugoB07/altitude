@@ -2,7 +2,14 @@ export { Decimal, dec, ZERO, type DecimalInput } from './decimal';
 export { Money, currency, isCurrencyCode, CurrencyMismatchError, type CurrencyCode } from './money';
 export { ledgerDate, compareDates, todayIn, type LedgerDate } from './ledger-date';
 export { decodeText, type DecodedText } from './text';
-export { sniffFormat, describesItself, FILE_FORMATS, type FileFormat } from './formats';
+export {
+  sniffFormat,
+  sniffBytes,
+  describesItself,
+  FILE_FORMATS,
+  type FileFormat,
+  type BinaryFormat,
+} from './formats';
 export {
   checkUpload,
   MAX_UPLOAD_BYTES,

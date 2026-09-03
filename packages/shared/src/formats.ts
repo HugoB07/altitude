@@ -35,6 +35,36 @@ export function sniffFormat(text: string): FileFormat {
   return 'delimited';
 }
 
+/**
+ * A file that is not text at all, from its first bytes.
+ *
+ * Asked before anything tries to decode it: a spreadsheet run through a text
+ * decoder is a screenful of replacement characters, and what a person gets from
+ * that is "this file is empty" rather than "this is a spreadsheet".
+ *
+ * `null` means it is text, which is every other path through the importer.
+ */
+export type BinaryFormat = 'xlsx' | 'legacy-excel';
+
+export function sniffBytes(bytes: Uint8Array): BinaryFormat | null {
+  // Every XLSX is a zip, and this is a zip's first four bytes. Not every zip is
+  // an XLSX - the reader on the server settles that, and refusing here on a
+  // stronger guess would mean opening the archive twice.
+  if (starts(bytes, [0x50, 0x4b, 0x03, 0x04])) return 'xlsx';
+
+  // The pre-2007 binary format, which is an OLE2 compound document and shares
+  // nothing with the modern one. Recognised only to say so: a person told
+  // "unreadable file" has no idea what to do next, and "save it as .xlsx" is
+  // one step.
+  if (starts(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])) return 'legacy-excel';
+
+  return null;
+}
+
+function starts(bytes: Uint8Array, magic: readonly number[]): boolean {
+  return magic.length <= bytes.length && magic.every((byte, at) => bytes[at] === byte);
+}
+
 /** Whether this format describes itself, and so needs nothing named by hand. */
 export function describesItself(format: FileFormat): boolean {
   return format !== 'delimited';

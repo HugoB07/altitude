@@ -18,9 +18,9 @@ real estate and liabilities - on your server, in your database.
 > **⚠️ Status: phase 2, import.** The ledger works: sign in, create a household,
 > manage accounts, record and reverse transactions, and read a net worth that an internal
 > transfer does not inflate. A statement now imports too - a preset for Trade Republic, any
-> bank at all by naming its columns on screen, and OFX or QIF with nothing named, since
-> those formats say what every value is - with duplicates flagged and the whole run
-> undoable in one press.
+> bank at all by naming the columns of its CSV or its spreadsheet on screen, and OFX or QIF
+> with nothing named, since those two say what every value is - with duplicates flagged and
+> the whole run undoable in one press.
 >
 > A bank is described once: the columns you named are kept and found again by the shape of
 > the next file, so the following month asks nothing - and that description can be handed
@@ -33,13 +33,14 @@ real estate and liabilities - on your server, in your database.
 > tag what cuts across categories: a week away is restaurants and fuel and a hotel, each
 > keeping its own category. All three are filters in the transactions tab.
 >
-> What is missing from phase 2: XLSX is not read, nor CAMT or MT940, and nor is PDF, which
-> matters more than the plan assumed, since some French banks (Crédit Agricole among them)
-> offer a monthly statement as a PDF and little else; one bank ships with a preset, because
-> a preset needs a real file to test against and no one person has an account everywhere,
-> so a first CSV from anywhere else is described by hand before it is described for good;
-> and the import runs inside the request rather than in a worker, so a very large file will
-> outlast its own timeout. There is no market data and no history at all - those are phase 3. See the [roadmap](#roadmap).
+> What is missing from phase 2: CAMT and MT940 are not read, and nor is PDF, which matters
+> more than the plan assumed, since some French banks (Crédit Agricole among them) offer a
+> monthly statement as a PDF and little else; one bank ships with a preset, because a preset
+> needs a real file to test against and no one person has an account everywhere, so a first
+> file from anywhere else is described by hand before it is described for good; and the
+> import runs inside the request rather than in a worker, so a very large file will outlast
+> its own timeout. There is no market data and no history at all - those are phase 3. See
+> the [roadmap](#roadmap).
 
 ## Why
 

@@ -135,6 +135,9 @@ no compiler.
    `packages/core/src/import/presets/index.ts`, and refuses anything the loader would
    refuse: an unknown field, an id that is not kebab-case, a mapping with no date column.
 
+A spreadsheet works the same way as a CSV. It is turned into delimited text before
+anything reads it, so what you describe and contribute is the columns, not the file format.
+
 A bank that exports OFX or QIF needs no preset at all. Those formats say what every value
 is, so the file is read as it arrives and there is nothing to name or to ship.
 
