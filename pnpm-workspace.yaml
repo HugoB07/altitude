@@ -39,16 +39,31 @@ allowBuilds:
   '@swc/core': false
   '@parcel/watcher': false
 
-# drizzle-kit still depends on @esbuild-kit/esm-loader, which is deprecated -
-# it was merged into tsx, which drizzle-kit also depends on - and which pins
-# esbuild 0.18. That version carries GHSA-67mh-4wv8-2f99: its development
-# server answers requests from any origin.
+# Versions forced past a published advisory.
 #
-# Nothing here runs an esbuild dev server, and drizzle-kit is a devDependency
-# that never ships, so the advisory is not reachable in this project. It is
-# still fixed rather than ignored: a permanently red audit is an audit nobody
-# reads, and there is no upstream release to wait for - 0.31.10 is current.
-#
-# Scoped to the offending path so drizzle-kit's own esbuild is left alone.
+# An override is a version nobody asked for, so each entry says what drags the
+# vulnerable package in, why the bump is safe, and what would let it go - the
+# same bar the catalog above sets. A permanently red audit is an audit nobody
+# reads, so these are fixed rather than ignored even where the advisory is not
+# reachable from this code.
 overrides:
+  # drizzle-kit still depends on @esbuild-kit/esm-loader, which is deprecated -
+  # it was merged into tsx, which drizzle-kit also depends on - and which pins
+  # esbuild 0.18. That version carries GHSA-67mh-4wv8-2f99: its development
+  # server answers requests from any origin. Nothing here runs an esbuild dev
+  # server, and drizzle-kit is a devDependency that never ships.
+  #
+  # Scoped to the offending path so drizzle-kit's own esbuild is left alone.
   '@esbuild-kit/core-utils>esbuild': '^0.25.12'
+  # exceljs 4.4.0 asks for uuid ^8.3.2, which misses a bounds check on a
+  # caller-supplied buffer in v3, v5 and v6 (fixed in 11.1.1). exceljs calls v4
+  # and passes no buffer, so the path is unreachable here. v11 still ships a
+  # CommonJS build, which is what exceljs requires. Gone when exceljs widens
+  # its own range.
+  uuid: ^11.1.1
+  # express, four levels beneath the shadcn CLI, pins qs below 6.16.0 - which
+  # carries an array-limit bypass and a denial of service through a controlled
+  # isBuffer. Nothing in this repository parses a query string with it, and the
+  # CLI that drags it in is a build tool rather than something the application
+  # loads. Gone when that chain moves.
+  qs: ^6.16.0
