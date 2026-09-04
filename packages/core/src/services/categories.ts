@@ -543,7 +543,18 @@ export interface ApplyResult {
 export async function applyRules(
   tx: Database,
   actor: Actor,
-  options: { readonly preview?: boolean; readonly importId?: string } = {},
+  options: {
+    readonly preview?: boolean;
+    readonly importId?: string;
+    /**
+     * One transaction, which is what a movement typed by hand is.
+     *
+     * The same narrowing as `importId` and for the same reason: reading every
+     * entry a household has, to categorise the two somebody just wrote, is
+     * work nobody asked for.
+     */
+    readonly transactionId?: string;
+  } = {},
 ): Promise<ApplyResult> {
   assertCan(actor, 'category:write', { householdId: actor.householdId });
   await assertActorMatchesTenant(tx, actor);
@@ -595,6 +606,7 @@ export async function applyRules(
        -- pass over the ledger: reading every entry a household has, to write
        -- twelve, is work nobody asked for.
        ${options.importId === undefined ? sql`` : sql`AND t.import_id = ${options.importId}::uuid`}
+       ${options.transactionId === undefined ? sql`` : sql`AND t.id = ${options.transactionId}::uuid`}
   `);
 
   // Built from the categories rather than from the rules: a shipped rule knows

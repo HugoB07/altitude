@@ -137,7 +137,8 @@
     "accountRenamed": "Compte renommé",
     "accountClosed": "Compte clôturé",
     "accountReopened": "Compte rouvert",
-    "transactionReversed": "Transaction contrepassée"
+    "transactionReversed": "Transaction contrepassée",
+    "transactionFiled": "Transaction enregistrée, et une règle l'a classée dans {name}"
   },
   "transactions": {
     "title": "Transactions",

@@ -137,7 +137,8 @@
     "accountRenamed": "Account renamed",
     "accountClosed": "Account closed",
     "accountReopened": "Account reopened",
-    "transactionReversed": "Transaction reversed"
+    "transactionReversed": "Transaction reversed",
+    "transactionFiled": "Transaction recorded, and a rule filed it under {name}"
   },
   "transactions": {
     "title": "Transactions",

@@ -54,7 +54,15 @@ export function QuickAdd({ accounts, role }: Props) {
         // Confirmed by a toast rather than by the dialog closing. A dialog that
         // vanishes is ambiguous: it looks the same whether the work happened or
         // the escape key was pressed.
-        toast.success(notify('transactionRecorded'));
+        //
+        // And it says when a rule filed it. There is no preview on the way in
+        // here the way there is for an import, so this is the only place a
+        // person learns that something other than them chose the category.
+        toast.success(
+          result.filedUnder === undefined
+            ? notify('transactionRecorded')
+            : notify('transactionFiled', { name: result.filedUnder }),
+        );
       } else {
         toast.error(result.error);
       }

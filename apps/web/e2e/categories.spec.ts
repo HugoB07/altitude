@@ -118,6 +118,30 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
     await page.goto('/app/transactions');
     await expect(page.getByText('Groceries').first()).toBeVisible();
 
+    // --- And a movement typed by hand is filed as it is written ------------
+    /**
+     * An import runs the rules as its step seven, and this used not to run
+     * them at all - so a rule somebody wrote applied to their statements and
+     * not to what they typed. That is a difference about how a movement
+     * arrived, and a rule is not about that.
+     *
+     * Said out loud, because there is no preview on the way in here the way
+     * there is for an import: this toast is the only place a person learns
+     * that something other than them chose the category.
+     */
+    await page.goto('/app');
+    await page.getByRole('button', { name: 'Move money' }).click();
+    const again = page.getByRole('dialog');
+    await again.getByLabel('From').click();
+    await page.getByRole('option', { name: 'Current account', exact: true }).click();
+    await again.getByLabel('To').click();
+    await page.getByRole('option', { name: 'Savings', exact: true }).click();
+    await again.getByLabel('Amount').fill('31,20');
+    await again.getByLabel('Description').fill('CB E.LECLERC DRIVE 8820');
+    await again.getByRole('button', { name: 'Record' }).click();
+
+    await expect(page.getByText('a rule filed it under Groceries')).toBeVisible();
+
     // --- Filing one by hand, and being offered a rule for the rest ---------
     /**
      * What the plan calls explicit learning (§8.6).

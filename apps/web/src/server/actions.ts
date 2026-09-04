@@ -6,6 +6,7 @@ import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import {
   accountBalances,
+  applyRules,
   closeAccount,
   createAccount,
   createHousehold,
@@ -41,6 +42,14 @@ import { ensureTenantIsolation } from './startup';
 
 export interface ActionResult {
   readonly error?: string;
+  /**
+   * The category a rule gave what was just recorded, when one did.
+   *
+   * Returned so the confirmation can say it. A rule that files a movement
+   * without a word is the same rule working invisibly, and this screen has no
+   * preview to show it on the way in the way the import does.
+   */
+  readonly filedUnder?: string;
 }
 
 /**
@@ -109,6 +118,8 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
     return { error: t('invalidAmount') };
   }
 
+  let filedUnder: string | undefined;
+
   try {
     await scoped(async (tx) => {
       // The accounts' own currency, not the household's and not a literal.
@@ -126,8 +137,9 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
       // domain, saying which account and which two currencies. A second check
       // here would be a second wording of it, free to drift.
       const code = source.currency;
+      const id = transactionId(randomUUID());
       await postTransaction(tx, actor, {
-        id: transactionId(randomUUID()),
+        id,
         bookedOn: on === '' ? todayIn() : ledgerDate(on),
         kind: 'transfer',
         ...(description === '' ? {} : { description }),
@@ -138,13 +150,23 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
           { accountId: accountId(to), amount: Money.of(amount, code) },
         ],
       });
+
+      // The rules, on what was just written. An import runs them as its step
+      // seven and this did not run them at all, so a rule somebody wrote
+      // applied to their statements and not to what they typed - which is a
+      // difference about how a movement arrived, and rules are not about that.
+      //
+      // Inside the same unit of work: a categorisation that fails takes the
+      // movement with it rather than leaving it half recorded.
+      const filed = await applyRules(tx, actor, { transactionId: id });
+      filedUnder = filed.byCategory[0]?.name;
     });
   } catch (error) {
     return { error: await toMessage(error) };
   }
 
   revalidatePath('/app');
-  return {};
+  return filedUnder === undefined ? {} : { filedUnder };
 }
 
 /**

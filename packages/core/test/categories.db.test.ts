@@ -601,6 +601,29 @@ describe('a community rule set', () => {
     expect(transaction?.counterparty).toBe('Lidl');
   });
 
+  it('runs over one transaction without touching the rest of the ledger', async () => {
+    // What a movement typed by hand needs: the rules, on what was just
+    // written. An import narrows the same way, and for the same reason - it
+    // reads every entry a household has otherwise.
+    await spend('bbbb9999-0000-4000-8000-000000000002', '2027-03-06', '18.40', 'CB MONOPRIX 2210');
+
+    const done = await as(owner, (tx) =>
+      applyRules(tx, owner, { transactionId: 'bbbb9999-0000-4000-8000-000000000002' }),
+    );
+
+    // One entry, not one per matching row in the household.
+    expect(done.changed).toBe(1);
+    expect(done.byCategory.map((one) => one.count)).toEqual([1]);
+
+    const [row] = await admin<{ categorised_by_set: string | null }[]>`
+      SELECT e.categorised_by_set
+        FROM entries e
+        JOIN accounts a ON a.id = e.account_id
+       WHERE e.transaction_id = 'bbbb9999-0000-4000-8000-000000000002'::uuid
+         AND a.classification <> 'equity'`;
+    expect(row?.categorised_by_set).toBe('fr/monoprix');
+  });
+
   it('leaves what it decided in place when the set is turned off', async () => {
     // Withdrawing a set is not a reason to undo decisions behind somebody's
     // back. The next pass simply stops making new ones.
