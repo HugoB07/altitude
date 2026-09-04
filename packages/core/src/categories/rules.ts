@@ -110,6 +110,24 @@ export interface Categorised {
 const MAX_PATTERN = 200;
 
 /**
+ * Every pattern that has been compiled, and what it compiled to.
+ *
+ * A pass tests each line against each rule, so a pattern is compiled once per
+ * row without this - sixty-two expressions rebuilt for every entry in the
+ * ledger. It went unnoticed while a household had four rules of its own; a
+ * shipped set of sixty-two made it most of the cost of a pass.
+ *
+ * Keyed by the pattern rather than by the rule, because two rules that say the
+ * same thing are the same expression, and a rule that is edited is a new one.
+ * Bounded because this outlives a request: patterns come from rules, so the
+ * count is bounded by the rules of every household this process has served,
+ * which is small and not zero. Cleared wholesale rather than evicted one at a
+ * time - a cache this cheap to refill does not need a policy.
+ */
+const COMPILED = new Map<string, RegExp | null>();
+const MAX_COMPILED = 1_000;
+
+/**
  * The pattern as JavaScript can run it.
  *
  * A leading `(?i)` is dropped rather than refused. It is what the plan's own
@@ -117,6 +135,16 @@ const MAX_PATTERN = 200;
  * JavaScript throws on it - so the flag it asks for is simply applied.
  */
 function compile(pattern: string): RegExp | null {
+  const known = COMPILED.get(pattern);
+  if (known !== undefined) return known;
+
+  const made = build(pattern);
+  if (COMPILED.size >= MAX_COMPILED) COMPILED.clear();
+  COMPILED.set(pattern, made);
+  return made;
+}
+
+function build(pattern: string): RegExp | null {
   if (pattern.length > MAX_PATTERN) return null;
   const body = pattern.startsWith('(?i)') ? pattern.slice(4) : pattern;
   try {

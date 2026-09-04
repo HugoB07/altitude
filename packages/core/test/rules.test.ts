@@ -122,6 +122,37 @@ describe('categorise', () => {
   });
 });
 
+describe('compiling a pattern once rather than once per row', () => {
+  /**
+   * A pass tests every line against every rule, so a pattern compiled inside
+   * the match is a pattern rebuilt for each entry in the ledger. It went
+   * unnoticed while a household had four rules of its own; the shipped set of
+   * sixty-two made it most of the cost of a pass - measured at 1,180 ms for
+   * fifty thousand lines, against 290 ms once the expressions were kept.
+   *
+   * What has to stay true is that keeping them changes nothing. The flags are
+   * `iu` with no `g`, so a reused expression carries no position between calls
+   * - which is the one way a cache like this goes quietly wrong.
+   */
+  it('gives the same answer on the second pass as on the first', () => {
+    const written = rule({ conditions: { descriptionMatches: 'carrefour' } });
+
+    for (let at = 0; at < 5; at += 1) {
+      expect(categorise(entry('CARREFOUR CITY'), [written])?.categoryId).toBe(GROCERIES);
+      expect(categorise(entry('LECLERC DRIVE'), [written])).toBeNull();
+    }
+  });
+
+  it('keeps refusing an expression it could not compile', () => {
+    // Null is cached like anything else, and a rule nobody can run has to go
+    // on matching nothing rather than becoming a rule that matches everything.
+    const broken = rule({ conditions: { descriptionMatches: '([unclosed' } });
+
+    expect(categorise(entry('CARREFOUR CITY'), [broken])).toBeNull();
+    expect(categorise(entry('CARREFOUR CITY'), [broken])).toBeNull();
+  });
+});
+
 describe('parseConditions', () => {
   it('takes the three conditions it knows', () => {
     expect(
