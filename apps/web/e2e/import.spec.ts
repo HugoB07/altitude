@@ -61,8 +61,18 @@ const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
  * this one is what is in the cells: a junk row above the header, real dates
  * rather than the five-digit serial numbers Excel stores, and two months on two
  * sheets. Invented figures, like every other fixture here.
+ *
+ * The year and the amounts are arguments, because those are what a duplicate is
+ * decided on. A candidate landing on the same account for the same amount on
+ * the same day is a match with no description consulted at all; the label is
+ * only read when the dates differ by a day or three. Two workbooks that share
+ * those and differ only in wording are look-alikes of each other.
  */
-async function statement(tag: string): Promise<Buffer> {
+async function statement(
+  tag: string,
+  year: number,
+  amounts: readonly [number, number, number],
+): Promise<Buffer> {
   const book = new ExcelJS.Workbook();
 
   // First and empty on purpose: a cover sheet is common, and "read the first
@@ -72,13 +82,13 @@ async function statement(tag: string): Promise<Buffer> {
   const march = book.addWorksheet('Mars');
   march.addRow(['Releve du compte']);
   march.addRow(['Date', 'Libelle', 'Montant']);
-  march.addRow([new Date(Date.UTC(2026, 2, 4)), `ABONNEMENT ${tag}`, -19.9]);
-  march.addRow([new Date(Date.UTC(2026, 2, 20)), `REMBOURSEMENT ${tag}`, 45.5]);
+  march.addRow([new Date(Date.UTC(year, 2, 4)), `ABONNEMENT ${tag}`, amounts[0]]);
+  march.addRow([new Date(Date.UTC(year, 2, 20)), `REMBOURSEMENT ${tag}`, amounts[1]]);
 
   const april = book.addWorksheet('Avril');
   april.addRow(['Releve du compte']);
   april.addRow(['Date', 'Libelle', 'Montant']);
-  april.addRow([new Date(Date.UTC(2026, 3, 8)), `COTISATION ${tag}`, -7.2]);
+  april.addRow([new Date(Date.UTC(year, 3, 8)), `COTISATION ${tag}`, amounts[2]]);
 
   return Buffer.from(await book.xlsx.writeBuffer());
 }
@@ -849,9 +859,11 @@ test('a spreadsheet is read as the statement it is', async () => {
      */
     await page.goto('/app/import');
     await page.getByRole('button', { name: 'Other bank' }).click();
-    await page
-      .locator('input[type="file"]')
-      .setInputFiles({ name: 'releve.xlsx', mimeType: XLSX, buffer: await statement('INVENTE') });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'releve.xlsx',
+      mimeType: XLSX,
+      buffer: await statement('INVENTE', 2026, [-19.9, 45.5, -7.2]),
+    });
 
     // Not self-describing, unlike OFX: a bank's spreadsheet is a bank's CSV
     // with formatting on top, and its columns still have to be named.
@@ -891,17 +903,20 @@ test('another sheet of the same workbook is read without asking for the file aga
     await page.locator('input[type="file"]').setInputFiles({
       name: 'releve-2.xlsx',
       mimeType: XLSX,
-      buffer: await statement('DEUXIEME'),
+      buffer: await statement('DEUXIEME', 2027, [-22.9, 48.5, -8.2]),
     });
 
     // Straight past the columns: the header is the one described a moment ago,
     // and the description is kept under the shape of the file rather than
     // under its name.
     //
-    // Its own labels, though, so nothing here is a duplicate of what the test
-    // above imported. A duplicate is drawn beside the transaction it matches,
-    // which puts one description on screen three times and turns an assertion
-    // about it into a question about how far the reading has got.
+    // Another year and other amounts, so no row here is a look-alike of what
+    // the test above imported. Different wording alone would not have done it:
+    // same account, same amount, same day is a match on its own, and the
+    // description is only read when the dates differ by a day or three. A
+    // look-alike is drawn beside the transaction it matches, which puts one
+    // description on screen twice and turns an assertion about it into a
+    // question about how far the reading has got.
     await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
     await expect(page.getByText('ABONNEMENT DEUXIEME')).toBeVisible();
 
