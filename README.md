@@ -29,7 +29,8 @@ real estate and liabilities - on your server, in your database.
 > it - every row has to move the balance by its own amount - and its closing balance is
 > compared with what your ledger will hold. Movements are filed by rules you write:
 > ordered, readable, and traceable to one line, so "why is this in groceries" has an
-> answer. A rule can also name who was on the other side, the shop or the employer, and
+> answer. A set of rules for France ships with Altitude and runs under your own, filling
+> only what yours left empty, so a first import is not a blank slate. A rule can also name who was on the other side, the shop or the employer, and
 > tag what cuts across categories: a week away is restaurants and fuel and a hotel, each
 > keeping its own category. All three are filters in the transactions tab.
 >

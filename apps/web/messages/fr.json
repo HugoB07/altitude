@@ -427,6 +427,44 @@
     "ruleTags": "Et pose ces étiquettes",
     "ruleTagsHint": "Cliquez pour en choisir autant que vous voulez. Contrairement à la catégorie, une règle peut en poser plusieurs.",
     "ruleWhen": "Quand une ligne ressemble à ça",
-    "ruleThen": "Alors fais ceci"
+    "ruleThen": "Alors fais ceci",
+    "communityTitle": "Les règles livrées avec Altitude",
+    "communityHint": "Un jeu de règles par pays, écrit une fois pour tout le monde et gardé dans le dépôt. Elles passent après les vôtres et ne remplissent que ce que les vôtres ont laissé vide, donc rien ici ne peut contredire ce que vous avez écrit sur vos propres relevés. Une règle livrée ne se modifie pas : vous écrivez la vôtre par-dessus, ou vous coupez le jeu.",
+    "communityOff": "Aucun jeu n'est utilisé.",
+    "communityOn": "{count, plural, =1 {# règle} other {# règles}} du jeu {country}.",
+    "communityUse": "Utiliser le jeu {country}",
+    "communityStop": "Ne plus l'utiliser",
+    "communityStopped": "Jeu désactivé. Ce qu'il a déjà décidé reste en place.",
+    "communityStarted": "Jeu activé. Lancez les règles pour voir ce qu'il changerait.",
+    "communityMissing": "{count, plural, =1 {# catégorie dont il a besoin manque} other {# catégories dont il a besoin manquent}} : une règle qui en nomme une que vous n'avez pas nommera quand même le commerçant, mais ne classera rien.",
+    "communityAdd": "Ajouter les catégories manquantes",
+    "communityAdded": "Catégories ajoutées.",
+    "communityAll": "Toutes les catégories dont il a besoin existent.",
+    "communityRuleCategory": "classe dans {category}",
+    "communityRuleCounterparty": "nomme {counterparty}",
+    "noSuchRuleSet": "Aucun jeu de règles pour ce pays.",
+    "country": {
+      "fr": "France"
+    },
+    "key": {
+      "groceries": "Courses",
+      "restaurants": "Restaurants",
+      "transport": "Transports",
+      "fuel": "Carburant",
+      "energy": "Énergie",
+      "housing": "Logement",
+      "telecom": "Téléphone et internet",
+      "health": "Santé",
+      "insurance": "Assurance",
+      "taxes": "Impôts",
+      "salary": "Salaire",
+      "benefits": "Aides et allocations",
+      "savings": "Épargne",
+      "leisure": "Loisirs",
+      "shopping": "Achats",
+      "subscriptions": "Abonnements",
+      "bankFees": "Frais bancaires",
+      "cash": "Retraits"
+    }
   }
 }

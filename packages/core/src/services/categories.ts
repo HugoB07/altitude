@@ -3,6 +3,7 @@ import {
   categories,
   categorisationRuleTags,
   categorisationRules,
+  households,
   tags,
   transactionsTags,
   type Database,
@@ -10,6 +11,7 @@ import {
 import type { CategoryId } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
 import { categorise, parseConditions, type CategorisationRule } from '../categories/rules';
+import { ruleSetFor } from '../categories/sets/index';
 import { assertActorMatchesTenant } from './tenant';
 
 /**
@@ -23,6 +25,14 @@ import { assertActorMatchesTenant } from './tenant';
 export interface Category {
   readonly id: CategoryId;
   readonly name: string;
+  /**
+   * The stable name a shipped rule points at, or null.
+   *
+   * Null for a category somebody invented. A community rule says "groceries"
+   * and cannot say a uuid, so this is the join between a file written once for
+   * everybody and a row created per household.
+   */
+  readonly key: string | null;
 }
 
 export interface StoredRule extends CategorisationRule {
@@ -42,11 +52,137 @@ export async function listCategories(tx: Database, actor: Actor): Promise<Catego
   await assertActorMatchesTenant(tx, actor);
 
   const rows = await tx
-    .select({ id: categories.id, name: categories.name })
+    .select({ id: categories.id, name: categories.name, key: categories.key })
     .from(categories)
     .orderBy(asc(categories.name));
 
-  return rows.map((row) => ({ id: row.id as CategoryId, name: row.name }));
+  return rows.map((row) => ({ id: row.id as CategoryId, name: row.name, key: row.key }));
+}
+
+/**
+ * The community rules this household would run, resolved against its own rows.
+ *
+ * A shipped rule names a category by key, because it is written once for
+ * everybody and cannot know a uuid created per household. This is where the two
+ * meet: the key finds the household's category, and a key the household has no
+ * category for produces a rule that names a shop without filing it - which is
+ * better than filing it under a category nobody chose to have.
+ *
+ * The id carries the country, so `entries.categorised_by_set` reads back as
+ * `fr/carrefour` months later and the screen can say which rule and which set.
+ *
+ * Empty when no set is turned on, which is the default. A set that categorised
+ * a first import without being asked would be the one thing on this screen
+ * that happened invisibly (§8.6).
+ */
+export async function communityRules(tx: Database, actor: Actor): Promise<CategorisationRule[]> {
+  assertCan(actor, 'category:read', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  const [household] = await tx
+    .select({ ruleSet: households.ruleSet })
+    .from(households)
+    .where(eq(households.id, actor.householdId));
+
+  const set = ruleSetFor(household?.ruleSet ?? null);
+  if (set === undefined) return [];
+
+  const known = new Map(
+    (await listCategories(tx, actor))
+      .filter((category) => category.key !== null)
+      .map((category) => [category.key!, category.id as string]),
+  );
+
+  return set.rules.map((rule) => ({
+    id: `${set.country.toLowerCase()}/${rule.id}`,
+    name: rule.name,
+    priority: rule.priority,
+    conditions: rule.conditions,
+    categoryId: rule.category === null ? null : (known.get(rule.category) ?? null),
+    counterparty: rule.counterparty,
+    tagIds: [],
+    stopOnMatch: rule.stopOnMatch,
+    source: 'set',
+  }));
+}
+
+/**
+ * Turns a set on, or off.
+ *
+ * Off is null, and off is where a household starts. Turning one on changes
+ * nothing by itself: the rules run on the next import or the next deliberate
+ * pass, both of which report what they did before they do it.
+ */
+export async function setRuleSet(
+  tx: Database,
+  actor: Actor,
+  country: string | null,
+): Promise<boolean> {
+  assertCan(actor, 'category:write', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  // False rather than a throw, as everywhere else here: a country nobody
+  // wrote a set for is a request the screen should not have been able to make,
+  // and answering it with an exception says less than answering it with no.
+  if (country !== null && ruleSetFor(country) === undefined) return false;
+
+  await tx
+    .update(households)
+    .set({ ruleSet: country === null ? null : country.toLowerCase() })
+    .where(eq(households.id, actor.householdId));
+
+  return true;
+}
+
+/**
+ * Creates the categories a set needs and this household does not have.
+ *
+ * Named by the caller rather than by the set, and that is deliberate: the set
+ * ships keys, and the name is written in the reader's language by the web layer
+ * (ADR-0010). A French household and an English one then see one category
+ * called two things, and one rule points at both.
+ *
+ * Existing categories are left alone, including one whose name collides: if
+ * somebody already has "Courses", they keep it, and it takes the key so the
+ * shipped rules point at the row they were already using.
+ */
+export async function addStandardCategories(
+  tx: Database,
+  actor: Actor,
+  named: readonly { readonly key: string; readonly name: string; readonly id: CategoryId }[],
+): Promise<number> {
+  assertCan(actor, 'category:write', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  const existing = await listCategories(tx, actor);
+  const byKey = new Set(existing.filter((one) => one.key !== null).map((one) => one.key));
+  const byName = new Map(existing.map((one) => [one.name.trim().toLowerCase(), one]));
+
+  let created = 0;
+
+  for (const wanted of named) {
+    if (byKey.has(wanted.key)) continue;
+
+    // A category of the same name, made by hand before the set was turned on.
+    // Adopted rather than duplicated: two categories called Courses, one of
+    // them empty, is the worst of both answers.
+    const collision = byName.get(wanted.name.trim().toLowerCase());
+    if (collision !== undefined) {
+      await tx.update(categories).set({ key: wanted.key }).where(eq(categories.id, collision.id));
+      continue;
+    }
+
+    await tx.insert(categories).values({
+      id: wanted.id,
+      householdId: actor.householdId,
+      name: wanted.name.trim(),
+      key: wanted.key,
+      createdBy: actor.userId,
+    });
+    created += 1;
+  }
+
+  return created;
 }
 
 export async function createCategory(
@@ -67,17 +203,19 @@ export async function createCategory(
     .insert(categories)
     .values({ id: input.id, householdId: actor.householdId, name, createdBy: actor.userId })
     .onConflictDoNothing()
-    .returning({ id: categories.id, name: categories.name });
+    .returning({ id: categories.id, name: categories.name, key: categories.key });
 
-  if (made !== undefined) return { id: made.id as CategoryId, name: made.name };
+  if (made !== undefined) return { id: made.id as CategoryId, name: made.name, key: made.key };
 
   const [existing] = await tx
-    .select({ id: categories.id, name: categories.name })
+    .select({ id: categories.id, name: categories.name, key: categories.key })
     .from(categories)
     .where(sql`lower(${categories.name}) = lower(${name})`)
     .limit(1);
 
-  return existing === undefined ? null : { id: existing.id as CategoryId, name: existing.name };
+  return existing === undefined
+    ? null
+    : { id: existing.id as CategoryId, name: existing.name, key: existing.key };
 }
 
 /**
@@ -270,7 +408,10 @@ export async function setTransactionCategory(
   const done = await tx.execute(sql`
     UPDATE entries e
        SET category_id = ${input.categoryId}::uuid,
-           categorised_by = NULL
+           -- Both, because either would still read as "a rule decided this"
+           -- and the next pass would take the choice back.
+           categorised_by = NULL,
+           categorised_by_set = NULL
       FROM accounts a
      WHERE a.id = e.account_id
        AND e.transaction_id = ${input.transactionId}::uuid
@@ -407,7 +548,11 @@ export async function applyRules(
   assertCan(actor, 'category:write', { householdId: actor.householdId });
   await assertActorMatchesTenant(tx, actor);
 
-  const rules = await listRules(tx, actor);
+  // The household's own first, then the set's. Order is half of what makes the
+  // layer a layer; `source` is the other half, and it stops a shipped rule
+  // replacing what a person's rule already decided (§8.6).
+  const own = await listRules(tx, actor);
+  const rules = [...own, ...(await communityRules(tx, actor))];
   if (rules.length === 0) return { changed: 0, named: 0, tagged: 0, byCategory: [] };
 
   const rows = await tx.execute<{
@@ -431,8 +576,14 @@ export async function applyRules(
       FROM entries e
       JOIN transactions t ON t.id = e.transaction_id
       JOIN accounts a ON a.id = e.account_id
-     -- Untouched, or last touched by a rule. What a person chose stays.
-     WHERE (e.category_id IS NULL OR e.categorised_by IS NOT NULL)
+     -- Untouched, or last touched by a rule of either kind. What a person
+     -- chose stays: neither column is set when somebody picked the category
+     -- themselves, which is what separates the two.
+     WHERE (
+             e.category_id IS NULL
+             OR e.categorised_by IS NOT NULL
+             OR e.categorised_by_set IS NOT NULL
+           )
        -- Reversals take part, and so do the transactions they cancel.
        --
        -- Excluding them was borrowed from the duplicate finder, where a cancelled
@@ -446,9 +597,18 @@ export async function applyRules(
        ${options.importId === undefined ? sql`` : sql`AND t.import_id = ${options.importId}::uuid`}
   `);
 
-  const names = new Map(rules.map((rule) => [rule.categoryId, rule.categoryName]));
+  // Built from the categories rather than from the rules: a shipped rule knows
+  // a key, not a name, and the count below is reported by name.
+  const names = new Map(
+    (await listCategories(tx, actor)).map((category) => [category.id as string, category.name]),
+  );
   const counts = new Map<string, number>();
-  const categorised: { id: string; categoryId: string; ruleId: string }[] = [];
+  const categorised: {
+    id: string;
+    categoryId: string;
+    ruleId: string;
+    source: 'household' | 'set';
+  }[] = [];
   /** Keyed by transaction, because a counterparty and a tag belong to it, not to a side of it. */
   const named = new Map<string, string>();
   const tagged = new Map<string, Set<string>>();
@@ -470,7 +630,12 @@ export async function applyRules(
       found.ruleId !== null &&
       found.categoryId !== row.category_id
     ) {
-      categorised.push({ id: row.id, categoryId: found.categoryId, ruleId: found.ruleId });
+      categorised.push({
+        id: row.id,
+        categoryId: found.categoryId,
+        ruleId: found.ruleId,
+        source: found.ruleSource ?? 'household',
+      });
       const name = names.get(found.categoryId) ?? '';
       counts.set(name, (counts.get(name) ?? 0) + 1);
     }
@@ -491,10 +656,14 @@ export async function applyRules(
 
   if (options.preview !== true) {
     for (const change of categorised) {
+      // One column or the other, never both. A household's rule is a row the
+      // foreign key can follow; a shipped rule is a file with no row.
+      const own = change.source === 'household';
       await tx.execute(sql`
         UPDATE entries
            SET category_id = ${change.categoryId}::uuid,
-               categorised_by = ${change.ruleId}::uuid
+               categorised_by = ${own ? change.ruleId : null}::uuid,
+               categorised_by_set = ${own ? null : change.ruleId}
          WHERE id = ${change.id}::bigint
       `);
     }

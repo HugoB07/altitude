@@ -10,6 +10,15 @@ export const households = pgTable('households', {
   name: text('name').notNull(),
   /** Currency every figure is consolidated into. Changeable, but never silently. */
   baseCurrency: text('base_currency').notNull().default('EUR'),
+  /**
+   * The community rule set this household uses, or null for none.
+   *
+   * A country - `fr` - because what a shop is called and what it sells is a
+   * fact about a country rather than about a language. Off until somebody
+   * turns it on: a set that categorised a first import without being asked
+   * would be the one thing on this screen that happened invisibly.
+   */
+  ruleSet: text('rule_set'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -162,5 +162,55 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
     // And the transaction keeps its history, without the label.
     await page.goto('/app/transactions');
     await expect(page.getByText('Household')).toHaveCount(0);
+
+    // --- And the rules that came with the application ----------------------
+    /**
+     * The plan's community set (§8.6): rules nobody in this household wrote,
+     * running after the household's own and only filling what they left empty.
+     * Off until it is turned on, which is the point of the first assertion.
+     */
+    await page.goto('/app/categories');
+
+    // Every rule this household wrote, gone. What is left is the state the set
+    // exists for: somebody who has written nothing.
+    const remove = page.getByRole('button', { name: 'Delete this rule' });
+    // Counted down rather than iterated: the list re-renders after each delete,
+    // so a snapshot of the buttons goes stale on the second one.
+    for (let left = await remove.count(); left > 0; left -= 1) {
+      await remove.first().click();
+      await expect(remove).toHaveCount(left - 1);
+    }
+
+    // And with no rules at all there is nothing to run, which the control says
+    // by being unavailable rather than by failing when pressed.
+    await expect(page.getByRole('button', { name: 'See what would change' })).toBeDisabled();
+
+    await expect(page.getByText('No set is in use.')).toBeVisible();
+    await page.getByRole('button', { name: 'Use the France set' }).click();
+    await expect(page.getByText(/rules from the France set/)).toBeVisible();
+
+    // A shipped rule names a category by key, and this household has no row
+    // carrying one - so it would name the shop and file nothing. The screen
+    // says so rather than looking broken.
+    await expect(page.getByText(/categories it needs are missing/)).toBeVisible();
+    await page.getByRole('button', { name: 'Add the missing categories' }).click();
+    await expect(page.getByText('Every category it needs exists.')).toBeVisible();
+
+    // The count comes before the act here too - and the control is live again,
+    // on sixty-two rules this household did not write. Counting only its own
+    // was the bug: a set turned on, and a button that did nothing.
+    await expect(page.getByRole('button', { name: 'See what would change' })).toBeEnabled();
+    await page.getByRole('button', { name: 'See what would change' }).click();
+    await expect(page.getByText(/entry would change|entries would change/)).toBeVisible();
+    await page.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect(page.getByText(/entry categorised|entries categorised/)).toBeVisible();
+
+    // "CARTE 12/03 CARREFOUR MARKET 4972", read by rules this household never
+    // wrote. The shop is the part only the set could give: it comes from a
+    // label that also carries a date and a card number, and no category
+    // answers "how much at Carrefour".
+    await page.goto('/app/transactions');
+    await expect(page.getByLabel('File under').first()).toContainText('Groceries');
+    await expect(page.getByText('Carrefour').first()).toBeVisible();
   });
 });

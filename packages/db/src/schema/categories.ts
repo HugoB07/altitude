@@ -28,13 +28,28 @@ export const categories = pgTable(
       .notNull()
       .references(() => households.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    /**
+     * A stable name a shipped rule can point at, or null.
+     *
+     * A community rule says "groceries" and cannot say a uuid: the row is
+     * created per household and a rule written once for everybody has no way
+     * to know it. Null for a category somebody invented, which has no business
+     * carrying one.
+     */
+    key: text('key'),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   // Case-folded in the migration, which drizzle-kit cannot express: this
   // declaration exists so the schema knows the index is there.
-  (t) => [uniqueIndex('categories_name_key').on(t.householdId, t.name)],
+  (t) => [
+    uniqueIndex('categories_name_key').on(t.householdId, t.name),
+    // Partial in the migration, which drizzle-kit cannot express: at most one
+    // `groceries` per household, and nothing claimed about the twenty
+    // categories a person made up.
+    uniqueIndex('categories_key_key').on(t.householdId, t.key),
+  ],
 );
 
 /**

@@ -8,6 +8,8 @@ export interface MembershipRow {
   readonly householdName: string;
   /** What this household counts in. Joined here so no screen has to guess. */
   readonly baseCurrency: string;
+  /** Which community rule set it uses, or null for none. */
+  readonly ruleSet: string | null;
   readonly role: string;
 }
 
@@ -36,6 +38,7 @@ export async function findMemberships(
         householdId: memberships.householdId,
         householdName: households.name,
         baseCurrency: households.baseCurrency,
+        ruleSet: households.ruleSet,
         role: memberships.role,
       })
       .from(memberships)

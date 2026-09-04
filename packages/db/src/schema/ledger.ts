@@ -172,8 +172,17 @@ export const entries = pgTable(
     /** Rate to the household base currency, frozen at booking time. */
     fxRateToBase: numeric('fx_rate_to_base', { precision: 24, scale: 12 }),
     categoryId: uuid('category_id'),
-    /** The rule that decided the category, or null when a person did. */
+    /** The household's own rule that decided the category, or null. */
     categorisedBy: uuid('categorised_by'),
+    /**
+     * The shipped rule that decided it, when one did.
+     *
+     * Text rather than a uuid, and its own column rather than a wider one:
+     * `categorised_by` references a row so that deleting a rule lets go of what
+     * it decided, and a community rule is a file with no row to delete. At most
+     * one of the two is ever set.
+     */
+    categorisedBySet: text('categorised_by_set'),
     memo: text('memo'),
   },
   (t) => [

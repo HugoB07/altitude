@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import {
+  addStandardCategories,
   applyRules,
   createCategory,
   createRule,
@@ -13,6 +14,8 @@ import {
   deleteTag,
   listCategories,
   listRules,
+  ruleSetFor,
+  setRuleSet,
   setTransactionCategory,
   setTransactionTags,
   suggestPattern,
@@ -34,6 +37,67 @@ import { ensureTenantIsolation } from './startup';
 export interface CategoryOutcome {
   readonly error?: string;
   readonly ok?: true;
+}
+
+/**
+ * Turns a country's rule set on, or off.
+ *
+ * Nothing happens by itself: the rules run on the next import or the next
+ * deliberate pass, both of which say what they did. Turning it off leaves every
+ * categorisation it made in place - they were decisions, and withdrawing a set
+ * is not a reason to undo them behind somebody's back. The next pass will
+ * simply stop making new ones.
+ */
+export async function setRuleSetAction(formData: FormData): Promise<CategoryOutcome> {
+  await ensureTenantIsolation();
+  const { actor } = await requireContext();
+  const t = await getTranslations('categories');
+
+  const country = String(formData.get('country') ?? '').trim();
+
+  try {
+    const done = await scoped((tx) => setRuleSet(tx, actor, country === '' ? null : country));
+    if (!done) return { error: t('noSuchRuleSet') };
+    revalidatePath('/app/categories');
+    return { ok: true };
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
+}
+
+/**
+ * Creates the categories the active set points at.
+ *
+ * Named here rather than in the set, and that is the whole reason a set ships
+ * keys instead of names: `groceries` is written "Courses" for a French reader
+ * and "Groceries" for an English one, from the same file, and one shipped rule
+ * points at both (ADR-0010).
+ */
+export async function addStandardCategoriesAction(): Promise<CategoryOutcome> {
+  await ensureTenantIsolation();
+  const { actor, ruleSet } = await requireContext();
+  const t = await getTranslations('categories');
+
+  const set = ruleSetFor(ruleSet);
+  if (set === undefined) return { error: t('noSuchRuleSet') };
+
+  try {
+    await scoped((tx) =>
+      addStandardCategories(
+        tx,
+        actor,
+        set.categories.map((key) => ({
+          key,
+          name: t(`key.${key}`),
+          id: categoryId(randomUUID()),
+        })),
+      ),
+    );
+    revalidatePath('/app/categories');
+    return { ok: true };
+  } catch (error) {
+    return { error: await toMessage(error) };
+  }
 }
 
 export async function createCategoryAction(formData: FormData): Promise<CategoryOutcome> {

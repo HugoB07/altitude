@@ -146,6 +146,33 @@ splits one transfer across two rows, or carries an ISIN and a quantity, needs a 
 `packages/core/src/import/`, and its preset names that reader instead of describing
 columns. Open a discussion first: that half is not a drop-in file.
 
+## Adding rules for a country
+
+The same shape as a preset, and the second thing that needs no TypeScript. A country's
+rule set is one file at `packages/core/src/categories/sets/<country>.json`, listing
+patterns and what they file under.
+
+The rules run after each household's own and only fill what those left empty, so nothing
+in a set can overrule what somebody wrote about their own statements. They also cannot be
+edited by the people who use them, only covered or switched off - which is why the bar is
+higher here than for a rule you write for yourself. A rule you get wrong is wrong for one
+person; a rule here is wrong for everybody at once, and none of them chose it.
+
+What that means in practice:
+
+- Anchor patterns on word boundaries. `TOTAL` matches "total des operations", and `FREE`
+  matches an English sentence.
+- Say what two rules would both claim, and order them. `UBER EATS` is a meal and `UBER` is
+  a ride; the A7 toll is at Orange and the telephone company is not.
+- Prefer naming a shop and filing nothing to filing it under a guess. A payment to a
+  supermarket's bank is a loan for one household and an insurance premium for the next.
+- Add both cases to `packages/core/test/sets.test.ts`: what the rule should claim, and the
+  label it must leave alone. The second half is the one that catches an eager pattern.
+
+Categories are named by key, from the closed list in `sets/schema.ts`, because the name is
+written in the reader's language on the other side of the boundary. Adding a key means a
+line there and a line in each message catalogue.
+
 ## Reporting bugs
 
 Open an issue with: what you did, what you expected, what happened, your version, and

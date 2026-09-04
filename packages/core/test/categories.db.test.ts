@@ -15,7 +15,9 @@ import {
 } from '@altitude/shared';
 import { createClient, withHousehold, type Client } from '@altitude/db';
 import {
+  addStandardCategories,
   applyRules,
+  communityRules,
   createCategory,
   createTag,
   listTags,
@@ -27,6 +29,8 @@ import {
   listRules,
   postTransaction,
   reverseTransactionById,
+  ruleSetFor,
+  setRuleSet,
   type Actor,
 } from '../src/index';
 
@@ -474,5 +478,141 @@ describe('tags and counterparties', () => {
     const [row] = await admin<{ counterparty: string }[]>`
       SELECT counterparty FROM transactions WHERE id = ${HOME}::uuid`;
     expect(row?.counterparty).toBe('Panaderia');
+  });
+});
+
+/**
+ * The rules that came with the application, layered under the household's own.
+ *
+ * The engine's half of this is tested without a database in `sets.test.ts`.
+ * What needs one is the join: a shipped rule names a category by key, the
+ * household names it by row, and neither exists for the other until a set is
+ * turned on and the categories are created.
+ */
+describe('a community rule set', () => {
+  const SET = 'fr';
+
+  it('does nothing at all until a household turns one on', async () => {
+    expect(await as(owner, (tx) => communityRules(tx, owner))).toEqual([]);
+  });
+
+  it('refuses a country nobody wrote a set for', async () => {
+    expect(await as(owner, (tx) => setRuleSet(tx, owner, 'zz'))).toBe(false);
+  });
+
+  it('names a shop but files nothing until the categories exist', async () => {
+    await as(owner, (tx) => setRuleSet(tx, owner, SET));
+
+    const rules = await as(owner, (tx) => communityRules(tx, owner));
+    expect(rules.length).toBeGreaterThan(0);
+
+    // Every one of them points at nothing yet, because this household has no
+    // category carrying a key. Better than inventing rows during an import.
+    expect(rules.every((rule) => rule.categoryId === null)).toBe(true);
+    expect(rules.some((rule) => rule.counterparty !== null)).toBe(true);
+    expect(rules.every((rule) => rule.source === 'set')).toBe(true);
+  });
+
+  it('binds its keys to the household rows once they are created', async () => {
+    const set = ruleSetFor(SET)!;
+    const created = await as(owner, (tx) =>
+      addStandardCategories(
+        tx,
+        owner,
+        set.categories.map((key, at) => ({
+          key,
+          name: `Set ${key}`,
+          id: toCategoryId(`aaaa9999-0000-4000-8000-${String(at + 1).padStart(12, '0')}`),
+        })),
+      ),
+    );
+    expect(created).toBe(set.categories.length);
+
+    const rules = await as(owner, (tx) => communityRules(tx, owner));
+    expect(rules.filter((rule) => rule.categoryId !== null).length).toBeGreaterThan(0);
+
+    // And a second call adds nothing: the keys are there now. Same ids, which
+    // is safe precisely because nothing is inserted.
+    const again = await as(owner, (tx) =>
+      addStandardCategories(
+        tx,
+        owner,
+        set.categories.map((key, at) => ({
+          key,
+          name: `Set ${key}`,
+          id: toCategoryId(`aaaa9999-0000-4000-8000-${String(at + 1).padStart(12, '0')}`),
+        })),
+      ),
+    );
+    expect(again).toBe(0);
+  });
+
+  it('categorises what the household left uncategorised, and says which rule did', async () => {
+    await spend('bbbb9999-0000-4000-8000-000000000001', '2027-03-04', '31.20', 'CB LIDL 4471');
+
+    const done = await as(owner, (tx) => applyRules(tx, owner));
+    expect(done.changed).toBeGreaterThan(0);
+
+    const [row] = await admin<
+      { categorised_by: string | null; categorised_by_set: string | null }[]
+    >`
+      SELECT e.categorised_by::text, e.categorised_by_set
+        FROM entries e
+        JOIN accounts a ON a.id = e.account_id
+       WHERE e.transaction_id = 'bbbb9999-0000-4000-8000-000000000001'::uuid
+         AND a.classification <> 'equity'`;
+
+    // The shipped column, not the household one: there is no row to reference,
+    // and writing the id into a uuid column with a foreign key would fail.
+    expect(row?.categorised_by).toBeNull();
+    expect(row?.categorised_by_set).toBe('fr/lidl');
+  });
+
+  it('never takes a decision a household rule already made', async () => {
+    await as(owner, (tx) =>
+      createRule(tx, owner, {
+        id: 'cccc8888-0000-4000-8000-000000000001',
+        name: 'Mes courses a moi',
+        priority: 1,
+        conditions: { descriptionMatches: 'lidl' },
+        categoryId: GROCERIES,
+        stopOnMatch: false,
+      }),
+    );
+
+    await as(owner, (tx) => applyRules(tx, owner));
+
+    const [row] = await admin<
+      { categorised_by: string | null; categorised_by_set: string | null }[]
+    >`
+      SELECT e.categorised_by::text, e.categorised_by_set
+        FROM entries e
+        JOIN accounts a ON a.id = e.account_id
+       WHERE e.transaction_id = 'bbbb9999-0000-4000-8000-000000000001'::uuid
+         AND a.classification <> 'equity'`;
+
+    expect(row?.categorised_by).toBe('cccc8888-0000-4000-8000-000000000001');
+    expect(row?.categorised_by_set).toBeNull();
+
+    // And the set still filled what the household rule left empty.
+    const [transaction] = await admin<{ counterparty: string | null }[]>`
+      SELECT counterparty FROM transactions
+       WHERE id = 'bbbb9999-0000-4000-8000-000000000001'::uuid`;
+    expect(transaction?.counterparty).toBe('Lidl');
+  });
+
+  it('leaves what it decided in place when the set is turned off', async () => {
+    // Withdrawing a set is not a reason to undo decisions behind somebody's
+    // back. The next pass simply stops making new ones.
+    await as(owner, (tx) => setRuleSet(tx, owner, null));
+    expect(await as(owner, (tx) => communityRules(tx, owner))).toEqual([]);
+
+    const [row] = await admin<{ category_id: string | null }[]>`
+      SELECT e.category_id::text
+        FROM entries e
+        JOIN accounts a ON a.id = e.account_id
+       WHERE e.transaction_id = 'bbbb9999-0000-4000-8000-000000000001'::uuid
+         AND a.classification <> 'equity'`;
+    expect(row?.category_id).not.toBeNull();
   });
 });

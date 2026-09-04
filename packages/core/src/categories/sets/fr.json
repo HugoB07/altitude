@@ -1,0 +1,816 @@
+{
+  "$comment": "France. Read after a household's own rules and only filling what they left empty, so nothing here can overrule what somebody wrote about their own statements. Ordered in three bands: 10 to 29 separates a name that two bands would otherwise both claim, 50 to 79 names a shop and files it, 100 and above is the fallback on the words a statement uses whatever the shop. Every rule stops on a match, so the first one that fits decides and the order above is the whole behaviour. Patterns run against the normalised label - upper case, no accents, dates and long digit runs collapsed - and are anchored on word boundaries, because a token like TOTAL or FREE inside another word is not the company.",
+  "country": "FR",
+  "rules": [
+    {
+      "$comment": "Both sell fuel and one also sells electricity, so the energy contract is separated before the forecourt rule below can take it.",
+      "id": "totalenergies",
+      "name": "TotalEnergies",
+      "priority": 10,
+      "when": {
+        "descriptionMatches": "\\bTOTAL\\s?ENERGIES\\b"
+      },
+      "then": {
+        "category": "energy",
+        "counterparty": "TotalEnergies"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "A meal, not a ride. Taken before the Uber rule that files rides under transport.",
+      "id": "uber-eats",
+      "name": "Uber Eats",
+      "priority": 11,
+      "when": {
+        "descriptionMatches": "\\bUBER\\s?EATS\\b"
+      },
+      "then": {
+        "category": "restaurants",
+        "counterparty": "Uber Eats"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "A subscription, not a parcel. Taken before the Amazon rule that files parcels under shopping.",
+      "id": "amazon-prime",
+      "name": "Amazon Prime",
+      "priority": 12,
+      "when": {
+        "descriptionMatches": "\\bAMAZON\\s?PRIME\\b"
+      },
+      "then": {
+        "category": "subscriptions",
+        "counterparty": "Amazon Prime"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "A holiday, not a shop. Taken before the E.Leclerc rule that files the shop under groceries.",
+      "id": "leclerc-voyages",
+      "name": "E.Leclerc Voyages",
+      "priority": 13,
+      "when": {
+        "descriptionMatches": "\\bLECLERC\\s?VOYAGES\\b"
+      },
+      "then": {
+        "category": "leisure",
+        "counterparty": "E.Leclerc Voyages"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "Credit and insurance under a supermarket's name. Named but not categorised: it is a loan payment for one household and an insurance premium for the next, and stopping here is what keeps it out of the weekly shop.",
+      "id": "carrefour-banque",
+      "name": "Carrefour Banque",
+      "priority": 14,
+      "when": {
+        "descriptionMatches": "\\bCARREFOUR\\s?(BANQUE|ASSURANCE)\\b"
+      },
+      "then": {
+        "counterparty": "Carrefour Banque"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "Named before the operators, because the A7 toll is at Orange and the town would otherwise be read as the telephone company.",
+      "id": "peage",
+      "name": "Péage",
+      "priority": 15,
+      "when": {
+        "descriptionMatches": "\\b(PEAGE|APRR|SANEF|ASF|VINCI\\s?AUTOROUTES)\\b"
+      },
+      "then": {
+        "category": "transport"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "aldi",
+      "name": "Aldi",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bALDI\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Aldi"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "auchan",
+      "name": "Auchan",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bAUCHAN\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Auchan"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "biocoop",
+      "name": "Biocoop",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bBIOCOOP\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Biocoop"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "carrefour",
+      "name": "Carrefour",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bCARREFOUR\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Carrefour"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "franprix",
+      "name": "Franprix",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bFRANPRIX\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Franprix"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "grand-frais",
+      "name": "Grand Frais",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bGRAND\\s?FRAIS\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Grand Frais"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "intermarche",
+      "name": "Intermarché",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bINTERMARCHE\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Intermarché"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "Written E.LECLERC, E LECLERC and LECLERC, which normalise to the same two words or to one.",
+      "id": "leclerc",
+      "name": "E.Leclerc",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bLECLERC\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "E.Leclerc"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "lidl",
+      "name": "Lidl",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bLIDL\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Lidl"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "monoprix",
+      "name": "Monoprix",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bMONOPRIX\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Monoprix"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "picard",
+      "name": "Picard",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\bPICARD\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Picard"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "The letter on its own is far too common, so only the forms the brand actually writes.",
+      "id": "super-u",
+      "name": "Super U",
+      "priority": 50,
+      "when": {
+        "descriptionMatches": "\\b(SUPER\\s?U|HYPER\\s?U|U\\s?EXPRESS|MAGASINS?\\s?U)\\b"
+      },
+      "then": {
+        "category": "groceries",
+        "counterparty": "Super U"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "burger-king",
+      "name": "Burger King",
+      "priority": 55,
+      "when": {
+        "descriptionMatches": "\\bBURGER\\s?KING\\b"
+      },
+      "then": {
+        "category": "restaurants",
+        "counterparty": "Burger King"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "deliveroo",
+      "name": "Deliveroo",
+      "priority": 55,
+      "when": {
+        "descriptionMatches": "\\bDELIVEROO\\b"
+      },
+      "then": {
+        "category": "restaurants",
+        "counterparty": "Deliveroo"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "just-eat",
+      "name": "Just Eat",
+      "priority": 55,
+      "when": {
+        "descriptionMatches": "\\bJUST\\s?EAT\\b"
+      },
+      "then": {
+        "category": "restaurants",
+        "counterparty": "Just Eat"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "mcdonalds",
+      "name": "McDonald's",
+      "priority": 55,
+      "when": {
+        "descriptionMatches": "\\bMC\\s?DONALD"
+      },
+      "then": {
+        "category": "restaurants",
+        "counterparty": "McDonald's"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "starbucks",
+      "name": "Starbucks",
+      "priority": 55,
+      "when": {
+        "descriptionMatches": "\\bSTARBUCKS\\b"
+      },
+      "then": {
+        "category": "restaurants",
+        "counterparty": "Starbucks"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "blablacar",
+      "name": "BlaBlaCar",
+      "priority": 60,
+      "when": {
+        "descriptionMatches": "\\bBLABLA\\s?CAR\\b"
+      },
+      "then": {
+        "category": "transport",
+        "counterparty": "BlaBlaCar"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "ratp",
+      "name": "RATP",
+      "priority": 60,
+      "when": {
+        "descriptionMatches": "\\b(RATP|NAVIGO)\\b"
+      },
+      "then": {
+        "category": "transport",
+        "counterparty": "RATP"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "sncf",
+      "name": "SNCF",
+      "priority": 60,
+      "when": {
+        "descriptionMatches": "\\b(SNCF|OUIGO|OUI SNCF)\\b"
+      },
+      "then": {
+        "category": "transport",
+        "counterparty": "SNCF"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "trainline",
+      "name": "Trainline",
+      "priority": 60,
+      "when": {
+        "descriptionMatches": "\\bTRAINLINE\\b"
+      },
+      "then": {
+        "category": "transport",
+        "counterparty": "Trainline"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "uber",
+      "name": "Uber",
+      "priority": 60,
+      "when": {
+        "descriptionMatches": "\\bUBER\\b"
+      },
+      "then": {
+        "category": "transport",
+        "counterparty": "Uber"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "avia",
+      "name": "Avia",
+      "priority": 65,
+      "when": {
+        "descriptionMatches": "\\bAVIA\\b"
+      },
+      "then": {
+        "category": "fuel",
+        "counterparty": "Avia"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "esso",
+      "name": "Esso",
+      "priority": 65,
+      "when": {
+        "descriptionMatches": "\\bESSO\\b"
+      },
+      "then": {
+        "category": "fuel",
+        "counterparty": "Esso"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "The forecourt brand, after the energy contract that shares its first word.",
+      "id": "total-access",
+      "name": "Total",
+      "priority": 65,
+      "when": {
+        "descriptionMatches": "\\bTOTAL\\s?(ACCESS|RELAIS|STATION)\\b"
+      },
+      "then": {
+        "category": "fuel",
+        "counterparty": "Total"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "edf",
+      "name": "EDF",
+      "priority": 70,
+      "when": {
+        "descriptionMatches": "\\bEDF\\b"
+      },
+      "then": {
+        "category": "energy",
+        "counterparty": "EDF"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "engie",
+      "name": "Engie",
+      "priority": 70,
+      "when": {
+        "descriptionMatches": "\\bENGIE\\b"
+      },
+      "then": {
+        "category": "energy",
+        "counterparty": "Engie"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "bouygues",
+      "name": "Bouygues Telecom",
+      "priority": 72,
+      "when": {
+        "descriptionMatches": "\\bBOUYGUES\\s?TELECOM\\b"
+      },
+      "then": {
+        "category": "telecom",
+        "counterparty": "Bouygues Telecom"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "The word on its own is an ordinary English adjective, so only the forms the operator bills under.",
+      "id": "free",
+      "name": "Free",
+      "priority": 72,
+      "when": {
+        "descriptionMatches": "\\bFREE\\s?(MOBILE|HAUT DEBIT|TELECOM|SAS)\\b"
+      },
+      "then": {
+        "category": "telecom",
+        "counterparty": "Free"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "orange",
+      "name": "Orange",
+      "priority": 72,
+      "when": {
+        "descriptionMatches": "\\b(ORANGE|SOSH)\\b"
+      },
+      "then": {
+        "category": "telecom",
+        "counterparty": "Orange"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "sfr",
+      "name": "SFR",
+      "priority": 72,
+      "when": {
+        "descriptionMatches": "\\b(SFR|RED BY SFR)\\b"
+      },
+      "then": {
+        "category": "telecom",
+        "counterparty": "SFR"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "Billed as APPLE.COM/BILL, which normalises to three words.",
+      "id": "apple",
+      "name": "Apple",
+      "priority": 75,
+      "when": {
+        "descriptionMatches": "\\bAPPLE\\s?COM\\b"
+      },
+      "then": {
+        "category": "subscriptions",
+        "counterparty": "Apple"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "canal-plus",
+      "name": "Canal+",
+      "priority": 75,
+      "when": {
+        "descriptionMatches": "\\bCANAL\\s?(PLUS|SAT)\\b"
+      },
+      "then": {
+        "category": "subscriptions",
+        "counterparty": "Canal+"
+      },
+      "stopOnMatch": true,
+      "$comment": "The bare CANAL+ form normalises to CANAL, which is also a French noun and a great many street names, so only the spelled-out forms are matched."
+    },
+    {
+      "id": "disney-plus",
+      "name": "Disney+",
+      "priority": 75,
+      "when": {
+        "descriptionMatches": "\\bDISNEY\\b"
+      },
+      "then": {
+        "category": "subscriptions",
+        "counterparty": "Disney+"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "netflix",
+      "name": "Netflix",
+      "priority": 75,
+      "when": {
+        "descriptionMatches": "\\bNETFLIX\\b"
+      },
+      "then": {
+        "category": "subscriptions",
+        "counterparty": "Netflix"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "priority": 75,
+      "when": {
+        "descriptionMatches": "\\bSPOTIFY\\b"
+      },
+      "then": {
+        "category": "subscriptions",
+        "counterparty": "Spotify"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "amazon",
+      "name": "Amazon",
+      "priority": 80,
+      "when": {
+        "descriptionMatches": "\\bAMAZON\\b"
+      },
+      "then": {
+        "category": "shopping",
+        "counterparty": "Amazon"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "decathlon",
+      "name": "Decathlon",
+      "priority": 80,
+      "when": {
+        "descriptionMatches": "\\bDECATHLON\\b"
+      },
+      "then": {
+        "category": "shopping",
+        "counterparty": "Decathlon"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "fnac",
+      "name": "Fnac",
+      "priority": 80,
+      "when": {
+        "descriptionMatches": "\\bFNAC\\b"
+      },
+      "then": {
+        "category": "shopping",
+        "counterparty": "Fnac"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "ikea",
+      "name": "Ikea",
+      "priority": 80,
+      "when": {
+        "descriptionMatches": "\\bIKEA\\b"
+      },
+      "then": {
+        "category": "shopping",
+        "counterparty": "Ikea"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "leroy-merlin",
+      "name": "Leroy Merlin",
+      "priority": 80,
+      "when": {
+        "descriptionMatches": "\\bLEROY\\s?MERLIN\\b"
+      },
+      "then": {
+        "category": "shopping",
+        "counterparty": "Leroy Merlin"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "vinted",
+      "name": "Vinted",
+      "priority": 80,
+      "when": {
+        "descriptionMatches": "\\bVINTED\\b"
+      },
+      "then": {
+        "category": "shopping",
+        "counterparty": "Vinted"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "caf",
+      "name": "CAF",
+      "priority": 85,
+      "when": {
+        "descriptionMatches": "\\bCAF\\b"
+      },
+      "then": {
+        "category": "benefits",
+        "counterparty": "CAF"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "cpam",
+      "name": "Assurance maladie",
+      "priority": 85,
+      "when": {
+        "descriptionMatches": "\\b(CPAM|AMELI|ASSURANCE\\s?MALADIE)\\b"
+      },
+      "then": {
+        "category": "health",
+        "counterparty": "Assurance maladie"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "dgfip",
+      "name": "DGFiP",
+      "priority": 85,
+      "when": {
+        "descriptionMatches": "\\b(DGFIP|IMPOTS|TRESOR\\s?PUBLIC)\\b"
+      },
+      "then": {
+        "category": "taxes",
+        "counterparty": "DGFiP"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "france-travail",
+      "name": "France Travail",
+      "priority": 85,
+      "when": {
+        "descriptionMatches": "\\b(FRANCE\\s?TRAVAIL|POLE\\s?EMPLOI)\\b"
+      },
+      "then": {
+        "category": "benefits",
+        "counterparty": "France Travail"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "urssaf",
+      "name": "Urssaf",
+      "priority": 85,
+      "when": {
+        "descriptionMatches": "\\bURSSAF\\b"
+      },
+      "then": {
+        "category": "taxes",
+        "counterparty": "Urssaf"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "assurance",
+      "name": "Assurance",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(ASSURANCE|MUTUELLE|AXA|MAIF|MACIF|MAAF|MATMUT|GROUPAMA|ALLIANZ)\\b"
+      },
+      "then": {
+        "category": "insurance"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "carburant",
+      "name": "Carburant",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(CARBURANT|STATION\\s?SERVICE)\\b"
+      },
+      "then": {
+        "category": "fuel"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "epargne",
+      "name": "Épargne",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(LIVRET\\s?A|LDDS|LEP|PEL|EPARGNE)\\b"
+      },
+      "then": {
+        "category": "savings"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "frais-bancaires",
+      "name": "Frais bancaires",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(AGIOS|FRAIS\\s?BANCAIRES|COTISATION\\s?CARTE|COMMISSION\\s?D?\\s?INTERVENTION|TENUE\\s?DE\\s?COMPTE)\\b"
+      },
+      "then": {
+        "category": "bankFees"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "loyer",
+      "name": "Loyer et charges",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(LOYER|QUITTANCE|SYNDIC|CHARGES\\s?COPRO\\w*)\\b"
+      },
+      "then": {
+        "category": "housing"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "pharmacie",
+      "name": "Santé",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(PHARMACIE|LABORATOIRE|DOCTOLIB|DENTAIRE|OPTIQUE|MEDECIN)\\b"
+      },
+      "then": {
+        "category": "health"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "From here nothing names a shop: these are the words a statement uses whoever it was paid to.",
+      "id": "restaurants",
+      "name": "Restauration",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(RESTAURANT|BRASSERIE|BOULANGERIE|TRAITEUR|PIZZERIA|CREPERIE|SUSHI)\\b"
+      },
+      "then": {
+        "category": "restaurants"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "id": "retrait",
+      "name": "Retrait d'espèces",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(RETRAIT|DAB)\\b"
+      },
+      "then": {
+        "category": "cash"
+      },
+      "stopOnMatch": true
+    },
+    {
+      "$comment": "Only on money arriving. A payslip reference on an outgoing line is a repayment, not a salary.",
+      "id": "salaire",
+      "name": "Salaire",
+      "priority": 100,
+      "when": {
+        "descriptionMatches": "\\b(SALAIRE|PAIE|REMUNERATION)\\b",
+        "amountBetween": ["0", "100000000"]
+      },
+      "then": {
+        "category": "salary"
+      },
+      "stopOnMatch": true
+    }
+  ]
+}

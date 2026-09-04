@@ -93,10 +93,22 @@ export {
   type CategorisationRule,
   type RuleConditions,
 } from './categories/rules';
+export { RULE_SETS, RULE_SET_COUNTRIES, ruleSetFor } from './categories/sets/index';
+export {
+  CATEGORY_KEYS,
+  parseRuleSet,
+  RuleSetError,
+  type CategoryKey,
+  type RuleSet,
+  type SetRule,
+} from './categories/sets/schema';
 export {
   listCategories,
   createCategory,
   deleteCategory,
+  communityRules,
+  setRuleSet,
+  addStandardCategories,
   listRules,
   createRule,
   deleteRule,

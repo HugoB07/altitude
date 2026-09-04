@@ -42,6 +42,7 @@ describe('categorise', () => {
     expect(found).toEqual({
       categoryId: GROCERIES,
       ruleId: 'rule-1',
+      ruleSource: 'household',
       counterparty: null,
       tagIds: [],
     });
@@ -108,6 +109,7 @@ describe('categorise', () => {
     expect(categorise(entry('CARREFOUR LOYER'), [broad, narrow])).toMatchObject({
       categoryId: RENT,
       ruleId: 'b',
+      ruleSource: 'household',
     });
   });
 
@@ -211,6 +213,7 @@ describe('the three effects a rule can have', () => {
     expect(categorise(entry('RESTAURANTE MADRID'), [abroad, dining, later])).toEqual({
       categoryId: RENT,
       ruleId: 'c',
+      ruleSource: 'household',
       counterparty: 'Casa Paco SL',
       tagIds: ['tag-spain', 'tag-eating-out'],
     });
@@ -223,6 +226,7 @@ describe('the three effects a rule can have', () => {
     expect(categorise(entry('CARREFOUR CITY'), [marking])).toEqual({
       categoryId: null,
       ruleId: null,
+      ruleSource: null,
       counterparty: null,
       tagIds: ['tag-spain'],
     });

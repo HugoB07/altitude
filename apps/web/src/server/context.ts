@@ -40,6 +40,14 @@ export interface RequestContext {
    * and reported a net worth of zero for ever without a word.
    */
   readonly baseCurrency: string;
+  /**
+   * The community rule set this household uses, or null.
+   *
+   * Read here rather than fetched by the screens that need it, for the same
+   * reason the currency is: it is one column on a row already joined, and a
+   * second query per page to learn a two-letter code is a second query.
+   */
+  readonly ruleSet: string | null;
 }
 
 export class UnauthenticatedError extends Error {
@@ -111,6 +119,7 @@ export const getContext = cache(async (): Promise<RequestContext | null> => {
     displayName: user.displayName,
     householdName: membership.householdName,
     baseCurrency: membership.baseCurrency,
+    ruleSet: membership.ruleSet,
   };
 });
 

@@ -427,6 +427,44 @@
     "ruleTags": "And puts these tags on it",
     "ruleTagsHint": "Click to pick as many as you like. Unlike the category, a rule can apply several.",
     "ruleWhen": "When a line looks like this",
-    "ruleThen": "Then do this to it"
+    "ruleThen": "Then do this to it",
+    "communityTitle": "Rules that ship with Altitude",
+    "communityHint": "A set of rules per country, written once for everybody and kept in the repository. They run after your own and only fill what yours left empty, so nothing here can overrule what you wrote about your own statements. You cannot edit one; you write your own rule over it, or turn the set off.",
+    "communityOff": "No set is in use.",
+    "communityOn": "{count, plural, =1 {# rule} other {# rules}} from the {country} set.",
+    "communityUse": "Use the {country} set",
+    "communityStop": "Stop using it",
+    "communityStopped": "Set turned off. What it already decided stays as it is.",
+    "communityStarted": "Set turned on. Run the rules to see what it would change.",
+    "communityMissing": "{count, plural, =1 {# category it needs is missing} other {# categories it needs are missing}}: a rule that names one you do not have will still name the shop, but will file nothing.",
+    "communityAdd": "Add the missing categories",
+    "communityAdded": "Categories added.",
+    "communityAll": "Every category it needs exists.",
+    "communityRuleCategory": "files under {category}",
+    "communityRuleCounterparty": "names {counterparty}",
+    "noSuchRuleSet": "No rule set for that country.",
+    "country": {
+      "fr": "France"
+    },
+    "key": {
+      "groceries": "Groceries",
+      "restaurants": "Restaurants",
+      "transport": "Transport",
+      "fuel": "Fuel",
+      "energy": "Energy",
+      "housing": "Housing",
+      "telecom": "Phone and internet",
+      "health": "Health",
+      "insurance": "Insurance",
+      "taxes": "Taxes",
+      "salary": "Salary",
+      "benefits": "Benefits",
+      "savings": "Savings",
+      "leisure": "Leisure",
+      "shopping": "Shopping",
+      "subscriptions": "Subscriptions",
+      "bankFees": "Bank fees",
+      "cash": "Cash withdrawals"
+    }
   }
 }

@@ -45,6 +45,20 @@ export interface CategorisationRule {
   readonly tagIds: readonly string[];
   /** Whether a match ends the pass. */
   readonly stopOnMatch: boolean;
+  /**
+   * Whether this rule is the household's or a shipped one.
+   *
+   * The plan orders them: "user rules first, then a community rule set per
+   * country" (§8.6). Order alone would not be enough - a later rule replaces an
+   * earlier one, so a shipped rule reached after a household's would overrule
+   * it, which is the opposite of what "first" means. So a shipped rule only
+   * fills what is still empty, and what somebody wrote about their own
+   * statements always wins.
+   *
+   * Absent means the household's, because that is what every rule was before
+   * sets existed and what most of them still are.
+   */
+  readonly source?: 'household' | 'set';
 }
 
 /** One entry, as the engine sees it. */
@@ -71,6 +85,15 @@ export interface Categorised {
    * from a person's and the screen can say which one.
    */
   readonly ruleId: string | null;
+  /**
+   * Which kind of rule that was, because they are stored in different columns.
+   *
+   * A household's rule is a row, and `entries.categorised_by` references it so
+   * that deleting the rule lets go of what it decided. A shipped rule is a file
+   * with no row to reference and none to delete, so it goes in a column of its
+   * own. Null when nothing set a category.
+   */
+  readonly ruleSource: 'household' | 'set' | null;
   readonly counterparty: string | null;
   /** Every tag every matching rule asked for, in the order first seen. */
   readonly tagIds: readonly string[];
@@ -154,6 +177,7 @@ export function categorise(
 
   let categoryId: string | null = null;
   let ruleId: string | null = null;
+  let ruleSource: 'household' | 'set' | null = null;
   let counterparty: string | null = null;
   const tagIds = new Set<string>();
   let matched = false;
@@ -162,17 +186,28 @@ export function categorise(
     if (!fits(rule, line, label)) continue;
     matched = true;
 
-    if (rule.categoryId !== null) {
+    // A shipped rule fills what is still empty and never replaces. That is the
+    // whole of "user rules first, then the set": a household that has said
+    // what a movement is has said it, and an update that changed a shipped
+    // pattern must not quietly change their answer with it.
+    const fillsOnly = rule.source === 'set';
+
+    if (rule.categoryId !== null && !(fillsOnly && categoryId !== null)) {
       categoryId = rule.categoryId;
       ruleId = rule.id;
+      ruleSource = rule.source ?? 'household';
     }
-    if (rule.counterparty !== null) counterparty = rule.counterparty;
+    if (rule.counterparty !== null && !(fillsOnly && counterparty !== null)) {
+      counterparty = rule.counterparty;
+    }
+    // Tags are a set and only a household has any, so there is nothing here for
+    // a shipped rule to overrule.
     for (const tag of rule.tagIds) tagIds.add(tag);
 
     if (rule.stopOnMatch) break;
   }
 
-  return matched ? { categoryId, ruleId, counterparty, tagIds: [...tagIds] } : null;
+  return matched ? { categoryId, ruleId, ruleSource, counterparty, tagIds: [...tagIds] } : null;
 }
 
 /**

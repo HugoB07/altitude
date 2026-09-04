@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, Plus, Trash2, Wand2, X } from 'lucide-react';
+import { Check, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,14 +16,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  applyRulesAction,
   createCategoryAction,
   createRuleAction,
   createTagAction,
   deleteCategoryAction,
   deleteRuleAction,
   deleteTagAction,
-  previewRulesAction,
 } from '@/server/category-actions';
 
 /**
@@ -71,7 +69,6 @@ export function Rules({
   const [pattern, setPattern] = useState('');
   const [direction, setDirection] = useState('out');
   const [category, setCategory] = useState('');
-  const [preview, setPreview] = useState<{ changed: number; lines: string[] } | null>(null);
 
   const submit = (work: () => Promise<{ error?: string }>, done: () => void) => {
     start(() => {
@@ -473,86 +470,6 @@ export function Rules({
             </Button>
           </div>
         </form>
-      </section>
-
-      <section className="grid grid-cols-1 gap-3 rounded-2xl border p-5">
-        <div>
-          <h2 className="text-[13px] font-semibold tracking-wide uppercase">{t('applyTitle')}</h2>
-          <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('applyHint')}</p>
-        </div>
-
-        {/* The count comes before the act, which the plan asks for by name
-            (§8.6): re-applying rules is a manual action with a preview of how
-            many rows would change. */}
-        {preview === null ? (
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending || rules.length === 0}
-              onClick={() => {
-                start(() => {
-                  void previewRulesAction().then((outcome) => {
-                    if (outcome.error !== undefined || outcome.result === undefined) {
-                      toast.error(outcome.error ?? '');
-                      return;
-                    }
-                    setPreview({
-                      changed: outcome.result.changed,
-                      lines: outcome.result.byCategory.map((one) =>
-                        t('wouldBecome', { count: one.count, name: one.name }),
-                      ),
-                    });
-                  });
-                });
-              }}
-            >
-              <Wand2 className="size-4" aria-hidden />
-              {t('previewRules')}
-            </Button>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            <p className="text-sm">{t('wouldChange', { count: preview.changed })}</p>
-            {preview.lines.length > 0 && (
-              <ul className="text-muted-foreground grid gap-0.5 text-xs">
-                {preview.lines.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                disabled={pending || preview.changed === 0}
-                onClick={() => {
-                  start(() => {
-                    void applyRulesAction().then((outcome) => {
-                      if (outcome.error !== undefined || outcome.result === undefined) {
-                        toast.error(outcome.error ?? '');
-                        return;
-                      }
-                      toast.success(t('applied', { count: outcome.result.changed }));
-                      setPreview(null);
-                    });
-                  });
-                }}
-              >
-                {t('applyRules')}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={pending}
-                onClick={() => {
-                  setPreview(null);
-                }}
-              >
-                {t('cancel')}
-              </Button>
-            </div>
-          </div>
-        )}
       </section>
     </div>
   );
