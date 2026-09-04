@@ -414,7 +414,7 @@
     "noTags": "Tag",
     "tagCount": "{count, plural, =1 {# tag} other {# tags}}",
     "tagsTitle": "Your tags",
-    "tagsHint": "A tag cuts across categories. A week in Spain is restaurants, fuel and a hotel: each keeps its own category, and the tag “spain-2027” says what the trip cost. A movement carries none, one or five, so tags do not add up to your total - that is what separates them from categories.",
+    "tagsHint": "A tag cuts across categories: a week in Spain is restaurants, fuel and a hotel, each keeping its own category, and the tag says what the trip cost. A movement carries none, one or five, so tags do not sum to your total the way categories do.",
     "tagName": "Tag name",
     "tagPlaceholder": "spain-2027",
     "addTag": "Add tag",
@@ -466,6 +466,8 @@
       "subscriptions": "Subscriptions",
       "bankFees": "Bank fees",
       "cash": "Cash withdrawals"
-    }
+    },
+    "communityList": "{count, plural, =1 {The rule} other {The # rules}}",
+    "communityNamesOnly": "Named, not filed"
   }
 }

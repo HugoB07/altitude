@@ -414,7 +414,7 @@
     "noTags": "Étiqueter",
     "tagCount": "{count, plural, =1 {# étiquette} other {# étiquettes}}",
     "tagsTitle": "Vos étiquettes",
-    "tagsHint": "Une étiquette traverse les catégories. Une semaine en Espagne, ce sont des restaurants, de l'essence et un hôtel : chacun garde sa catégorie, et l'étiquette « espagne-2027 » dit ce que le voyage a coûté. Un mouvement en porte zéro, une ou cinq, donc les étiquettes ne s'additionnent pas jusqu'à votre total - c'est ce qui les distingue des catégories.",
+    "tagsHint": "Une étiquette traverse les catégories : une semaine en Espagne, ce sont des restaurants, de l'essence et un hôtel, chacun gardant sa catégorie, et l'étiquette dit ce que le voyage a coûté. Un mouvement en porte zéro, une ou cinq, donc elles ne s'additionnent pas jusqu'à votre total comme le font les catégories.",
     "tagName": "Nom de l'étiquette",
     "tagPlaceholder": "espagne-2027",
     "addTag": "Ajouter l'étiquette",
@@ -466,6 +466,8 @@
       "subscriptions": "Abonnements",
       "bankFees": "Frais bancaires",
       "cash": "Retraits"
-    }
+    },
+    "communityList": "{count, plural, =1 {La règle} other {Les # règles}}",
+    "communityNamesOnly": "Nommé, non classé"
   }
 }

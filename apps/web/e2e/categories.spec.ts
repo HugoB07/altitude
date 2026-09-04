@@ -226,6 +226,17 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
     await page.getByRole('button', { name: 'Add the missing categories' }).click();
     await expect(page.getByText('Every category it needs exists.')).toBeVisible();
 
+    // Folded, so the sixty-two rules do not push the button that runs them a
+    // screen and a half down the page. Hidden rather than absent: a closed
+    // <details> keeps its contents in the document, which is what makes them
+    // findable by a browser's own search.
+    await expect(page.getByText('E.Leclerc', { exact: true })).toBeHidden();
+    await page.getByText('The 62 rules').click();
+    // Grouped by what they file under, so the effect is said once per group
+    // rather than stranded at the right edge of every row.
+    await expect(page.getByRole('term').filter({ hasText: 'Groceries' })).toBeVisible();
+    await expect(page.getByText('E.Leclerc', { exact: true })).toBeVisible();
+
     // The count comes before the act here too - and the control is live again,
     // on sixty-two rules this household did not write. Counting only its own
     // was the bug: a set turned on, and a button that did nothing.
