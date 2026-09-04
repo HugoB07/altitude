@@ -15,7 +15,7 @@ import { fingerprintFile } from '../import/fingerprint';
 import { normaliseLabel, trigramSimilarity } from '../import/labels';
 import type { CandidateInstrument } from '../import/types';
 import type { TransactionInput } from '../ledger/types';
-import { postTransaction, reverseTransactionById } from './transactions';
+import { postTransactions, reverseTransactionById } from './transactions';
 import { applyRules } from './categories';
 import { assertActorMatchesTenant } from './tenant';
 
@@ -421,38 +421,46 @@ export async function commitImport(
 
   const resolved = await resolveInstruments(tx, input.candidates);
 
-  for (const [index, candidate] of input.candidates.entries()) {
-    const id = input.transactionIds[index];
-    if (id === undefined) throw new Error(`No id given for candidate ${String(index)}`);
+  // Every row of the file in one call rather than one call each. The checks
+  // that are about the actor and the connection are asked once; everything
+  // that is about a transaction still happens for every transaction, and the
+  // database checks the balance again at COMMIT.
+  await postTransactions(
+    tx,
+    actor,
+    input.candidates.map((candidate, index) => {
+      const id = input.transactionIds[index];
+      if (id === undefined) throw new Error(`No id given for candidate ${String(index)}`);
 
-    await postTransaction(tx, actor, {
-      id,
-      bookedOn: candidate.bookedOn,
-      kind: candidate.kind as TransactionInput['kind'],
-      source: 'import',
-      importId: input.importId,
-      // Written now so the next import of the same file recognises this row
-      // outright, without a person being asked about it again.
-      dedupeHash: dedupeHashOf(candidate),
-      ...(candidate.description === undefined ? {} : { description: candidate.description }),
-      ...(candidate.counterparty === undefined ? {} : { counterparty: candidate.counterparty }),
-      ...(candidate.externalId === undefined ? {} : { externalId: candidate.externalId }),
-      entries: candidate.entries.map((entry) => ({
-        accountId: entry.accountId,
-        amount: Money.of(entry.amount, entry.currency),
-        ...(entry.memo === undefined ? {} : { memo: entry.memo }),
-        ...(entry.quantity === undefined ? {} : { quantity: dec(entry.quantity) }),
-        ...(entry.unitPrice === undefined
-          ? {}
-          : { unitPrice: Money.of(entry.unitPrice, entry.currency) }),
-        ...(entry.instrument === undefined
-          ? {}
-          : {
-              instrumentId: instrumentId(resolved.byKey.get(instrumentKey(entry.instrument))!),
-            }),
-      })),
-    });
-  }
+      return {
+        id,
+        bookedOn: candidate.bookedOn,
+        kind: candidate.kind as TransactionInput['kind'],
+        source: 'import' as const,
+        importId: input.importId,
+        // Written now so the next import of the same file recognises this row
+        // outright, without a person being asked about it again.
+        dedupeHash: dedupeHashOf(candidate),
+        ...(candidate.description === undefined ? {} : { description: candidate.description }),
+        ...(candidate.counterparty === undefined ? {} : { counterparty: candidate.counterparty }),
+        ...(candidate.externalId === undefined ? {} : { externalId: candidate.externalId }),
+        entries: candidate.entries.map((entry) => ({
+          accountId: entry.accountId,
+          amount: Money.of(entry.amount, entry.currency),
+          ...(entry.memo === undefined ? {} : { memo: entry.memo }),
+          ...(entry.quantity === undefined ? {} : { quantity: dec(entry.quantity) }),
+          ...(entry.unitPrice === undefined
+            ? {}
+            : { unitPrice: Money.of(entry.unitPrice, entry.currency) }),
+          ...(entry.instrument === undefined
+            ? {}
+            : {
+                instrumentId: instrumentId(resolved.byKey.get(instrumentKey(entry.instrument))!),
+              }),
+        })),
+      };
+    }),
+  );
 
   // The rows a person said were already there. An update of provenance, not of
   // the ledger: no amount, date or account moves, so append-only holds.

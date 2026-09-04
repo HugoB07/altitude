@@ -115,6 +115,125 @@ export async function postTransaction(
   return { transaction, id: transaction.id };
 }
 
+/**
+ * The same, for many transactions at once.
+ *
+ * An import posts one row per movement, and `postTransaction` costs five round
+ * trips each: two checks, then the transaction, its deduplication key and its
+ * entries. Measured on a file at the ceiling - fifty thousand rows - that was
+ * about six minutes, all of it waiting on the network rather than working.
+ *
+ * What is dropped is only what does not vary. The permission is about the
+ * actor, and the tenant check is about the connection: neither changes between
+ * the first transaction and the thousandth, so asking once is asking as often
+ * as the answer can change. Everything that is about a transaction is still
+ * done for every transaction.
+ *
+ * What is kept, and why it has to be:
+ *
+ *   - `createTransaction` runs on each one. It is the balance invariant and it
+ *     is pure, so it costs nothing and refuses the whole call on the first
+ *     transaction that does not balance (ADR-0002).
+ *   - every entry is still checked against the currency its account is held in.
+ *     The accounts are fetched once for the whole call instead of once per
+ *     transaction, which is the same guarantee from one query.
+ *   - every row still carries `household_id` and is written under the caller's
+ *     binding, so row-level security applies to a thousand-row insert exactly
+ *     as it does to one (ADR-0007).
+ *   - the database checks the balance again at COMMIT, per transaction, as it
+ *     does for anything that arrives by any other route.
+ */
+export async function postTransactions(
+  tx: Database,
+  actor: Actor,
+  inputs: readonly TransactionInput[],
+): Promise<PostTransactionResult[]> {
+  assertCan(actor, 'transaction:create', { householdId: actor.householdId });
+  await assertActorMatchesTenant(tx, actor);
+
+  if (inputs.length === 0) return [];
+
+  const built = inputs.map((input) => createTransaction(input));
+
+  // A reversal marks the transaction it cancels, and whether that row is in
+  // this same batch decides what order the statements have to run in. No
+  // caller posts one in bulk - a rollback reverses one at a time - so this
+  // refuses rather than growing a case nothing exercises.
+  const reversal = built.find((transaction) => transaction.reversesId !== undefined);
+  if (reversal !== undefined) {
+    throw new Error(`Post a reversal on its own: ${reversal.id} cancels another transaction.`);
+  }
+
+  await assertEntriesMatchTheirAccounts(tx, built);
+
+  for (const chunk of chunked(built, BATCH)) {
+    await tx.insert(transactionsTable).values(
+      chunk.map((transaction) => ({
+        id: transaction.id,
+        householdId: actor.householdId,
+        bookedOn: transaction.bookedOn,
+        valueOn: transaction.valueOn,
+        kind: transaction.kind,
+        description: transaction.description ?? null,
+        counterparty: transaction.counterparty ?? null,
+        source: transaction.source,
+        externalId: transaction.externalId ?? null,
+        reversesId: null,
+        importId: transaction.importId ?? null,
+        createdBy: actor.userId,
+      })),
+    );
+
+    const keys = chunk
+      .filter((transaction) => transaction.dedupeHash !== undefined)
+      .map((transaction) => ({
+        transactionId: transaction.id,
+        householdId: actor.householdId,
+        hash: transaction.dedupeHash!,
+      }));
+    if (keys.length > 0) await tx.insert(dedupeKeys).values(keys);
+
+    // After the transactions of this chunk, never before: an entry references
+    // the transaction it belongs to, and a foreign key does not wait.
+    await tx.insert(entriesTable).values(
+      chunk.flatMap((transaction) =>
+        transaction.entries.map((entry) => ({
+          transactionId: transaction.id,
+          householdId: actor.householdId,
+          accountId: entry.accountId,
+          // Decimal to string at the boundary, as everywhere (ADR-0006).
+          amount: entry.amount.amount.toFixed(),
+          currency: entry.amount.currency,
+          instrumentId: entry.instrumentId ?? null,
+          quantity: entry.quantity?.toFixed() ?? null,
+          unitPrice: entry.unitPrice?.amount.toFixed() ?? null,
+          memo: entry.memo ?? null,
+        })),
+      ),
+    );
+  }
+
+  return built.map((transaction) => ({ transaction, id: transaction.id }));
+}
+
+/**
+ * How many transactions go in one statement.
+ *
+ * The plan says a thousand (§8.7). Five hundred, because the limit that
+ * actually bites is PostgreSQL's cap of 65,535 parameters per statement, and a
+ * transaction is twelve of them plus nine for each of its entries - so a
+ * thousand transactions carrying several lines each would be a statement that
+ * fails on a file nobody thought was unusual. Half of that leaves room for a
+ * broker's export, where one row is three entries.
+ */
+const BATCH = 500;
+
+function chunked<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let at = 0; at < items.length; at += size) chunks.push(items.slice(at, at + size));
+  return chunks;
+}
+
 export class CurrencyDoesNotMatchAccountError extends Error {
   readonly code = 'ENTRY_CURRENCY_MISMATCH';
   readonly accountName: string;
@@ -154,18 +273,22 @@ export class CurrencyDoesNotMatchAccountError extends Error {
  */
 async function assertEntriesMatchTheirAccounts(
   tx: Database,
-  transaction: Transaction,
+  posted: Transaction | readonly Transaction[],
 ): Promise<void> {
-  const ids = [...new Set(transaction.entries.map((entry) => entry.accountId))];
+  const all = Array.isArray(posted) ? posted : [posted as Transaction];
+  const lines = all.flatMap((transaction) => transaction.entries);
+  const ids = [...new Set(lines.map((entry) => entry.accountId))];
   if (ids.length === 0) return;
 
+  // One query for every account the call touches, however many transactions
+  // that is. The guarantee is per entry either way.
   const rows = await tx
     .select({ id: accountsTable.id, name: accountsTable.name, currency: accountsTable.currency })
     .from(accountsTable)
     .where(inArray(accountsTable.id, ids));
 
   const held = new Map(rows.map((row) => [row.id, row]));
-  for (const entry of transaction.entries) {
+  for (const entry of lines) {
     const account = held.get(entry.accountId);
     // A missing account is not this function's error to raise: the foreign key
     // says it better, and saying it here would guess at why it is missing.

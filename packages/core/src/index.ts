@@ -30,6 +30,7 @@ export {
 } from './auth/policy';
 export {
   postTransaction,
+  postTransactions,
   listCounterparties,
   listTransactions,
   reverseTransactionById,

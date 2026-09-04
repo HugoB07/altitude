@@ -28,6 +28,7 @@ import {
   listTransactions,
   netWorth,
   postTransaction,
+  postTransactions,
   reverseTransactionById,
   type Actor,
 } from '../src/index';
@@ -793,5 +794,143 @@ describe('reversing a transaction that holds an instrument', () => {
     expect([...lines]).toHaveLength(1);
     expect([...lines][0]?.instrument_id).toBe(held);
     expect(Number([...lines][0]?.quantity)).toBe(-10);
+  });
+});
+
+/**
+ * The same guarantees, for a thousand transactions at once.
+ *
+ * Last in the file, and that is not tidiness: these write six hundred rows into
+ * the ledger the tests above count, and a suite that shares a household reads
+ * whatever ran before it.
+ *
+ * An import posts one row per movement, and one call each cost five round trips
+ * a row - about six minutes for a file at the ceiling, nearly all of it waiting
+ * on the network. Batching drops the round trips; what it must not drop is any
+ * check, so what is tested here is that every refusal still refuses.
+ *
+ * Every figure is invented.
+ */
+describe('postTransactions - what batching must not skip', () => {
+  const pair = (at: number, prefix: string, amount = '10.00') => ({
+    id: transactionId(
+      `${prefix}-0000-4000-8000-${String(at + 1).padStart(12, '0')}` as `${string}-${string}-${string}-${string}-${string}`,
+    ),
+    bookedOn: ledgerDate('2026-06-01'),
+    kind: 'withdrawal' as const,
+    description: `CARTE 01/06 COMMERCE INVENTE ${String(at)}`,
+    entries: [
+      { accountId: current, amount: Money.of(`-${amount}`, 'EUR') },
+      { accountId: opening, amount: Money.of(amount, 'EUR') },
+    ],
+  });
+
+  const post = (actor: Actor, inputs: readonly Parameters<typeof postTransaction>[2][]) =>
+    withHousehold(client, { householdId: actor.householdId, userId: USER }, (tx) =>
+      postTransactions(tx, actor, inputs),
+    );
+
+  it('writes more than one chunk, entries and all', async () => {
+    // Past the batch size, so the chunk boundary is exercised rather than
+    // described: a file of six hundred rows is an ordinary month for nobody,
+    // and an ordinary year for plenty of people.
+    const many = Array.from({ length: 600 }, (_, at) => pair(at, 'bbbb1111'));
+    const written = await post(owner, many);
+
+    expect(written).toHaveLength(600);
+
+    const [row] = await admin<{ transactions: string; entries: string }[]>`
+      SELECT count(DISTINCT t.id)::text AS transactions, count(e.id)::text AS entries
+        FROM transactions t
+        JOIN entries e ON e.transaction_id = t.id
+       WHERE t.description LIKE 'CARTE 01/06 COMMERCE INVENTE %'`;
+    expect(row?.transactions).toBe('600');
+    expect(row?.entries).toBe('1200');
+  });
+
+  it('refuses the whole call when one transaction does not balance', async () => {
+    // The domain's check, per transaction, before anything is written. One bad
+    // row in a thousand takes the thousand with it rather than landing a
+    // ledger that is nine hundred and ninety-nine parts right.
+    const inputs = [
+      pair(0, 'bbbb2222'),
+      {
+        ...pair(1, 'bbbb2222'),
+        entries: [
+          { accountId: current, amount: Money.of('-10.00', 'EUR') },
+          { accountId: opening, amount: Money.of('9.00', 'EUR') },
+        ],
+      },
+      pair(2, 'bbbb2222'),
+    ];
+
+    await expect(post(owner, inputs)).rejects.toThrow(UnbalancedTransactionError);
+
+    const [row] = await admin<{ n: string }[]>`
+      SELECT count(*)::text AS n FROM transactions
+       WHERE id::text LIKE 'bbbb2222-%'`;
+    expect(row?.n).toBe('0');
+  });
+
+  it('refuses an entry in a currency its account does not hold', async () => {
+    // Checked for every entry of every transaction, from one query rather than
+    // one per transaction. Euros in a dollar account balance perfectly against
+    // each other and are silently wrong afterwards, which is why this exists.
+    const inputs = [
+      pair(0, 'bbbb3333'),
+      {
+        ...pair(1, 'bbbb3333'),
+        entries: [
+          { accountId: dollars, amount: Money.of('-10.00', 'EUR') },
+          { accountId: opening, amount: Money.of('10.00', 'EUR') },
+        ],
+      },
+    ];
+
+    await expect(post(owner, inputs)).rejects.toThrow(CurrencyDoesNotMatchAccountError);
+
+    const [row] = await admin<{ n: string }[]>`
+      SELECT count(*)::text AS n FROM transactions WHERE id::text LIKE 'bbbb3333-%'`;
+    expect(row?.n).toBe('0');
+  });
+
+  it('refuses somebody who may not record a transaction', async () => {
+    // Asked once for the call rather than once per row, because the answer is
+    // about the actor and cannot change between the first and the thousandth.
+    await expect(post(viewer, [pair(0, 'bbbb4444')])).rejects.toThrow(ForbiddenError);
+  });
+
+  it('refuses work bound to another household than the actor', async () => {
+    // The second barrier of ADR-0007, and it is the connection that is checked
+    // - so asking once for the call is asking as often as it can change.
+    const stranger: Actor = { userId: USER, householdId: OTHER, role: 'owner' };
+
+    await expect(
+      withHousehold(client, { householdId: HOUSE, userId: USER }, (tx) =>
+        postTransactions(tx, stranger, [pair(0, 'bbbb5555')]),
+      ),
+    ).rejects.toThrow(TenantScopeError);
+  });
+
+  it('files every row under the household that wrote it', async () => {
+    await post(owner, [pair(0, 'bbbb6666'), pair(1, 'bbbb6666')]);
+
+    const rows = await admin<{ household_id: string }[]>`
+      SELECT DISTINCT e.household_id::text
+        FROM entries e
+        JOIN transactions t ON t.id = e.transaction_id
+       WHERE t.id::text LIKE 'bbbb6666-%'`;
+    expect(rows.map((row) => row.household_id)).toEqual([HOUSE]);
+  });
+
+  it('refuses a reversal, which has to be posted on its own', async () => {
+    // A reversal marks the row it cancels, and whether that row is in the same
+    // batch decides the order the statements have to run in. Nothing posts one
+    // in bulk, so this refuses rather than growing a case nothing exercises.
+    const [original] = await post(owner, [pair(0, 'bbbb7777')]);
+
+    await expect(
+      post(owner, [{ ...pair(1, 'bbbb7777'), reversesId: original!.id }]),
+    ).rejects.toThrow(/on its own/);
   });
 });
