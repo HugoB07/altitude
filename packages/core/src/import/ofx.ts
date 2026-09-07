@@ -1,6 +1,7 @@
 import { ledgerDate, type LedgerDate } from '@altitude/shared';
 import { readCurrency } from './currencies';
 import { STATEMENT_ACCOUNT, STATEMENT_COUNTERPART } from './mapped';
+import { child, deep, readMarkup, value, type MarkupNode } from './markup';
 import { parseAmount } from './numbers';
 import type {
   BalanceReading,
@@ -20,17 +21,9 @@ import type {
  *
  * Two dialects under one name. 1.x is SGML: a header block of `KEY:VALUE`
  * lines, then tags where a leaf is never closed - `<TRNAMT>-42.10` and the
- * value ends at the next `<`. 2.x is XML and closes everything. They are read
- * by one tokeniser rather than two, because the difference is exactly one rule:
- * a tag holding text is a leaf, closed by its text. Applied to 2.x that makes
- * the `</TRNAMT>` redundant rather than wrong, so it is skipped and nothing
- * else has to know which dialect it is looking at.
- *
- * Written here rather than taken from a library, for the reason CONTRIBUTING
- * gives: `packages/core` takes a dependency with a reason, and an XML parser
- * would be one more thing to keep current for a format that has not changed
- * since 2003 - and one that would want configuring against entity expansion
- * (plan §8.7) rather than simply not having entities.
+ * value ends at the next `<`. 2.x is XML and closes everything. Both are read
+ * by `markup.ts`, which treats the difference as one rule rather than as two
+ * formats, so nothing below has to know which dialect it is looking at.
  */
 
 export function looksLikeOfx(text: string): boolean {
@@ -38,16 +31,8 @@ export function looksLikeOfx(text: string): boolean {
   return head.includes('<OFX>') || head.includes('OFXHEADER');
 }
 
-/** A tag, its text if it is a leaf, and where it started. */
-interface Node {
-  readonly tag: string;
-  value: string;
-  readonly line: number;
-  readonly children: Node[];
-}
-
 export function readOfx(text: string): ImportReading {
-  const root = parse(text);
+  const root = readMarkup(text);
 
   const problems: ImportProblem[] = [];
   const candidates: Candidate[] = [];
@@ -119,7 +104,7 @@ export function readOfx(text: string): ImportReading {
  * A file holding two statements names two, which is the point - a CSV says
  * "ACCOUNT" and means whichever one the person had in mind.
  */
-function accountLabel(statement: Node): string {
+function accountLabel(statement: MarkupNode): string {
   const from = child(statement, 'BANKACCTFROM') ?? child(statement, 'CCACCTFROM');
   const id = from === undefined ? '' : value(from, 'ACCTID');
   return id === '' ? STATEMENT_ACCOUNT : id;
@@ -137,7 +122,7 @@ function accountLabel(statement: Node): string {
  * accounts are not one number, and picking either would compare the ledger
  * against half of what was imported.
  */
-function balances(statements: readonly Node[]): BalanceReading | null {
+function balances(statements: readonly MarkupNode[]): BalanceReading | null {
   if (statements.length !== 1) return null;
 
   const statement = statements[0]!;
@@ -156,7 +141,7 @@ function balances(statements: readonly Node[]): BalanceReading | null {
 }
 
 function transaction(
-  found: Node,
+  found: MarkupNode,
   account: string,
   fallbackCurrency: string,
 ): Candidate | { reason: string } {
@@ -253,129 +238,4 @@ function date(raw: string): LedgerDate | null {
     // A well-formed 20260231 is caught here rather than becoming 2 March.
     return null;
   }
-}
-
-/**
- * The document, as a tree.
- *
- * One rule does both dialects: a tag holding text is a leaf and its text closes
- * it. A `</TAG>` for something already closed that way is skipped, which is
- * every closing tag in an OFX 2.x file and none in a 1.x one.
- *
- * Tolerant on purpose. This is a format real banks emit imperfectly, and a
- * parser that threw on a stray tag would refuse a file whose four hundred
- * transactions are all perfectly readable.
- */
-function parse(text: string): Node {
-  const root: Node = { tag: '', value: '', line: 1, children: [] };
-  const stack: Node[] = [root];
-
-  // The header block, and the XML declaration before it in 2.x. Everything
-  // before the first tag is `KEY:VALUE` lines that say how the file is encoded,
-  // which is a question already answered by the time this reads a string.
-  let at = text.indexOf('<');
-  if (at === -1) return root;
-  let line = 1 + count(text.slice(0, at));
-
-  while (at < text.length) {
-    if (text[at] === '<') {
-      const close = text.indexOf('>', at);
-      if (close === -1) break;
-
-      const tag = text.slice(at + 1, close).trim();
-      // Where the tag opened, not where it ended: a node's line is what the
-      // preview points at, and pointing past a tag that wrapped is worse than
-      // not pointing at all.
-      const opened = line;
-      line += count(text.slice(at, close));
-      at = close + 1;
-
-      // `<?xml ...?>`, `<?OFX ...?>`, `<!-- -->`. Neither opens nor closes.
-      if (tag.startsWith('?') || tag.startsWith('!')) continue;
-
-      if (tag.startsWith('/')) {
-        const name = tag.slice(1).trim().toUpperCase();
-        // Popped only if it is still open. In 2.x the value already closed it.
-        if (stack.some((node) => node.tag === name)) {
-          while (stack.length > 1 && stack.pop()!.tag !== name);
-        }
-        continue;
-      }
-
-      // `<TAG/>`, which carries nothing worth keeping.
-      if (tag.endsWith('/')) continue;
-
-      const node: Node = { tag: tag.toUpperCase(), value: '', line: opened, children: [] };
-      stack[stack.length - 1]!.children.push(node);
-      stack.push(node);
-      continue;
-    }
-
-    const next = text.indexOf('<', at);
-    const raw = text.slice(at, next === -1 ? text.length : next);
-    line += count(raw);
-    at = next === -1 ? text.length : next;
-
-    const trimmed = raw.trim();
-    // Whitespace between tags is layout, not a value - and treating it as one
-    // would close every container the moment it was indented.
-    if (trimmed === '') continue;
-
-    const top = stack[stack.length - 1]!;
-    top.value = entities(trimmed);
-    if (stack.length > 1) stack.pop();
-  }
-
-  return root;
-}
-
-function count(text: string): number {
-  let lines = 0;
-  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) lines += 1;
-  return lines;
-}
-
-const NAMED: Readonly<Record<string, string>> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
-  quot: '"',
-  apos: "'",
-  nbsp: ' ',
-};
-
-function entities(text: string): string {
-  if (!text.includes('&')) return text;
-
-  return text.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (whole, body: string) => {
-    if (body.startsWith('#x') || body.startsWith('#X')) {
-      return String.fromCodePoint(Number.parseInt(body.slice(2), 16));
-    }
-    if (body.startsWith('#')) return String.fromCodePoint(Number.parseInt(body.slice(1), 10));
-    return NAMED[body.toLowerCase()] ?? whole;
-  });
-}
-
-function child(node: Node, tag: string): Node | undefined {
-  return node.children.find((one) => one.tag === tag);
-}
-
-/** A child's text, or the empty string. Absent and empty are the same question here. */
-function value(node: Node, tag: string): string {
-  return child(node, tag)?.value ?? '';
-}
-
-/** Every descendant with this tag, in document order. */
-function deep(node: Node, tag: string): Node[] {
-  const found: Node[] = [];
-
-  const walk = (current: Node) => {
-    for (const one of current.children) {
-      if (one.tag === tag) found.push(one);
-      else walk(one);
-    }
-  };
-
-  walk(node);
-  return found;
 }
