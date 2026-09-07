@@ -97,6 +97,10 @@ async function statement(
 const OFX = join(__dirname, 'fixtures', 'releve.ofx');
 /** The other self-describing one, which carries no currency at all. */
 const QIF = join(__dirname, 'fixtures', 'releve.qif');
+/** ISO 20022, where amounts are unsigned and a separate element says which way. */
+const CAMT = join(__dirname, 'fixtures', 'releve.xml');
+/** SWIFT, where a line is eight values with no separator between them. */
+const MT940 = join(__dirname, 'fixtures', 'releve.sta');
 /** A statement with a state column, holding a card payment that was reverted. */
 const STATES = join(__dirname, 'fixtures', 'releve-etats.csv');
 
@@ -1072,5 +1076,90 @@ test('a row whose balance does not follow its amount is named', async () => {
     // what a spreadsheet shows.
     await expect(page.getByText(/the balance does not move by that row's amount/)).toBeVisible();
     await expect(page.getByText(/: 8\./)).toBeVisible();
+  });
+});
+
+test('an ISO 20022 statement is read with its own signs and its own names', async () => {
+  await expectNoConsoleErrors(async () => {
+    /**
+     * CAMT.053, which the plan calls "the richest: standardised transaction
+     * codes and counterparty data" (§8.1). Both halves are what this checks.
+     *
+     * Every amount in the file is positive and a separate element says which
+     * way the money went, so a reader that took them at face value would book
+     * a month of spending as income - and every figure would look plausible.
+     */
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(CAMT);
+
+    await expect(page.getByText(/Read as CAMT\.053/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+
+    // The IBAN, which is what a person recognises out of their own file.
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('FR7612345678901234567890123').first()).toBeVisible();
+
+    // Who was on the other side, as a field rather than mined out of a label:
+    // the creditor when money left, the debtor when it arrived. Reading one of
+    // the two unconditionally names the account holder on half a statement.
+    await expect(page.getByText('PHARMACIE INVENTEE').first()).toBeVisible();
+    await expect(page.getByText('EMPLOYEUR INVENTE SARL').first()).toBeVisible();
+
+    // A remittance written across two elements, joined.
+    await expect(page.getByText('VIREMENT SALAIRE MARS 2026')).toBeVisible();
+
+    await page.getByRole('button', { name: /^Create the/ }).click();
+    await expect(page.getByText(/account(s)? created/)).toBeVisible();
+
+    // CLBD and not CLAV: the available balance nets off the pending entry
+    // below, and reconciling against it would report a twenty euro gap that is
+    // not an error and that nothing in the file explains.
+    await expect(page.getByText('This statement ends at €2,043.17.')).toBeVisible();
+    await expect(
+      page.getByText('Importing all of its lines brings this account to exactly that.'),
+    ).toBeVisible();
+
+    // Three, not four. The fourth entry is a card authorisation that has not
+    // settled: it moved no money and the next statement will book it again.
+    await page.getByRole('button', { name: 'Import 3 transactions' }).click();
+    await expect(page.getByText('3 transactions imported')).toBeVisible();
+
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€2,043.17')).toBeVisible();
+  });
+});
+
+test('a SWIFT statement is read out of a line with no separators in it', async () => {
+  await expectNoConsoleErrors(async () => {
+    // MT940, the format nobody chooses: it is what a bank offers when it offers
+    // nothing else, and the alternative for that person is typing a statement
+    // in by hand. One field holds the value date, the booking date without its
+    // year, the direction, the amount and two references, run together.
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type="file"]').setInputFiles(MT940);
+
+    await expect(page.getByText(/Read as MT940/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toHaveCount(0);
+
+    // No currency question, unlike QIF: MT940 states one, in the balance field.
+    await expect(page.getByRole('heading', { name: 'What are these amounts in' })).toHaveCount(0);
+
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+    await expect(page.getByText('20041/01234567890').first()).toBeVisible();
+    await expect(page.getByText('CARTE 03/04 GARAGE INVENTE 5512')).toBeVisible();
+
+    await page.getByRole('button', { name: /^Create the/ }).click();
+    await expect(page.getByText(/account(s)? created/)).toBeVisible();
+
+    await expect(page.getByText('This statement ends at €612.55.')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Import 2 transactions' }).click();
+    await expect(page.getByText('2 transactions imported')).toBeVisible();
+
+    // 87,45 out and 700,00 in, both read with a comma for a decimal point.
+    await page.goto('/app/accounts');
+    await expect(page.getByText('€612.55')).toBeVisible();
   });
 });

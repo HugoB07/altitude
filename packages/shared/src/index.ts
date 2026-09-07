@@ -6,7 +6,9 @@ export {
   sniffFormat,
   sniffBytes,
   describesItself,
+  formatLabel,
   FILE_FORMATS,
+  FORMAT_EXTENSIONS,
   type FileFormat,
   type BinaryFormat,
 } from './formats';

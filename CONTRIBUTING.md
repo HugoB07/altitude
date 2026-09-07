@@ -138,8 +138,10 @@ no compiler.
 A spreadsheet works the same way as a CSV. It is turned into delimited text before
 anything reads it, so what you describe and contribute is the columns, not the file format.
 
-A bank that exports OFX or QIF needs no preset at all. Those formats say what every value
-is, so the file is read as it arrives and there is nothing to name or to ship.
+A bank that exports OFX, CAMT.053, MT940 or QIF needs no preset at all. Those formats say
+what every value is, so the file is read as it arrives and there is nothing to name or to
+ship. If yours is one of them, the useful contribution is not a preset but a bug report
+with an anonymised sample when something reads wrongly.
 
 A bank whose export is not one row per movement needs more than a mapping. A broker that
 splits one transfer across two rows, or carries an ISIN and a quantity, needs a reader in

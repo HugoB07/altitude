@@ -47,4 +47,29 @@ describe('checkUpload', () => {
     expect(checkUpload(MAX_UPLOAD_BYTES + 1)).not.toBeNull();
     expect(checkUpload(10)).toBeNull();
   });
+
+  it('does not count the lines of a format that spends twenty on one movement', () => {
+    // A CAMT.053 entry is twenty lines of XML. Counted as rows, fifty thousand
+    // lines is two and a half thousand transactions - a limit an order of
+    // magnitude below what the number says, on the format a business account
+    // is most likely to arrive in. The byte cap holds these instead.
+    const entry = `  <Ntry>
+    <Amt Ccy="EUR">42.10</Amt>
+    <CdtDbtInd>DBIT</CdtDbtInd>
+    <BookgDt><Dt>2026-01-05</Dt></BookgDt>
+  </Ntry>
+`;
+    const camt = `<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>
+${entry.repeat(MAX_UPLOAD_LINES)}</Stmt></BkToCstmrStmt></Document>`;
+
+    expect(checkUpload(1_000, camt)).toBeNull();
+  });
+
+  it('still counts them for a format where a line is a movement', () => {
+    // The other direction, so the exemption above cannot quietly widen into
+    // "no file is ever refused for its length".
+    const qif = `!Type:Bank\n${'D05/01/2026\n'.repeat(MAX_UPLOAD_LINES + 10)}`;
+
+    expect(checkUpload(qif.length, qif)?.reason).toBe('lines');
+  });
 });

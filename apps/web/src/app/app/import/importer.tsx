@@ -52,6 +52,8 @@ import {
   checkUpload,
   decodeText,
   describesItself,
+  formatLabel,
+  FORMAT_EXTENSIONS,
   sniffBytes,
   sniffFormat,
 } from '@altitude/shared';
@@ -434,9 +436,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     // OFX and QIF say so themselves, and a person who picked "other bank" and
     // handed over an OFX should not then be asked which column is the date.
     const format = sniffFormat(contents);
-    const named = describesItself(format)
-      ? { id: format, name: format.toUpperCase(), monogram: format.toUpperCase() }
-      : undefined;
+    const named = describesItself(format) ? { id: format, ...formatLabel(format) } : undefined;
 
     seededFrom.current = '';
     setShape(null);
@@ -663,7 +663,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           <span className="text-sm">{preset.name}</span>
           <input
             type="file"
-            accept=".csv,.tsv,.ofx,.qfx,.qif,.xlsx,.xlsm,text/csv,text/plain"
+            accept={`${FORMAT_EXTENSIONS.join(',')},text/csv,text/plain`}
             className="sr-only"
             disabled={pending}
             onChange={(event) => {

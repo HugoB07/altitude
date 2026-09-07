@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CAMT.053, with invented figures.
+
+  Modelled on what a bank emits and holding none of anybody's data. The IBAN is
+  not a valid one. See CONTRIBUTING.md for the anonymisation checklist.
+-->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>INVENTE-2026-03</MsgId>
+      <CreDtTm>2026-04-01T06:00:00</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>STMT-2026-03</Id>
+      <Acct>
+        <Id><IBAN>FR7612345678901234567890123</IBAN></Id>
+        <Ccy>EUR</Ccy>
+      </Acct>
+      <Bal>
+        <Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp>
+        <Amt Ccy="EUR">0.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt><Dt>2026-03-01</Dt></Dt>
+      </Bal>
+      <Bal>
+        <Tp><CdOrPrtry><Cd>CLAV</Cd></CdOrPrtry></Tp>
+        <Amt Ccy="EUR">2023.27</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt><Dt>2026-03-31</Dt></Dt>
+      </Bal>
+      <Bal>
+        <Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp>
+        <Amt Ccy="EUR">2043.17</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt><Dt>2026-03-31</Dt></Dt>
+      </Bal>
+      <Ntry>
+        <Amt Ccy="EUR">63.40</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-03-04</Dt></BookgDt>
+        <ValDt><Dt>2026-03-05</Dt></ValDt>
+        <AcctSvcrRef>2026030400001</AcctSvcrRef>
+        <BkTxCd>
+          <Domn><Cd>PMNT</Cd><Fmly><Cd>CCRD</Cd><SubFmlyCd>POSD</SubFmlyCd></Fmly></Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <RltdPties>
+              <Cdtr><Nm>PHARMACIE INVENTEE</Nm></Cdtr>
+            </RltdPties>
+            <RmtInf><Ustrd>CARTE 04/03 PHARMACIE INVENTEE</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+        <AddtlNtryInf>CARTE 04/03 PHARMACIE INVENTEE 8871</AddtlNtryInf>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">2150.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><DtTm>2026-03-27T23:50:00+01:00</DtTm></BookgDt>
+        <AcctSvcrRef>2026032700002</AcctSvcrRef>
+        <BkTxCd>
+          <Domn><Cd>PMNT</Cd><Fmly><Cd>RCDT</Cd><SubFmlyCd>SALA</SubFmlyCd></Fmly></Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+            <RltdPties>
+              <Dbtr><Nm>EMPLOYEUR INVENTE SARL</Nm></Dbtr>
+            </RltdPties>
+            <RmtInf><Ustrd>VIREMENT SALAIRE</Ustrd><Ustrd>MARS 2026</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">43.43</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-03-30</Dt></BookgDt>
+        <AcctSvcrRef>2026033000003</AcctSvcrRef>
+        <NtryDtls>
+          <TxDtls>
+            <RltdPties>
+              <Cdtr><Nm>OPERATEUR INVENTE</Nm></Cdtr>
+            </RltdPties>
+            <RmtInf><Ustrd>PRLV ABONNEMENT INVENTE</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">19.90</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>PDNG</Sts>
+        <BookgDt><Dt>2026-03-31</Dt></BookgDt>
+        <AddtlNtryInf>CARTE 31/03 RESTAURANT INVENTE</AddtlNtryInf>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

@@ -141,7 +141,9 @@ export {
   presetById,
   type Preset,
 } from './import/presets/index';
+export { looksLikeCamt, readCamt } from './import/camt';
 export { looksLikeOfx, readOfx } from './import/ofx';
+export { looksLikeMt940, readMt940 } from './import/mt940';
 export { looksLikeQif, readQif } from './import/qif';
 export {
   parsePresetDefinition,
