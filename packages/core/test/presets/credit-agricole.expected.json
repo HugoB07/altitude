@@ -1,0 +1,93 @@
+{
+  "candidates": [
+    {
+      "bookedOn": "2026-08-13",
+      "kind": "withdrawal",
+      "description": "CARTE X7094 LIBRAIRIE INVENTEE 12/08",
+      "sourceLines": [
+        2
+      ],
+      "entries": [
+        {
+          "account": "ACCOUNT",
+          "amount": "-24.5",
+          "currency": "EUR"
+        },
+        {
+          "account": "EXTERNAL",
+          "amount": "24.5",
+          "currency": "EUR"
+        }
+      ]
+    },
+    {
+      "bookedOn": "2026-08-18",
+      "kind": "withdrawal",
+      "description": "PRLV MUTUELLE INVENTEE",
+      "sourceLines": [
+        3
+      ],
+      "entries": [
+        {
+          "account": "ACCOUNT",
+          "amount": "-56.3",
+          "currency": "EUR"
+        },
+        {
+          "account": "EXTERNAL",
+          "amount": "56.3",
+          "currency": "EUR"
+        }
+      ]
+    },
+    {
+      "bookedOn": "2026-08-27",
+      "kind": "deposit",
+      "description": "VIREMENT SALAIRE AOUT",
+      "sourceLines": [
+        4
+      ],
+      "entries": [
+        {
+          "account": "ACCOUNT",
+          "amount": "1900",
+          "currency": "EUR"
+        },
+        {
+          "account": "EXTERNAL",
+          "amount": "-1900",
+          "currency": "EUR"
+        }
+      ]
+    },
+    {
+      "bookedOn": "2026-08-29",
+      "kind": "withdrawal",
+      "description": "CARTE X7094 STATION INVENTEE 28/08",
+      "sourceLines": [
+        5
+      ],
+      "entries": [
+        {
+          "account": "ACCOUNT",
+          "amount": "-71.2",
+          "currency": "EUR"
+        },
+        {
+          "account": "EXTERNAL",
+          "amount": "71.2",
+          "currency": "EUR"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    "ACCOUNT"
+  ],
+  "securities": [],
+  "counterparts": [
+    "EXTERNAL"
+  ],
+  "problems": [],
+  "skipped": []
+}

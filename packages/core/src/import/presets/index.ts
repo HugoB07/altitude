@@ -22,6 +22,7 @@ import {
 } from './schema';
 
 import tradeRepublic from './de/trade-republic.json';
+import creditAgricole from './fr/credit-agricole.json';
 
 /**
  * Every preset file, in one place.
@@ -36,7 +37,10 @@ import tradeRepublic from './de/trade-republic.json';
  * the exact line to paste when a file is here and not there, so the way to
  * discover the omission is a test rather than an empty picker.
  */
-const FILES: readonly (readonly [string, unknown])[] = [['de/trade-republic.json', tradeRepublic]];
+const FILES: readonly (readonly [string, unknown])[] = [
+  ['de/trade-republic.json', tradeRepublic],
+  ['fr/credit-agricole.json', creditAgricole],
+];
 
 /**
  * A reader that is code, keyed by the name a preset uses to reach it.

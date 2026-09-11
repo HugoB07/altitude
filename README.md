@@ -38,7 +38,7 @@ real estate and liabilities - on your server, in your database.
 > keeping its own category. All three are filters in the transactions tab.
 >
 > What is missing from phase 2: a scanned PDF is still unreadable, since its pages are
-> images and reading them needs OCR; one bank ships with a preset, because a preset needs a
+> images and reading them needs OCR; two banks ship with a preset, because a preset needs a
 > real file to test against and no one person has an account everywhere, so a first file
 > from anywhere else is described by hand before it is described for good; and the import
 > runs inside the request rather than in a worker, so a very large file will outlast its own

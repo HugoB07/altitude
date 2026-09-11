@@ -1,0 +1,18 @@
+{
+  "$comment": "The statement Crédit Agricole hands out is a PDF, which is why PDF is read at all. By the time this preset sees it the page has already been turned into a table (apps/web/src/server/pdf.ts and packages/core/src/import/layout.ts), so what is described here is columns like any other bank's. Two things about that table are worth knowing. Its heading is set on two lines in the PDF - \"Date\" over \"opé.\" - and is joined back into one before it arrives, which is why the names below read the way they do. And its date column carries no year: the statement says the year once, in a letterhead that is not part of the table, so the year is worked out from the column itself. The sample beside this file dates in full so the expected reading does not change with the calendar; the yearless form is covered in import-text.test.ts.",
+  "id": "credit-agricole",
+  "name": "Crédit Agricole",
+  "country": "FR",
+  "monogram": "CA",
+  "logo": "/banks/credit-agricole.jpg",
+  "institution": "Crédit Agricole",
+  "mapping": {
+    "columns": {
+      "bookedOn": "Date opé.",
+      "description": "Libellé des opérations",
+      "debit": "Débit",
+      "credit": "Crédit"
+    },
+    "currency": "EUR"
+  }
+}
