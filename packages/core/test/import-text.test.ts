@@ -226,6 +226,58 @@ describe('readDate', () => {
   });
 });
 
+describe('a date column with no year in it', () => {
+  /**
+   * What a French statement writes: `13.08`, with the year said once in the
+   * letterhead - a block that is not part of the table and never reaches here.
+   * Left unread, every row of the statement is a problem a person cannot fix.
+   *
+   * Today is passed in rather than taken from the clock, so these say something
+   * on the day they are read as well as on the day they were written.
+   */
+  const august = ['13.08', '18.08', '22.08', '31.08'];
+
+  it('reads the day and the month the way the column is written', () => {
+    const column = detectDateOrder(august, '2026-09-03');
+
+    expect(column.order).toBe('dmy');
+    expect(column.ambiguous).toBe(false);
+    expect(readDate('13.08', column.order, column.years)).toBe('2026-08-13');
+  });
+
+  it('takes the year the statement has already reached', () => {
+    // A statement is of movements that have happened, so its last day is not in
+    // the future. Read on 3 September 2026, an August column is 2026's.
+    expect(detectDateOrder(august, '2026-09-03').years?.get('13.08')).toBe(2026);
+  });
+
+  it('takes last year when this year has not got there yet', () => {
+    // Read in February, an August column cannot be this year's.
+    expect(detectDateOrder(august, '2027-02-01').years?.get('13.08')).toBe(2026);
+  });
+
+  it('turns the year where the months turn', () => {
+    // A statement that runs across New Year. December is the year before the
+    // January under it, and one year for the column would move eleven months of
+    // it by twelve.
+    const across = ['28.12', '31.12', '02.01', '15.01'];
+    const column = detectDateOrder(across, '2027-02-01');
+
+    expect(readDate('28.12', column.order, column.years)).toBe('2026-12-28');
+    expect(readDate('15.01', column.order, column.years)).toBe('2027-01-15');
+  });
+
+  it('refuses a bare day and month when no column decided the year', () => {
+    // One value is not evidence of a year. A caller that did not ask the column
+    // gets nothing rather than this year by default.
+    expect(readDate('13.08', 'dmy')).toBeNull();
+  });
+
+  it('says nothing about the year when every value carries one', () => {
+    expect(detectDateOrder(['13/08/2026', '18/08/2026'], '2026-09-03').years).toBeUndefined();
+  });
+});
+
 describe('dates that carry a time', () => {
   /**
    * What a modern export writes, and what a matcher anchored at the end of the

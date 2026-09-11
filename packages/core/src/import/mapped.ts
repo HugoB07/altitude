@@ -217,7 +217,13 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
     .filter((row) => row.some((cell) => cell.trim() !== ''))
     .map((row) => Object.fromEntries(header.map((name, i) => [name, row[i] ?? ''])));
 
-  const order = mapping.dateOrder ?? decideOrder(records, mapping.columns.bookedOn);
+  // The column decides both: which way round its values are written, and what
+  // year they belong to when the bank wrote none. A mapping somebody saved can
+  // override the order - it is a question they were asked - but never the year,
+  // which is a property of this file rather than of this bank.
+  const column = detectDateOrder(records.map((row) => row[mapping.columns.bookedOn] ?? ''));
+  const order = mapping.dateOrder ?? column.order;
+  const years = column.years;
 
   // Compared without case or accents: a file writes RENVOYE, Renvoyé and
   // renvoyé, and none of them is a different status.
@@ -245,7 +251,7 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
       continue;
     }
 
-    const bookedOn = readDate(row[mapping.columns.bookedOn] ?? '', order);
+    const bookedOn = readDate(row[mapping.columns.bookedOn] ?? '', order, years);
     if (bookedOn === null) {
       problems.push({
         line,
@@ -383,14 +389,6 @@ function readAmount(
     return fromDebitCredit(row[debit] ?? '', row[credit] ?? '')?.value ?? null;
   }
   return null;
-}
-
-/** The order the whole column uses, decided once. See `detectDateOrder`. */
-function decideOrder(
-  records: readonly Readonly<Record<string, string>>[],
-  column: string,
-): DateOrder {
-  return detectDateOrder(records.map((row) => row[column] ?? '')).order;
 }
 
 /** Case and accents removed, so RENVOYE and renvoyé are one status. */

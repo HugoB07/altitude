@@ -1,4 +1,4 @@
-import { detectDateOrder, readDate, type DateOrder } from './dates';
+import { detectDateOrder, readDate, type ColumnFormat } from './dates';
 import { STATEMENT_ACCOUNT, STATEMENT_COUNTERPART } from './mapped';
 import { parseAmount } from './numbers';
 import type { Candidate, CandidateEntry, ImportProblem, ImportReading } from './types';
@@ -41,12 +41,12 @@ export function readQif(text: string, currency: string): ImportReading {
   // Decided once for the file rather than per row. A file where some day is
   // above the twelfth has already answered, and reading each row on its own
   // would put half a statement in April and half in March.
-  const order = detectDateOrder(records.map((record) => field(record, 'D'))).order;
+  const column = detectDateOrder(records.map((record) => field(record, 'D')));
 
   const label = accounts[0] ?? STATEMENT_ACCOUNT;
 
   for (const record of records) {
-    const built = transaction(record, label, currency, order);
+    const built = transaction(record, label, currency, column);
     if ('reason' in built) problems.push({ line: record.line, reason: built.reason });
     else candidates.push(built);
   }
@@ -65,10 +65,10 @@ function transaction(
   record: QifRecord,
   account: string,
   currency: string,
-  order: DateOrder,
+  column: ColumnFormat,
 ): Candidate | { reason: string } {
   const raw = field(record, 'D');
-  const bookedOn = readDate(raw, order);
+  const bookedOn = readDate(raw, column.order, column.years);
   if (bookedOn === null) return { reason: `Unreadable date "${raw}"` };
 
   // `U` is the same number as `T`, written again for a version of Quicken that
