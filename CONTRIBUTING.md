@@ -138,6 +138,14 @@ no compiler.
 A spreadsheet works the same way as a CSV. It is turned into delimited text before
 anything reads it, so what you describe and contribute is the columns, not the file format.
 
+So does a PDF, with one step before it. A PDF has no table in it, only text at
+coordinates, so the table is reconstructed from where the ink falls - the block of the page
+densest in amounts, with the letterhead above it and the totals below it left out. What you
+then describe is the columns of that table, exactly as for a CSV. If a statement comes back
+with the wrong block or the wrong columns, the useful bug report is an anonymised PDF: the
+reconstruction is in `packages/core/src/import/layout.ts` and every rule in it is a
+judgement about how statements are set.
+
 A bank that exports OFX, CAMT.053, MT940 or QIF needs no preset at all. Those formats say
 what every value is, so the file is read as it arrives and there is nothing to name or to
 ship. If yours is one of them, the useful contribution is not a preset but a bug report

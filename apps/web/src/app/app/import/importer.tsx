@@ -22,6 +22,7 @@ import {
   commitImportAction,
   openAccountsAction,
   previewImportAction,
+  readPdfAction,
   readSpreadsheetAction,
   rememberMappingAction,
   shapeFileAction,
@@ -371,6 +372,10 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
       toast.error(t('legacyExcel'));
       return;
     }
+    if (binary === 'pdf') {
+      openPdf(file);
+      return;
+    }
     if (binary === 'xlsx') {
       // The plan asks for this to be said rather than assumed (§8.7). A macro
       // workbook is the same format with code attached, the reader takes the
@@ -425,6 +430,37 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
         // has nothing to report, and a toast on every import is noise.
         if (sheets.length > 1) toast.success(t('sheetRead', { sheet: result.sheet ?? '' }));
 
+        accept(file.name, result.text);
+      });
+    });
+  }
+
+  /**
+   * A statement that is a page rather than a table, rebuilt on the server.
+   *
+   * The same shape as a workbook: the conversion is the only step that knows a
+   * PDF was involved, and what comes back is delimited text the mapping screen
+   * reads like any other.
+   *
+   * What is different is what gets said. A CSV's columns are the bank's; a
+   * PDF's are inferred from where the text sits on the page, and the plan's
+   * reason for deferring the format is "high user expectations" (§8.1). So the
+   * inference is stated rather than hidden, and the mapping screen that follows
+   * is where a person confirms or corrects it before anything is written.
+   */
+  function openPdf(file: File) {
+    const form = new FormData();
+    form.set('file', file);
+
+    start(() => {
+      void readPdfAction(form).then((result) => {
+        if (result.error !== undefined || result.text === undefined) {
+          toast.error(result.error ?? t('genericError'));
+          return;
+        }
+
+        setWorkbook(null);
+        toast.info(t('pdfRead', { pages: result.pages ?? 1 }));
         accept(file.name, result.text);
       });
     });

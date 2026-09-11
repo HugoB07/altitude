@@ -142,6 +142,7 @@ export {
   type Preset,
 } from './import/presets/index';
 export { looksLikeCamt, readCamt } from './import/camt';
+export { readLayout, writeDelimited, type PlacedPage, type PlacedText } from './import/layout';
 export { looksLikeOfx, readOfx } from './import/ofx';
 export { looksLikeMt940, readMt940 } from './import/mt940';
 export { looksLikeQif, readQif } from './import/qif';

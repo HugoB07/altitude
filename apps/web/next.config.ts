@@ -31,6 +31,15 @@ const nextConfig: NextConfig = {
   // The workspace packages ship TypeScript source rather than built output, so
   // Next has to compile them alongside the application.
   transpilePackages: ['@altitude/shared', '@altitude/core', '@altitude/db'],
+  /**
+   * Loaded from `node_modules` by Node itself, never copied into a bundle.
+   *
+   * pdf.js reaches for files that sit beside it in its own package - its worker
+   * and its font data - and a bundler that copies the module without them
+   * leaves it reaching into an empty directory. This is the documented remedy
+   * for a package that depends on its own layout on disk.
+   */
+  serverExternalPackages: ['pdfjs-dist'],
   experimental: {
     serverActions: {
       /**

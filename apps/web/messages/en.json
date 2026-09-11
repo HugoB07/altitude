@@ -358,7 +358,12 @@
     "reconcileUnder": "Importing all of its lines brings this account to {after}, which is {gap} below it.",
     "reconcileOver": "Importing all of its lines brings this account to {after}, which is {gap} above it.",
     "columnCounterparty": "Who was on the other side",
-    "columnCounterpartyHint": "Optional. The shop, the employer. Rare on a statement, common on a transfer - a rule can read it from the description instead."
+    "columnCounterpartyHint": "Optional. The shop, the employer. Rare on a statement, common on a transfer - a rule can read it from the description instead.",
+    "notAPdf": "That file is not a PDF Altitude can open.",
+    "pdfEncrypted": "This PDF is locked with a password. Open it in a PDF reader, save an unlocked copy, and import that.",
+    "pdfScanned": "This PDF is a scan: its pages are images, with no text to read. Altitude cannot read handwriting or photographs of a statement. Ask your bank for the CSV or OFX version.",
+    "pdfTooManyPages": "This PDF is longer than {limit} pages, which is past any single statement. Import it a period at a time.",
+    "pdfRead": "Read {pages, plural, =1 {# page} other {# pages}} of PDF. Altitude rebuilt the table from where the text sits on the page - check the columns below before importing."
   },
   "categories": {
     "title": "Categories",

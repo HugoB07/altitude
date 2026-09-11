@@ -93,6 +93,73 @@ async function statement(
   return Buffer.from(await book.xlsx.writeBuffer());
 }
 
+/**
+ * A statement as a PDF: a letterhead, a heading set on two lines, movements
+ * dated without a year, and a total ruled off underneath.
+ *
+ * Written by hand rather than committed as a fixture, the way the workbooks
+ * above are built: a PDF holding a page of text is a hundred lines of ASCII,
+ * and writing them keeps a PDF *writer* out of the dependency list for the
+ * sake of testing a reader. Every figure is invented.
+ */
+function pdfStatement(): Buffer {
+  const rows: (readonly [x: number, y: number, text: string])[] = [
+    [40, 60, 'BANQUE INVENTEE RELEVE DE COMPTES EN EUROS N 009'],
+    [40, 76, '018931 CENTRE-EST Date d arrete : 03 Septembre 2026'],
+    [40, 92, 'Votre agence'],
+    [40, 130, 'Date'],
+    [100, 130, 'Date'],
+    [170, 130, 'Libelle des'],
+    [40, 146, 'ope.'],
+    [100, 146, 'valeur'],
+    [170, 146, 'operations'],
+    [470, 146, 'Montant'],
+  ];
+
+  const movements = [
+    ['13.08', 'CARTE LIBRAIRIE INVENTEE', '-24,50'],
+    ['18.08', 'PRLV MUTUELLE INVENTEE', '-56,30'],
+    ['27.08', 'VIREMENT SALAIRE AOUT', '1900,00'],
+    ['29.08', 'CARTE STATION INVENTEE', '-71,20'],
+  ] as const;
+
+  for (const [at, [date, label, amount]] of movements.entries()) {
+    const y = 170 + at * 16;
+    rows.push([40, y, date], [100, y, date], [170, y, label], [470, y, amount]);
+  }
+
+  rows.push([170, 250, 'Total des operations'], [470, 250, '152,00']);
+
+  const runs = rows.map(
+    ([x, y, text]) => `1 0 0 1 ${String(x)} ${String(842 - y)} Tm (${text}) Tj`,
+  );
+
+  const content = ['BT /F1 10 Tf', ...runs, 'ET'].join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R ' +
+      '/Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${String(content.length)} >>\nstream\n${content}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+
+  let out = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  for (const [at, body] of objects.entries()) {
+    offsets.push(out.length);
+    out += `${String(at + 1)} 0 obj\n${body}\nendobj\n`;
+  }
+
+  const startxref = out.length;
+  out += `xref\n0 ${String(objects.length + 1)}\n0000000000 65535 f \n`;
+  for (const offset of offsets) out += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  out += `trailer\n<< /Size ${String(objects.length + 1)} /Root 1 0 R >>\n`;
+  out += `startxref\n${String(startxref)}\n%%EOF`;
+
+  return Buffer.from(out, 'latin1');
+}
+
 /** A file that says what it is: OFX 1.x, the SGML dialect, from a French bank. */
 const OFX = join(__dirname, 'fixtures', 'releve.ofx');
 /** The other self-describing one, which carries no currency at all. */
@@ -1161,5 +1228,61 @@ test('a SWIFT statement is read out of a line with no separators in it', async (
     // 87,45 out and 700,00 in, both read with a comma for a decimal point.
     await page.goto('/app/accounts');
     await expect(page.getByText('€612.55')).toBeVisible();
+  });
+});
+
+test('a statement that is a page rather than a table is rebuilt into one', async () => {
+  await expectNoConsoleErrors(async () => {
+    /**
+     * The plan defers PDF to v1.3 on \"fragile extraction, high user
+     * expectations\" (§8.1), and this journey answers both halves. A PDF has no
+     * table in it - only glyphs at coordinates - so the table is found among
+     * the letterhead and the totals around it, and then the ordinary mapping
+     * screen asks a person what its columns mean. Nothing is guessed twice and
+     * nothing is written before somebody has seen it.
+     *
+     * Shaped like the statement that prompted all of it: a letterhead, a
+     * heading set on two lines, dates with no year on them, and a total ruled
+     * off underneath. Where the columns land is `layout.test.ts`'s subject and
+     * is not re-asserted here; what this is for is that the whole path holds -
+     * a file crossing to the server, a table coming back, and a ledger at the
+     * end of it.
+     */
+    await page.goto('/app/import');
+    await page.getByRole('button', { name: 'Other bank' }).click();
+    await page.locator('input[type=\"file\"]').setInputFiles({
+      name: 'releve-aout.pdf',
+      mimeType: 'application/pdf',
+      buffer: pdfStatement(),
+    });
+
+    // Said rather than hidden: these columns were worked out from a page, not
+    // read off a bank's own header.
+    await expect(page.getByText(/rebuilt the table/)).toBeVisible();
+
+    // And from here it is a CSV, which is the whole design.
+    await expect(page.getByRole('heading', { name: 'Which column is what' })).toBeVisible();
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByRole('heading', { name: 'The accounts this file needs' })).toBeVisible();
+
+    // The dates carry no year - the bank writes it once, in a letterhead that
+    // is not part of the table - and the column worked one out rather than
+    // reporting every row as unreadable. The letterhead and the total ruled
+    // off under the movements are not movements and are not offered as any.
+    await expect(page.getByText(/Unreadable date/)).toHaveCount(0);
+    await expect(page.getByText('CENTRE-EST')).toHaveCount(0);
+    await expect(page.getByText('Total des operations')).toHaveCount(0);
+
+    // No account to create: the statement account is the one every described
+    // file in this spec has used, and it is already bound by the time this runs.
+    await page.getByRole('button', { name: 'Import 4 transactions' }).click();
+    await expect(page.getByText('4 transactions imported')).toBeVisible();
+
+    // What proves the reading rather than the screen: the labels survived the
+    // page, and the yearless dates came out in the month the statement covers.
+    await page.goto('/app/transactions');
+    await expect(page.getByText('CARTE LIBRAIRIE INVENTEE')).toBeVisible();
+    await expect(page.getByText('VIREMENT SALAIRE AOUT')).toBeVisible();
   });
 });

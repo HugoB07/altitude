@@ -42,6 +42,7 @@ import {
   todayIn,
   transactionId,
 } from '@altitude/shared';
+import { readPdf } from './pdf';
 import { readSpreadsheet } from './spreadsheet';
 import { toMessage } from './errors';
 import { requireContext, scoped } from './context';
@@ -266,6 +267,74 @@ export async function readSpreadsheetAction(formData: FormData): Promise<Spreads
   if (oversized !== null) return { error: oversized };
 
   return { text: read.text, sheets: read.sheets, sheet: read.sheet };
+}
+
+export interface PdfResult {
+  readonly error?: string;
+  /** The reconstructed table as delimited text, which is a CSV run from here on. */
+  readonly text?: string;
+  readonly pages?: number;
+}
+
+/**
+ * A PDF statement, turned into the text every other path already carries.
+ *
+ * The second action that takes a file rather than a string, and it exists for
+ * the reason the spreadsheet one does: the format is not text, so the browser
+ * cannot decode it and send it the way it sends a CSV - and reading a PDF in a
+ * browser bundle would mean shipping pdf.js to everybody who opens the import
+ * screen.
+ *
+ * What comes back is a CSV run. The mapping screen, the presets, the
+ * description kept from last month: all of it works on the text, and none of it
+ * knows a PDF was involved. Which is also the whole of the answer to the plan
+ * deferring PDF on "fragile extraction" (§8.1) - nothing here decides what a
+ * column means, so a misread is something a person sees in a preview rather
+ * than something that lands in a ledger.
+ */
+export async function readPdfAction(formData: FormData): Promise<PdfResult> {
+  await ensureTenantIsolation();
+  await requireContext();
+  const t = await getTranslations('import');
+
+  const file = formData.get('file');
+  if (!(file instanceof File)) return { error: t('genericError') };
+
+  // The file's own size, before a page of it is parsed. The browser checks this
+  // too; this is where it is enforced.
+  const refused = checkUpload(file.size);
+  if (refused !== null) {
+    return { error: t('fileTooBig', { limit: Math.round(refused.limit / (1024 * 1024)) }) };
+  }
+
+  const read = await readPdf(new Uint8Array(await file.arrayBuffer()));
+
+  if ('reason' in read) {
+    switch (read.reason) {
+      case 'unreadable':
+        return { error: t('notAPdf') };
+      case 'unavailable':
+        // Logged where it happened. What the person needs to know is that
+        // trying again with the same file will not help and it is not their
+        // file's fault - which the generic sentence says and "not a PDF" did not.
+        return { error: t('genericError') };
+      case 'encrypted':
+        return { error: t('pdfEncrypted') };
+      case 'noTextLayer':
+        return { error: t('pdfScanned') };
+      case 'empty':
+        return { error: t('nothingToImport') };
+      case 'tooManyPages':
+        return { error: t('pdfTooManyPages', { limit: read.limit }) };
+    }
+  }
+
+  // Checked again on what it became. A small file can hold a long table, and
+  // every step after this one carries the text rather than the file.
+  const oversized = await refuseOversized(read.text);
+  if (oversized !== null) return { error: oversized };
+
+  return { text: read.text, pages: read.pages };
 }
 
 export async function previewImportAction(formData: FormData): Promise<PreviewResult> {

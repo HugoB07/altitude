@@ -358,7 +358,12 @@
     "reconcileUnder": "En important toutes ses lignes, ce compte arrive à {after}, soit {gap} de moins.",
     "reconcileOver": "En important toutes ses lignes, ce compte arrive à {after}, soit {gap} de plus.",
     "columnCounterparty": "Qui était en face",
-    "columnCounterpartyHint": "Facultatif. Le commerçant, l'employeur. Rare sur un relevé, courant sur un virement - sinon une règle peut le lire dans le libellé."
+    "columnCounterpartyHint": "Facultatif. Le commerçant, l'employeur. Rare sur un relevé, courant sur un virement - sinon une règle peut le lire dans le libellé.",
+    "notAPdf": "Ce fichier n'est pas un PDF qu'Altitude sait ouvrir.",
+    "pdfEncrypted": "Ce PDF est protégé par un mot de passe. Ouvrez-le dans un lecteur PDF, enregistrez-en une copie déverrouillée, et importez celle-ci.",
+    "pdfScanned": "Ce PDF est un scan : ses pages sont des images, sans texte à lire. Altitude ne sait pas lire une photographie de relevé. Demandez à votre banque la version CSV ou OFX.",
+    "pdfTooManyPages": "Ce PDF fait plus de {limit} pages, ce qui dépasse n'importe quel relevé. Importez-le période par période.",
+    "pdfRead": "{pages, plural, =1 {# page} other {# pages}} de PDF lue{pages, plural, =1 {} other {s}}. Altitude a reconstruit le tableau à partir de la position du texte sur la page : vérifiez les colonnes ci-dessous avant d'importer."
   },
   "categories": {
     "title": "Catégories",

@@ -60,9 +60,15 @@ export function sniffFormat(text: string): FileFormat {
  *
  * `null` means it is text, which is every other path through the importer.
  */
-export type BinaryFormat = 'xlsx' | 'legacy-excel';
+export type BinaryFormat = 'xlsx' | 'legacy-excel' | 'pdf';
 
 export function sniffBytes(bytes: Uint8Array): BinaryFormat | null {
+  // `%PDF-`, which every conforming file opens with. Recognised here rather
+  // than from the extension because the extension is what a person renamed,
+  // and because a PDF run through a text decoder is a screenful of binary that
+  // reads on screen as "this file is empty".
+  if (starts(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) return 'pdf';
+
   // Every XLSX is a zip, and this is a zip's first four bytes. Not every zip is
   // an XLSX - the reader on the server settles that, and refusing here on a
   // stronger guess would mean opening the archive twice.
@@ -135,4 +141,5 @@ export const FORMAT_EXTENSIONS = [
   '.940',
   '.xlsx',
   '.xlsm',
+  '.pdf',
 ] as const;

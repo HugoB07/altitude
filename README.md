@@ -20,7 +20,10 @@ real estate and liabilities - on your server, in your database.
 > transfer does not inflate. A statement now imports too - a preset for Trade Republic, any
 > bank at all by naming the columns of its CSV or its spreadsheet on screen, and OFX,
 > CAMT.053, MT940 or QIF with nothing named, since those four say what every value is -
-> with duplicates flagged and the whole run undoable in one press.
+> with duplicates flagged and the whole run undoable in one press. A PDF statement is
+> read too, which several French banks offer and little else: a page of positioned text
+> has its table found among the letterhead and the totals around it, and is then named on
+> the same screen every CSV goes through.
 >
 > A bank is described once: the columns you named are kept and found again by the shape of
 > the next file, so the following month asks nothing - and that description can be handed
@@ -34,13 +37,13 @@ real estate and liabilities - on your server, in your database.
 > tag what cuts across categories: a week away is restaurants and fuel and a hotel, each
 > keeping its own category. All three are filters in the transactions tab.
 >
-> What is missing from phase 2: PDF is not read, which matters more than the plan assumed,
-> since some French banks (Crédit Agricole among them) offer a monthly statement as a PDF
-> and little else; one bank ships with a preset, because a preset needs a real file to test
-> against and no one person has an account everywhere, so a first file from anywhere else is
-> described by hand before it is described for good; and the import runs inside the request
-> rather than in a worker, so a very large file will outlast its own timeout. There is no
-> market data and no history at all - those are phase 3. See the [roadmap](#roadmap).
+> What is missing from phase 2: a scanned PDF is still unreadable, since its pages are
+> images and reading them needs OCR; one bank ships with a preset, because a preset needs a
+> real file to test against and no one person has an account everywhere, so a first file
+> from anywhere else is described by hand before it is described for good; and the import
+> runs inside the request rather than in a worker, so a very large file will outlast its own
+> timeout. There is no market data and no history at all - those are phase 3. See the
+> [roadmap](#roadmap).
 
 ## Why
 
@@ -53,7 +56,7 @@ export from day one. No lock-in, no telemetry, no outbound call you did not conf
 
 - **Multi-asset** - cash, securities, crypto, real estate, loans, private equity, valuables.
 - **Double-entry ledger** - internal transfers never inflate net worth, and multi-currency is correct by construction.
-- **Import first** - CSV, XLSX, OFX, QIF, CAMT.053 and MT940, with per-bank and per-broker presets.
+- **Import first** - CSV, XLSX, PDF, OFX, QIF, CAMT.053 and MT940, with per-bank and per-broker presets.
 - **Multi-owner households** - ownership shares, undivided estates, holding companies, and real child portfolios.
 - **Named performance** - TWR and MWR shown side by side, never an anonymous percentage.
 - **True geographic exposure** - ETF look-through, visualised on a globe.
@@ -81,7 +84,7 @@ node build-html.mjs && node build-pdf.mjs
 | ----- | --------------------------------------------------- | ----------- |
 | 0     | Foundations - monorepo, Docker, auth, schema        | done        |
 | 1     | Ledger - accounts, transactions, net worth          | done        |
-| 2     | Import - CSV/XLSX/OFX/CAMT, presets, deduplication  | in progress |
+| 2     | Import - CSV/XLSX/PDF/OFX/CAMT, presets, dedup      | in progress |
 | 3     | Market data - quotes, FX, positions, TWR/MWR, globe | not started |
 | 4     | Household - owners, roles, child portfolios         | not started |
 | 5     | Real assets - property, loans, crypto               | not started |
