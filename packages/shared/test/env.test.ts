@@ -121,3 +121,77 @@ describe('no environment variable has a hardcoded fallback', () => {
     expect(offenders, 'use requireEnv() - a missing variable must fail loudly').toEqual([]);
   });
 });
+
+/**
+ * Every variable `.env.example` offers is one the code reads, or one it says is
+ * not read yet.
+ *
+ * The file is the only place an operator learns what an instance can be told,
+ * and it drifts in both directions. It carried `ALTITUDE_BASE_CURRENCY` for two
+ * phases while the first-run wizard wrote `'EUR'` into its own source, so an
+ * instance run from Zurich started every household in euros and the variable
+ * that was supposed to fix that did nothing. Then, wiring it up, the file was
+ * left saying it was read by nothing - twice, on the same file, in the same
+ * hour. A person cannot hold this; a test can.
+ *
+ * A variable is allowed to be unread, because the plan specifies several that
+ * belong to phases nobody has built (§14.1) and writing the default down is
+ * itself the decision. What is not allowed is being unread quietly: it goes
+ * under a section heading that says so, and the heading is what this reads.
+ */
+describe('.env.example', () => {
+  const ROOT = join(import.meta.dirname, '..', '..', '..');
+  const SKIP = new Set(['node_modules', '.git', '.next', 'dist', '.turbo', 'coverage', 'docs']);
+
+  /**
+   * Wider than the check above, on purpose. A variable consumed only by the
+   * compose file or by CI is a variable that is used, and refusing to look at
+   * yaml would file it as decoration.
+   */
+  async function readable(dir: string, found: string[] = []): Promise<string[]> {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (SKIP.has(entry.name) || entry.name === 'pnpm-lock.yaml') continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) await readable(full, found);
+      else if (/\.(ts|mts|mjs|tsx|yml|yaml|json)$/.test(entry.name)) found.push(full);
+    }
+    return found;
+  }
+
+  /** Each variable the file declares, and whether its section says it is unread. */
+  function declared(example: string): { name: string; reserved: boolean }[] {
+    const found: { name: string; reserved: boolean }[] = [];
+    let reserved = false;
+
+    for (const line of example.split('\n')) {
+      // A section heading, which is where the file says which half it is in.
+      if (line.startsWith('# -- ')) reserved = line.toLowerCase().includes('reserved');
+
+      const match = /^([A-Z0-9_]+)=/.exec(line);
+      if (match !== null) found.push({ name: match[1]!, reserved });
+    }
+
+    return found;
+  }
+
+  it('offers nothing the code does not read, unless it says so', async () => {
+    const variables = declared(await readFile(join(ROOT, '.env.example'), 'utf8'));
+    expect(variables.length, 'parsed nothing, so the checks below mean nothing').toBeGreaterThan(5);
+
+    const sources = await Promise.all((await readable(ROOT)).map((file) => readFile(file, 'utf8')));
+    const used = (name: string) => sources.some((source) => source.includes(name));
+
+    const undocumented = variables.filter((one) => !one.reserved && !used(one.name));
+    const stale = variables.filter((one) => one.reserved && used(one.name));
+
+    expect(
+      undocumented.map((one) => one.name),
+      'offered as configuration and read by nothing - wire it up, or file it under a "Reserved" heading',
+    ).toEqual([]);
+
+    expect(
+      stale.map((one) => one.name),
+      'filed as unread and read after all - move it out of the "Reserved" section',
+    ).toEqual([]);
+  });
+});
