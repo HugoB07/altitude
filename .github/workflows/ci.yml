@@ -81,12 +81,35 @@ jobs:
       - name: Unit tests and coverage
         run: pnpm test:coverage
 
+      # Vitest writes its own block into the job summary, under a heading that
+      # is the same string for every run - so two runs produced two identical
+      # "Vitest Test Report" headings and no way to tell which was which. The
+      # reporter has no option for it, and the summary is an ordinary markdown
+      # file, so it is renamed in place. Exactly one block exists at this point;
+      # the database step's is renamed after it, the same way.
+      #
+      # always(), because a name matters most on the run that failed.
+      - name: Name the unit report
+        if: always()
+        run: |
+          if [ -f "$GITHUB_STEP_SUMMARY" ]; then
+            sed -i '0,/^## Vitest Test Report$/s//## Unit tests/' "$GITHUB_STEP_SUMMARY"
+          fi
+          node .github/summary.mjs coverage >> "$GITHUB_STEP_SUMMARY"
+
       # Testcontainers boots a real PostgreSQL 17. Split from the unit tests so a
       # logic failure is reported in seconds rather than after an image pull, and
       # so a Docker problem is never mistaken for a broken invariant.
       # ubuntu-latest ships a working Docker daemon, so no service block is needed.
       - name: Database tests
         run: pnpm test:db
+
+      - name: Name the database report
+        if: always()
+        run: |
+          if [ -f "$GITHUB_STEP_SUMMARY" ]; then
+            sed -i '0,/^## Vitest Test Report$/s//## Database tests/' "$GITHUB_STEP_SUMMARY"
+          fi
 
       # The application is rendered, in a browser, against a real database.
       #
@@ -113,6 +136,13 @@ jobs:
           DATABASE_URL: postgres://altitude_app:altitude_app@localhost:55432/altitude
           MIGRATE_DATABASE_URL: postgres://altitude_migrate:altitude_migrate@localhost:55432/altitude
           E2E_ADMIN_DATABASE_URL: postgres://altitude:altitude@localhost:55432/altitude
+
+      # Playwright says "29 passed" in an annotation, which is under the fold and
+      # below the summary a reviewer actually reads. The same numbers, in the
+      # same place as everything else.
+      - name: Summarise the end-to-end run
+        if: always()
+        run: node .github/summary.mjs e2e >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the Playwright report
         if: failure() && hashFiles('apps/web/playwright-report/**') != ''

@@ -21,6 +21,10 @@ export default defineConfig({
     hookTimeout: 180_000,
     coverage: {
       provider: 'v8',
+      // `json-summary` on top of the defaults, for the totals alone: CI reads
+      // that one file to put four numbers in the job summary, where a reviewer
+      // sees them without downloading an artefact.
+      reporter: ['text', 'html', 'json', 'json-summary'],
       include: ['packages/*/src/**/*.ts'],
       // Excluded because the unit run does not execute them, not because they
       // are untested: both are covered by the database suite (pnpm test:db).

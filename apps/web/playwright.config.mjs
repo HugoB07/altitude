@@ -35,7 +35,19 @@ export default defineConfig({
   workers: 1,
   forbidOnly: process.env['CI'] !== undefined,
   retries: 0,
-  reporter: process.env['CI'] !== undefined ? 'github' : 'list',
+  /**
+   * In CI, annotations *and* a machine-readable copy.
+   *
+   * `github` puts a failure on the diff, where it belongs, and says nothing a
+   * reviewer can read at a glance. The JSON is what the workflow turns into a
+   * line of the job summary - how many ran, how long they took - so the page
+   * that reports the run reports this part of it too rather than leaving it to
+   * an annotation nobody scrolls to.
+   */
+  reporter:
+    process.env['CI'] !== undefined
+      ? [['github'], ['json', { outputFile: 'playwright-report/results.json' }]]
+      : 'list',
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
