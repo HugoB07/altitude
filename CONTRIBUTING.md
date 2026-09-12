@@ -237,7 +237,7 @@ corepack enable
 pnpm install
 cp .env.example .env.local                     # then fill in the secrets it asks for
 pnpm db:up                                     # PostgreSQL 17 on 127.0.0.1:55432
-pnpm --filter @altitude/db exec drizzle-kit migrate
+pnpm --filter @altitude/db migrate
 ```
 
 No variable that decides where the application connects or what it can decrypt has a

@@ -15,7 +15,7 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "db:check": "pnpm --filter @altitude/db exec drizzle-kit check",
+    "db:check": "pnpm --filter @altitude/db check",
     "db:down": "docker compose -f docker/docker-compose.dev.yml down",
     "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && pnpm db:up",
     "db:up": "docker compose -f docker/docker-compose.dev.yml up -d --wait",

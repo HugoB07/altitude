@@ -66,7 +66,7 @@ corepack enable
 pnpm install
 cp .env.example .env.local     # then fill in AUTH_SECRET, which the file tells you how to generate
 pnpm db:up                     # PostgreSQL 17, on 127.0.0.1:55432
-pnpm --filter @altitude/db exec drizzle-kit migrate
+pnpm --filter @altitude/db migrate
 pnpm dev
 ```
 
