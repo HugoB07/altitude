@@ -124,7 +124,15 @@ export const accounts = pgTable(
     subtype: text('subtype'),
     currency: text('currency').notNull(),
     institution: text('institution'),
-    /** IBAN or account number, encrypted application-side (plan §5.3). */
+    /**
+     * Reserved for an IBAN or account number, and written by nothing today.
+     *
+     * The plan encrypts it application-side (§5.3) and the column is named for
+     * that. Nothing encrypts anything yet, so the name is the intention rather
+     * than a description - which is worth saying here, because a reader who
+     * took `_enc` at its word would believe a guarantee the code does not make.
+     * SECURITY.md carries the same correction.
+     */
     externalRefEnc: text('external_ref_enc'),
     externalRefLast4: text('external_ref_last4'),
     attributes: jsonb('attributes').notNull().default({}),

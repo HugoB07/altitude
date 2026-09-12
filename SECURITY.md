@@ -7,10 +7,15 @@ accounts. We treat security reports accordingly.
 ## Project status
 
 Altitude is **pre-release**. The ledger, the schema with its row-level security,
-authentication and the first screens exist and are tested; there is no release and no
-instance anyone but a developer runs. The isolation guarantees described below are
-implemented and covered by tests, so a report against them is a real report, not a
-report against a plan.
+authentication, the first screens and the import pipeline exist and are tested; there is
+no release and no instance anyone but a developer runs. The isolation guarantees
+described below are implemented and covered by tests, so a report against them is a real
+report, not a report against a plan.
+
+The import pipeline is the largest attack surface in the repository and the newest. It
+parses seven formats a stranger can hand over - delimited text, spreadsheets, OFX,
+CAMT.053, MT940, QIF and PDF - and two of those are document formats with parsers behind
+them. Reports there are particularly welcome.
 
 | Version                   | Supported                            |
 | ------------------------- | ------------------------------------ |
@@ -72,8 +77,11 @@ stay anonymous.
 - Injection reaching the database, the shell, or another user's browser (SQLi, XSS, CSV
   formula injection in exports, XXE in the XML importers).
 - SSRF through a user-supplied URL or a provider configuration.
-- Vulnerabilities in the import pipeline: a crafted CSV/XLSX/OFX/CAMT file causing code
-  execution, resource exhaustion beyond the documented limits, or path traversal.
+- Vulnerabilities in the import pipeline: a crafted CSV, XLSX, OFX, CAMT.053, MT940, QIF
+  or PDF file causing code execution, resource exhaustion beyond the documented limits,
+  or path traversal. The two with a document parser behind them are the ones to look at
+  first: a spreadsheet is a zip archive of XML, and a PDF is closer to a program than to
+  a document - it can carry font programs, an XFA forms engine, and scripts of its own.
 - Flaws in the connector consent flow: OAuth state handling, redirect validation, scope
   escalation towards payment initiation.
 - Container escape or privilege escalation from the shipped Docker images.
@@ -118,7 +126,11 @@ enforced by tests. The reasoning is in the development plan (`docs/plan/`, §7 a
 - **Read-only by construction.** Only account-information scopes are requested. A
   payment-initiation scope appearing in any provider response is an error condition.
 - **Secrets encrypted with a key held outside the database**, so a stolen dump alone
-  grants no access.
+  grants no access. _Not yet implemented, and nothing yet depends on it:_ Altitude stores
+  no connector token and no account number today, and the columns reserved for them
+  (`accounts.external_ref_enc`) are written by nothing. The commitment binds when phase 7
+  brings the first secret worth stealing. It is listed here rather than left out because
+  shipping that phase without it would be the regression.
 - **No telemetry, no third-party assets.** An instance disconnected from the internet
   must work. Every outbound destination is listed in the UI and can be disabled.
 - **Redaction in logs.** IBANs, tokens, amounts, and counterparty names never appear at
@@ -126,9 +138,14 @@ enforced by tests. The reasoning is in the development plan (`docs/plan/`, §7 a
 
 ## Dependencies
 
-- Versions are locked; updates land through Renovate with a quarantine delay.
-- Any new dependency needs human review - `packages/core` is kept deliberately thin.
-- Advisories are checked in CI, and an SBOM (CycloneDX) is published with each release.
+- Versions are locked by `pnpm-lock.yaml`, and the lockfile is committed.
+- Advisories reach the repository through **Dependabot alerts**, which are enabled on it.
+  Deliberately not a CI step: `pnpm audit` there blocks an unrelated commit on somebody
+  else's advisory, which teaches people to skip the check rather than to read it.
+- Any new dependency needs human review - `packages/core` is kept deliberately thin, and
+  the heavier readers (ExcelJS, pdf.js) live at the application's edge instead.
+- An SBOM (CycloneDX) is **not yet published**. It is worth generating per release and
+  there is no release.
 
 If you find a vulnerability in a dependency that Altitude actually reaches, report it
 here as well as upstream, so we can pin or patch while the fix travels.

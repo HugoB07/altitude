@@ -65,12 +65,16 @@ export from day one. No lock-in, no telemetry, no outbound call you did not conf
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript 6 · PostgreSQL 17 · Drizzle ORM · pg-boss ·
-Better Auth · next-intl · Tailwind v4 · shadcn/ui + Magic UI · Docker Compose.
+Next.js 16 (App Router) · TypeScript 6 · PostgreSQL 17 · Drizzle ORM ·
+Better Auth · next-intl · Tailwind v4 · shadcn/ui · ExcelJS · pdf.js · Docker Compose.
+
+What is deliberately absent is as much of a decision: no ORM query builder above Drizzle,
+no state library, no date library in the domain packages, and no job queue yet - the
+import runs inside the request, which is the gap the status note above names.
 
 ## Development plan
 
-The full design document (56 pages) lives in [`docs/plan/`](docs/plan): architecture,
+The full design document (55 pages) lives in [`docs/plan/`](docs/plan): architecture,
 data model, calculation engine, bank-synchronisation analysis, security and roadmap.
 
 ```bash

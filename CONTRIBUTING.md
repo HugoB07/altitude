@@ -6,14 +6,17 @@ was never going to land.
 
 ## Current phase: phase 2, import
 
-The ledger works. You can sign in, create a household, manage accounts, record and
-reverse transactions, and read a net worth that an internal transfer does not inflate.
-It is in English and French, and an end-to-end test walks that whole journey on every
-commit.
+The ledger works and it can now fill itself. You can sign in, create a household, manage
+accounts, record and reverse transactions, read a net worth that an internal transfer
+does not inflate, and import a statement in any of seven formats - delimited text,
+spreadsheets, OFX, CAMT.053, MT940, QIF and PDF - with duplicates flagged, categorisation
+rules applied, and the whole run undoable in one press. It is in English and French, and
+an end-to-end test walks that whole journey on every commit.
 
-What it cannot do is fill itself. Every figure in it has been typed by hand, which is
-why import is what comes next and where help is most useful. There is no market data and
-no history either; those are phases 3 and after.
+What is left of phase 2 is not code anybody can write from here: the import runs inside
+the request rather than in a worker, a scanned PDF needs OCR, and the preset list is two
+banks long because a preset needs a real file to test against. There is no market data
+and no history either; those are phases 3 and after.
 
 Contributions are welcome across the domain packages and the importer. Check the roadmap
 in `README.md` before starting anything above them.
@@ -35,12 +38,15 @@ in `README.md` before starting anything above them.
 - **Prior art we have missed.** If an existing project already solved something well,
   say so. Borrowing beats reinventing.
 - **Translation review.** The interface ships in English and French
-  ([ADR-0010](docs/adr/0010-bilingual-from-the-first-screen.md)). Key parity between the
-  two catalogues is checked mechanically; whether the French reads like French is not.
-  Corrections to `apps/web/messages/fr.json` are welcome, and a new language is one file
-  plus one entry in `LOCALES`.
+  ([ADR-0010](docs/adr/0010-bilingual-from-the-first-screen.md)). What is checked
+  mechanically is narrower than it sounds: `rule-set-messages.test.ts` holds the shipped
+  rule sets to having a name in both catalogues, and nothing yet compares the two
+  catalogues as a whole. They do agree - 436 keys each - by care rather than by guard.
+  Whether the French reads like French is not checked at all. Corrections to
+  `apps/web/messages/fr.json` are welcome, and a new language is one file plus one entry
+  in `LOCALES`.
 
-### What is useful once the importer lands
+### What is useful once phase 2 closes
 
 - Bug fixes, tests, documentation.
 - Feature work that is already on the roadmap. Please claim the issue first.
