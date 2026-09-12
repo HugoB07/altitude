@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-01
-- **Deciders:** Hugo
+- **Deciders:** @HugoB07
 
 ## Context
 

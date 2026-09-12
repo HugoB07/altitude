@@ -20,6 +20,8 @@ reasoning that led there stays readable.
 | [0010](0010-bilingual-from-the-first-screen.md)     | Bilingual from the first screen, no locale in URL        | 2026-08-29 |
 | [0011](0011-instruments-are-a-dictionary.md)        | Instruments are a shared dictionary, not a price engine  | 2026-09-01 |
 | [0012](0012-one-currency-per-account.md)            | An account holds one currency, and entries must match it | 2026-09-01 |
+| [0013](0013-pdf-statements-are-read-in-v1.md)       | PDF statements are read in v1, as an inferred table      | 2026-09-12 |
+| [0014](0014-community-rule-sets-are-a-layer.md)     | Community rule sets are a layer, not copied rows         | 2026-09-12 |
 
 ## Reserved
 
@@ -28,8 +30,10 @@ even before the files exist. They are written when the code that depends on them
 about to be built.
 
 The plan reserves 0001 to 0008. Anything above that is a decision the plan did not
-foresee, written when it was made: 0009 and 0010 during phase 0, and 0011 and 0012
-during phase 2.
+foresee, written when it was made: 0009 and 0010 during phase 0, and 0011 to 0014 during
+phase 2. 0013 is the one that contradicts the plan rather than merely going beyond it -
+PDF is deferred there and read here - which is exactly the kind of decision this
+directory exists to hold.
 
 | #    | Decision                                               | Written when         |
 | ---- | ------------------------------------------------------ | -------------------- |
