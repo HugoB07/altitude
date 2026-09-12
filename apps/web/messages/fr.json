@@ -363,7 +363,9 @@
     "pdfEncrypted": "Ce PDF est protégé par un mot de passe. Ouvrez-le dans un lecteur PDF, enregistrez-en une copie déverrouillée, et importez celle-ci.",
     "pdfScanned": "Ce PDF est un scan : ses pages sont des images, sans texte à lire. Altitude ne sait pas lire une photographie de relevé. Demandez à votre banque la version CSV ou OFX.",
     "pdfTooManyPages": "Ce PDF fait plus de {limit} pages, ce qui dépasse n'importe quel relevé. Importez-le période par période.",
-    "pdfRead": "{pages, plural, =1 {# page} other {# pages}} de PDF lue{pages, plural, =1 {} other {s}}. Altitude a reconstruit le tableau à partir de la position du texte sur la page : vérifiez les colonnes ci-dessous avant d'importer."
+    "pdfRead": "{pages, plural, =1 {# page} other {# pages}} de PDF lue{pages, plural, =1 {} other {s}}. Altitude a reconstruit le tableau à partir de la position du texte sur la page : vérifiez les colonnes ci-dessous avant d'importer.",
+    "yearAssumed": "Ces dates ne portent pas d'année. Lues comme {year} : le relevé ne l'écrit qu'une fois, hors du tableau.",
+    "yearLabel": "L'année où se termine ce relevé"
   },
   "categories": {
     "title": "Catégories",

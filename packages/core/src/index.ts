@@ -66,6 +66,8 @@ export { parseDelimited, parseRecords, sniffDelimiter, findHeaderRow } from './i
 export {
   dayPart,
   detectDateOrder,
+  endingIn,
+  lastYear,
   readDate,
   type DateOrder,
   type ColumnFormat,
@@ -136,6 +138,7 @@ export {
   PRESETS,
   CUSTOM_PRESET_ID,
   customPreset,
+  presetEndingIn,
   formatPreset,
   formatPresetById,
   presetById,

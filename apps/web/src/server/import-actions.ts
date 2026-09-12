@@ -18,6 +18,7 @@ import {
   fingerprintOf,
   findMapping,
   parseMapping,
+  presetEndingIn,
   presetById,
   readShape,
   rememberMapping,
@@ -164,6 +165,16 @@ export interface PreviewResult {
     readonly mismatches: readonly { readonly line: number }[];
     readonly checked: number;
   };
+  /**
+   * The year given to dates that carried none, when the file's did not.
+   *
+   * A statement that says its year once, in a letterhead, leaves its table
+   * without one - so it is worked out from the column, and is right for a
+   * statement imported within a year of its issue and a year out for anything
+   * older. Shown on the screen with the means to change it, which is what keeps
+   * the working out from being a silent guess.
+   */
+  readonly assumedYear?: number;
   /** Every account the file needs, named. Cash and securities first, then counterparts. */
   readonly requested?: readonly RequestedAccount[];
   readonly lines?: readonly PreviewLine[];
@@ -381,6 +392,10 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
 
   return {
     checked,
+    // Which year a dateless column was read as. Reported on every preview, so
+    // the answer is on screen before anything is written rather than inferred
+    // in silence (§8.3).
+    ...(reading.assumedYear === undefined ? {} : { assumedYear: reading.assumedYear }),
     ...(reconciliation === undefined ? {} : { reconciliation }),
     ...(seenBefore[0] === undefined
       ? {}
@@ -975,6 +990,31 @@ export async function rollbackImportAction(formData: FormData): Promise<Rollback
  * reports the whole file as unreadable.
  */
 function resolvePreset(formData: FormData, baseCurrency: string): Preset | undefined {
+  const found = pickPreset(formData, baseCurrency);
+  if (found === undefined) return undefined;
+
+  // A year somebody answered, for a statement that dates its rows without one.
+  // Applied here rather than inside each branch, so a shipped preset and a
+  // mapping written a minute ago are corrected the same way.
+  const year = yearAsked(formData);
+  return year === undefined ? found : presetEndingIn(found, year);
+}
+
+/**
+ * The year the statement ends in, as the screen answered it.
+ *
+ * Checked rather than trusted: it came from a browser, and `parseMapping`
+ * bounds the same field for the same reason.
+ */
+function yearAsked(formData: FormData): number | undefined {
+  const raw = formData.get('year');
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+
+  const year = Number(raw);
+  return Number.isInteger(year) && year >= 1900 && year <= 2200 ? year : undefined;
+}
+
+function pickPreset(formData: FormData, baseCurrency: string): Preset | undefined {
   const id = String(formData.get('preset') ?? '');
 
   // A format before a bank. OFX and QIF describe themselves, so the reader

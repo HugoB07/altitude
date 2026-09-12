@@ -81,6 +81,18 @@ interface Props {
   readonly baseCurrency: string;
 }
 
+/**
+ * The years a person may pick from, given the one the column was read as.
+ *
+ * That year and the ten before it. The inference already lands on the right one
+ * for any statement imported within a year of its issue, so what this is for is
+ * the older file - and a statement dated in the future is not a file anybody
+ * has.
+ */
+function yearsAround(assumed: number): number[] {
+  return Array.from({ length: 11 }, (_, at) => assumed - at);
+}
+
 /** Everything one run of the importer knows. */
 interface Run {
   readonly preset: PresetChoice | null;
@@ -107,6 +119,15 @@ interface Run {
    * plausible and every one of them false.
    */
   readonly currency: string | null;
+  /**
+   * The year a statement ends in, for a file whose dates carry none.
+   *
+   * Null until somebody changes it, which is the usual case: the year worked
+   * out from the column is right for any statement imported within a year of
+   * its issue. Shown on the preview either way, so the inference is never a
+   * silent one.
+   */
+  readonly year: number | null;
 }
 
 const EMPTY: Run = {
@@ -117,6 +138,7 @@ const EMPTY: Run = {
   overrides: {},
   mapping: null,
   currency: null,
+  year: null,
 };
 
 /** Above this, the review is folded by month. Below it, everything fits on a screen. */
@@ -136,6 +158,7 @@ type Step =
   | { readonly type: 'counterpart'; readonly index: number; readonly accountId: string }
   | { readonly type: 'mapping'; readonly mapping: DraftMapping }
   | { readonly type: 'currency'; readonly currency: string }
+  | { readonly type: 'year'; readonly year: number }
   | { readonly type: 'remap' }
   | { readonly type: 'reset' };
 
@@ -169,6 +192,7 @@ function reduce(state: Run, step: Step): Run {
         overrides: {},
         mapping: null,
         currency: null,
+        year: null,
       };
     case 'bind':
       return { ...state, binding: { ...state.binding, [step.label]: step.accountId } };
@@ -180,6 +204,8 @@ function reduce(state: Run, step: Step): Run {
       return { ...state, mapping: step.mapping };
     case 'currency':
       return { ...state, currency: step.currency };
+    case 'year':
+      return { ...state, year: step.year };
     case 'remap':
       // Back to the questions, keeping the file. The draft still holds the
       // answers, so this reopens what was decided rather than a blank form -
@@ -260,7 +286,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
   /** The verdicts the current selection was seeded from. See below. */
   const seededFrom = useRef('');
 
-  const { preset, binding, overrides, text, mapping, currency } = run;
+  const { preset, binding, overrides, text, mapping, currency, year } = run;
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '';
 
   /**
@@ -282,6 +308,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     form.set('text', text);
     if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
     if (currency !== null) form.set('currency', currency);
+    if (year !== null) form.set('year', String(year));
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
     for (const [index, id] of Object.entries(overrides)) form.set(`counterpart:${index}`, id);
 
@@ -338,7 +365,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
         if (Object.keys(offered).length > 0) dispatch({ type: 'bindMany', binding: offered });
       });
     });
-  }, [preset, text, binding, overrides, mapping, currency, openingAccountId]);
+  }, [preset, text, binding, overrides, mapping, currency, year, openingAccountId]);
 
   function reset() {
     asked.current += 1;
@@ -536,6 +563,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     form.set('text', text);
     if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
     if (currency !== null) form.set('currency', currency);
+    if (year !== null) form.set('year', String(year));
     for (const [label, id] of Object.entries(binding)) form.set(`account:${label}`, id);
 
     start(() => {
@@ -558,6 +586,7 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
     form.set('filename', run.filename);
     if (mapping !== null) form.set('mapping', JSON.stringify(toColumnMapping(mapping)));
     if (currency !== null) form.set('currency', currency);
+    if (year !== null) form.set('year', String(year));
     form.set('selected', [...selected].join(','));
     form.set(
       'merged',
@@ -1040,6 +1069,41 @@ export function Importer({ presets, accounts, openingAccountId, baseCurrency }: 
           </div>
         )}
       </div>
+
+      {/* The year a dateless column was read as, and the means to change it.
+          The plan's rule for an ambiguous date is to ask rather than guess
+          silently (§8.3); a statement that writes its year once, in a
+          letterhead, cannot be asked about per row - so the column is read and
+          the reading is put on screen, where a person who is importing
+          something old can move it. */}
+      {preview.assumedYear !== undefined && (
+        <Alert>
+          <Sparkles className="size-4" aria-hidden />
+          <AlertDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {/* The year in force, which is the answer where there is one. As
+                text, not as a number: a year through a number formatter comes
+                out "2,026", which is not a year anybody writes. */}
+            <span>{t('yearAssumed', { year: String(year ?? preview.assumedYear) })}</span>
+            <Select
+              value={String(year ?? preview.assumedYear)}
+              onValueChange={(chosen) => {
+                dispatch({ type: 'year', year: Number(chosen) });
+              }}
+            >
+              <SelectTrigger size="sm" aria-label={t('yearLabel')} className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearsAround(preview.assumedYear).map((choice) => (
+                  <SelectItem key={choice} value={String(choice)}>
+                    {choice}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Said, not hidden. A row left out on purpose is still a row somebody
           can see in their own file, and a reader that dropped it silently would

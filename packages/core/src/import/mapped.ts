@@ -1,7 +1,7 @@
 import { dec } from '@altitude/shared';
 import { readCurrency } from './currencies';
 import { sniffDelimiter, findHeaderRow, parseDelimited } from './csv';
-import { dayPart, detectDateOrder, readDate, type DateOrder } from './dates';
+import { dayPart, detectDateOrder, endingIn, lastYear, readDate, type DateOrder } from './dates';
 import { fromDebitCredit, parseAmount } from './numbers';
 import type {
   BalanceReading,
@@ -105,6 +105,14 @@ export interface ColumnMapping {
    * once rather than on every import of the same bank.
    */
   readonly dateOrder?: DateOrder;
+  /**
+   * The year the statement ends in, for a file whose dates carry none.
+   *
+   * Answered on the preview screen, where the year that was worked out is
+   * shown. Absent for every file that dates in full, which is all of them
+   * except a statement that says its year once in a letterhead.
+   */
+  readonly year?: number;
 }
 
 /** What a file looks like before anyone has said which column is what. */
@@ -223,7 +231,10 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
   // which is a property of this file rather than of this bank.
   const column = detectDateOrder(records.map((row) => row[mapping.columns.bookedOn] ?? ''));
   const order = mapping.dateOrder ?? column.order;
-  const years = column.years;
+  const years =
+    column.years !== undefined && mapping.year !== undefined
+      ? endingIn(column.years, mapping.year)
+      : column.years;
 
   // Compared without case or accents: a file writes RENVOYE, Renvoyé and
   // renvoyé, and none of them is a different status.
@@ -322,6 +333,12 @@ export function readMapped(text: string, mapping: ColumnMapping): ImportReading 
     problems,
     skipped,
     ...(running.length === 0 ? {} : { balances: checkBalances(running) }),
+    // Said rather than assumed. The screen shows it and offers another, which
+    // is what keeps an inferred year from being a silent one.
+    // What the column worked out, not what an answer overrode it with. The
+    // screen builds its list of years around this, so choosing one must not be
+    // able to move the list - which it did: picking 2025 took 2026 off it.
+    ...(column.years === undefined ? {} : { assumedYear: lastYear(column.years) }),
   };
 }
 
@@ -452,6 +469,15 @@ export function parseMapping(value: unknown): ColumnMapping | null {
     return null;
   }
 
+  // A year, if somebody answered the question about one. Bounded rather than
+  // merely integral: this came from a browser, and a statement is not from the
+  // year nine.
+  const asked = raw['year'];
+  const year =
+    typeof asked === 'number' && Number.isInteger(asked) && asked >= 1900 && asked <= 2200
+      ? asked
+      : undefined;
+
   const skipRaw = raw['skipStatuses'];
   const skipStatuses = Array.isArray(skipRaw)
     ? skipRaw.filter((value): value is string => typeof value === 'string' && value.trim() !== '')
@@ -478,6 +504,7 @@ export function parseMapping(value: unknown): ColumnMapping | null {
     ...(delimiter === undefined ? {} : { delimiter }),
     ...(headerRow === undefined ? {} : { headerRow: headerRow as number }),
     ...(order === undefined ? {} : { dateOrder: order }),
+    ...(year === undefined ? {} : { year }),
   };
 }
 

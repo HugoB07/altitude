@@ -220,6 +220,25 @@ export function formatPresetById(id: string, currency: string): Preset | null {
 }
 
 /**
+ * The same preset, reading a yearless date column as ending in the year given.
+ *
+ * A statement that says its year once, in a letterhead, leaves its table
+ * dateless enough that the year has to be worked out - and the working out is
+ * right for a statement imported within a year of its issue and a year out for
+ * anything older. This is how a person says which, and it applies to a shipped
+ * preset and to a mapping somebody just wrote alike.
+ *
+ * A preset with no mapping is returned untouched: a coded reader decides its own
+ * dates, and none of them reads a file that omits the year.
+ */
+export function presetEndingIn(preset: Preset, year: number): Preset {
+  if (preset.mapping === undefined) return preset;
+
+  const mapping: ColumnMapping = { ...preset.mapping, year };
+  return { ...preset, mapping, read: (text) => readMapped(text, mapping) };
+}
+
+/**
  * The id of the bank nobody wrote a preset for.
  *
  * Not in `PRESETS`: it has no reader until somebody describes their file, and

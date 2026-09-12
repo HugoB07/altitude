@@ -164,6 +164,23 @@ export interface ImportReading {
    * broker exports have none.
    */
   readonly balances?: BalanceReading;
+  /**
+   * The year given to dates that carried none, when the file's did not.
+   *
+   * A French statement dates its rows `13.08` and says the year once, in a
+   * letterhead that is not part of its table - so the year is worked out from
+   * the column, and is right for any statement imported within a year of its
+   * issue and a year out for anything older.
+   *
+   * Always what the column itself worked out, even when a caller has overridden
+   * it: the screen offers a list of years around this one, and a list that
+   * moved with the choice would let somebody pick 2025 and lose 2026.
+   *
+   * Reported so the screen can say which year it read and offer another. The
+   * plan's rule for an ambiguous date is to ask rather than guess silently
+   * (§8.3); this is the half that makes the guess not silent.
+   */
+  readonly assumedYear?: number;
 }
 
 /**

@@ -168,6 +168,31 @@ function yearsOf(
   return years;
 }
 
+/**
+ * The same column, ending in a year somebody chose rather than in today's.
+ *
+ * The inference is right for any statement imported within a year of its issue
+ * and a year out for anything older, which is a guess and is treated as one:
+ * the screen says which year it read and offers this. Only the anchor moves -
+ * a statement that crosses New Year keeps its December a year behind its
+ * January, because that part was never a guess.
+ */
+export function endingIn(
+  years: ReadonlyMap<string, number>,
+  year: number,
+): ReadonlyMap<string, number> {
+  const latest = Math.max(...years.values());
+  const shift = year - latest;
+  if (shift === 0) return years;
+
+  return new Map([...years].map(([text, found]) => [text, found + shift]));
+}
+
+/** The year a column ends in, which is the one a person is asked about. */
+export function lastYear(years: ReadonlyMap<string, number>): number {
+  return Math.max(...years.values());
+}
+
 /** Today, in UTC. A date column is a calendar day, and so is the line drawn under it. */
 function nowUtc(): string {
   return new Date().toISOString().slice(0, 10);

@@ -363,7 +363,9 @@
     "pdfEncrypted": "This PDF is locked with a password. Open it in a PDF reader, save an unlocked copy, and import that.",
     "pdfScanned": "This PDF is a scan: its pages are images, with no text to read. Altitude cannot read handwriting or photographs of a statement. Ask your bank for the CSV or OFX version.",
     "pdfTooManyPages": "This PDF is longer than {limit} pages, which is past any single statement. Import it a period at a time.",
-    "pdfRead": "Read {pages, plural, =1 {# page} other {# pages}} of PDF. Altitude rebuilt the table from where the text sits on the page - check the columns below before importing."
+    "pdfRead": "Read {pages, plural, =1 {# page} other {# pages}} of PDF. Altitude rebuilt the table from where the text sits on the page - check the columns below before importing.",
+    "yearAssumed": "These dates carry no year. Read as {year} - the statement says its year once, outside the table.",
+    "yearLabel": "The year this statement ends in"
   },
   "categories": {
     "title": "Categories",

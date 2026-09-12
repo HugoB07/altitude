@@ -1232,6 +1232,10 @@ test('a SWIFT statement is read out of a line with no separators in it', async (
 });
 
 test('a statement that is a page rather than a table is rebuilt into one', async () => {
+  // Four readings of the same file, because the year is changed three times and
+  // each answer is a round trip. Slow on purpose rather than racing a default.
+  test.slow();
+
   await expectNoConsoleErrors(async () => {
     /**
      * The plan defers PDF to v1.3 on \"fragile extraction, high user
@@ -1274,15 +1278,52 @@ test('a statement that is a page rather than a table is rebuilt into one', async
     await expect(page.getByText('CENTRE-EST')).toHaveCount(0);
     await expect(page.getByText('Total des operations')).toHaveCount(0);
 
+    // And the year is said out loud, with the means to move it. A statement that
+    // writes its year once, in a letterhead, cannot be asked about per row - so
+    // the column is read and the reading is shown, which is what keeps it from
+    // being a silent guess (§8.3).
+    const said = page.getByText(/These dates carry no year/);
+    await expect(said).toBeVisible();
+    const read = Number(/\b(\d{4})\b/.exec((await said.textContent()) ?? '')?.[1]);
+
+    await expect(
+      page.getByRole('button', { name: `August ${String(read)} 4 transactions` }),
+    ).toBeVisible();
+
+    // Moved back a year, which is what somebody importing an old statement
+    // does, and the whole run moves with it rather than one row.
+    const picker = page.getByRole('combobox', { name: 'The year this statement ends in' });
+    await picker.click();
+    await page.getByRole('option', { name: String(read - 1) }).click();
+    await expect(
+      page.getByRole('button', { name: `August ${String(read - 1)} 4 transactions` }),
+    ).toBeVisible();
+
+    // And back up again, which a first version of this could not do. The list
+    // was built around the year in force rather than around the one the column
+    // worked out, so choosing 2025 took 2026 off it and the choice only ever
+    // ratcheted downwards.
+    await picker.click();
+    await page.getByRole('option', { name: String(read) }).click();
+    await expect(
+      page.getByRole('button', { name: `August ${String(read)} 4 transactions` }),
+    ).toBeVisible();
+
+    // Then down once more, so what is imported below is the moved year.
+    await picker.click();
+    await page.getByRole('option', { name: String(read - 1) }).click();
+    await expect(
+      page.getByRole('button', { name: `August ${String(read - 1)} 4 transactions` }),
+    ).toBeVisible();
+
+    // What proves the reading rather than the screen: the labels survived being
+    // drawn on a page, and they are dated in the year that was just chosen.
+    await expect(page.getByText('CARTE LIBRAIRIE INVENTEE')).toBeVisible();
+    await expect(page.getByText(`${String(read - 1)}-08-27`)).toBeVisible();
+
     // No account to create: the statement account is the one every described
     // file in this spec has used, and it is already bound by the time this runs.
     await page.getByRole('button', { name: 'Import 4 transactions' }).click();
     await expect(page.getByText('4 transactions imported')).toBeVisible();
-
-    // What proves the reading rather than the screen: the labels survived the
-    // page, and the yearless dates came out in the month the statement covers.
-    await page.goto('/app/transactions');
-    await expect(page.getByText('CARTE LIBRAIRIE INVENTEE')).toBeVisible();
-    await expect(page.getByText('VIREMENT SALAIRE AOUT')).toBeVisible();
   });
 });

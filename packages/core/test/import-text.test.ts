@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { decodeText } from '@altitude/shared';
 import {
   detectDateOrder,
+  endingIn,
+  lastYear,
   findHeaderRow,
   fromDebitCredit,
   parseAmount,
@@ -275,6 +277,40 @@ describe('a date column with no year in it', () => {
 
   it('says nothing about the year when every value carries one', () => {
     expect(detectDateOrder(['13/08/2026', '18/08/2026'], '2026-09-03').years).toBeUndefined();
+  });
+});
+
+describe('a year somebody chose rather than the one worked out', () => {
+  /**
+   * The inference is right for a statement imported within a year of its issue
+   * and a year out for anything older, so the screen says which year it read and
+   * offers this. What it must not do is flatten a column that crosses New Year:
+   * the anchor moves, the shape does not.
+   */
+  const across = detectDateOrder(['28.12', '31.12', '02.01', '15.01'], '2027-02-01');
+
+  it('moves the whole column, not one value', () => {
+    const moved = endingIn(across.years!, 2024);
+
+    expect(readDate('28.12', across.order, moved)).toBe('2023-12-28');
+    expect(readDate('15.01', across.order, moved)).toBe('2024-01-15');
+  });
+
+  it('keeps December a year behind the January under it', () => {
+    // The part that was never a guess. Sliding the anchor must not turn a
+    // statement that ran across New Year into one that did not.
+    const moved = endingIn(across.years!, 2024);
+
+    expect(lastYear(moved)).toBe(2024);
+    expect(new Set(moved.values())).toEqual(new Set([2023, 2024]));
+  });
+
+  it('is the year the column ends in, which is what a person is asked about', () => {
+    expect(lastYear(across.years!)).toBe(2027);
+  });
+
+  it('changes nothing when it is the year already read', () => {
+    expect(endingIn(across.years!, 2027)).toBe(across.years);
   });
 });
 
