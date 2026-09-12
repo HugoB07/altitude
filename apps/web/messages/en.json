@@ -178,7 +178,9 @@
     "filterTag": "Tag",
     "anyTag": "Any tag",
     "filterCounterparty": "Counterparty",
-    "anyCounterparty": "Anyone"
+    "anyCounterparty": "Anyone",
+    "filedByYourRule": "Filed by your rule “{name}”.",
+    "filedByShippedRule": "Filed by “{name}”, a rule that ships with Altitude. Write your own above it to decide differently."
   },
   "transactionKind": {
     "buy": "purchase",

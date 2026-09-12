@@ -118,6 +118,13 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
     await page.goto('/app/transactions');
     await expect(page.getByText('Groceries').first()).toBeVisible();
 
+    // And which rule decided, which is the question a category invites and
+    // which nothing answered: two columns have recorded it since the engine
+    // landed and neither reached a screen. Named, not just "a rule" - with
+    // several, knowing it was this one is the whole of the answer.
+    await expect(page.getByText('Filed by your rule')).toBeVisible();
+    await expect(page.getByText('Supermarkets').first()).toBeVisible();
+
     // --- Filing one by hand, and being offered a rule for the rest ---------
     /**
      * What the plan calls explicit learning (§8.6).
@@ -148,6 +155,12 @@ test('a rule is written, previewed, applied, and shows on the transaction', asyn
 
     await page.goto('/app/transactions');
     await expect(page.getByText('Household').first()).toBeVisible();
+
+    // And nothing claims a rule did it. Filing by hand clears both provenance
+    // columns, so the explanation disappears with the decision it explained -
+    // a person who has just chosen a category does not need to be told a rule
+    // chose it, and being told so would be false.
+    await expect(page.getByText('Filed by your rule')).toHaveCount(0);
 
     // --- Removing a category takes its rules with it -----------------------
     await page.goto('/app/categories');

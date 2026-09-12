@@ -15,6 +15,7 @@ import {
   type TransactionId,
 } from '@altitude/shared';
 import { assertCan, type Actor } from '../auth/policy';
+import { ruleSetFor } from '../categories/sets/index';
 import { assertActorMatchesTenant, TenantScopeError } from './tenant';
 
 // Re-exported so the move out of this file is invisible to importers.
@@ -405,7 +406,29 @@ export interface LedgerLine {
   /** What this side of the movement was for, when a rule or a person said. */
   readonly category: string | null;
   readonly categoryId: string | null;
+  /**
+   * Which rule filed it, when a rule did rather than a person.
+   *
+   * Null when somebody chose the category themselves - `setTransactionCategory`
+   * clears both provenance columns, so this never claims a rule decided
+   * something a person overruled - and null when no category was set at all.
+   *
+   * The honest answer to "why is this in groceries", which the migration that
+   * added the columns said in as many words and which nothing displayed.
+   */
+  readonly categorisedBy: CategorisedBy | null;
 }
+
+/**
+ * A rule, named, and said to be the household's own or one that ships.
+ *
+ * Which of the two matters more than the name: a category a person did not
+ * choose and cannot find a rule for is one Altitude decided, and that is a
+ * different conversation from one of their own rules doing what they asked.
+ */
+export type CategorisedBy =
+  | { readonly kind: 'household'; readonly name: string }
+  | { readonly kind: 'set'; readonly country: string; readonly name: string };
 
 export interface LedgerEntry {
   readonly id: TransactionId;
@@ -638,6 +661,9 @@ export async function listTransactions(
       currency: string;
       category: string | null;
       category_id: string | null;
+      categorised_by: string | null;
+      categorised_by_set: string | null;
+      rule_name: string | null;
     }[];
   }>(sql`
     WITH page AS MATERIALIZED (
@@ -678,11 +704,18 @@ export async function listTransactions(
                        'amount', e.amount::text,
                        'currency', e.currency,
                        'category', c.name,
-                       'category_id', e.category_id
+                       'category_id', e.category_id,
+                       'categorised_by', e.categorised_by,
+                       'categorised_by_set', e.categorised_by_set,
+                       'rule_name', r.name
                      ) ORDER BY e.amount DESC, a.name)
                 FROM entries e
                 JOIN accounts a ON a.id = e.account_id
                 LEFT JOIN categories c ON c.id = e.category_id
+                -- The household's own rule, by name. A deleted rule leaves the
+                -- column null rather than dangling (ON DELETE SET NULL), so
+                -- this join has nothing to fall back to and needs none.
+                LEFT JOIN categorisation_rules r ON r.id = e.categorised_by
                WHERE e.transaction_id = t.id),
              '[]'::json
            ) AS lines
@@ -708,6 +741,7 @@ export async function listTransactions(
         amount: Money.of(line.amount, line.currency),
         category: line.category,
         categoryId: line.category_id,
+        categorisedBy: decidedBy(line),
       })),
     })),
     total,
@@ -715,6 +749,38 @@ export async function listTransactions(
     perPage,
     pageCount,
   };
+}
+
+/**
+ * Which rule decided a line, out of the two columns that record it.
+ *
+ * At most one is ever set, which the schema says and `applyRules` upholds. A
+ * household rule carries its name in the row beside it; a shipped one is an id
+ * like `fr/carrefour`, and the name lives in the file the set was read from -
+ * so it is looked up here rather than joined.
+ *
+ * A shipped rule that no longer exists falls back to its own id. That is a set
+ * whose file dropped a pattern after it had filed something, and the id is
+ * still a truthful answer to which rule it was.
+ */
+function decidedBy(line: {
+  categorised_by: string | null;
+  categorised_by_set: string | null;
+  rule_name: string | null;
+}): CategorisedBy | null {
+  if (line.categorised_by !== null) {
+    // Null only if the join found no row, which the foreign key makes
+    // impossible; the id is the truthful fallback either way.
+    return { kind: 'household', name: line.rule_name ?? line.categorised_by };
+  }
+
+  if (line.categorised_by_set === null) return null;
+
+  const [country = '', ...rest] = line.categorised_by_set.split('/');
+  const id = rest.join('/');
+  const rule = ruleSetFor(country)?.rules.find((one) => one.id === id);
+
+  return { kind: 'set', country, name: rule?.name ?? line.categorised_by_set };
 }
 
 export class AlreadyReversedError extends Error {

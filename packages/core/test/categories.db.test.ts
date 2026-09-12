@@ -639,3 +639,68 @@ describe('a community rule set', () => {
     expect(row?.category_id).not.toBeNull();
   });
 });
+
+/**
+ * Why a movement is filed where it is, read back the way the screen reads it.
+ *
+ * Two columns have recorded this since the rules engine landed, and the
+ * migration that added them said in as many words that they are "the honest
+ * answer to why is this in groceries". Nothing asked them: `listTransactions`
+ * returned the category and not what chose it, so the answer existed in the
+ * database and nowhere a person could reach.
+ *
+ * Last in the file, and reading rows the blocks above left behind, because that
+ * is the state this question is asked in: a household that has run its own
+ * rules and a shipped set, and has since turned the set off.
+ */
+describe('what the screen is told about why', () => {
+  async function lineOf(id: string) {
+    const page = await as(owner, (tx) => listTransactions(tx, owner, { perPage: 200 }));
+    const entry = page.transactions.find((one) => one.id === id);
+    return entry?.lines.find((line) => line.categoryId !== null) ?? null;
+  }
+
+  it('names the household rule that decided, not just the category', () => {
+    // The rule is called "Courses" and files under Logement by now, two blocks
+    // above having edited it - which is the useful shape for this: the name of
+    // the rule and the name of the category are different words, so a test that
+    // passed by reading the wrong column would not.
+    return expect(lineOf('ffff5555-0000-4000-8000-000000000001')).resolves.toMatchObject({
+      category: 'Logement',
+      categorisedBy: { kind: 'household', name: 'Courses' },
+    });
+  });
+
+  it('names a shipped rule as shipped, with the name from its own file', async () => {
+    // `fr/monoprix` is an id; "Monoprix" is what the set calls it, and the set
+    // is a file rather than a row, so the name is looked up rather than joined.
+    //
+    // The set was also turned off by the block above, and this still answers.
+    // The name comes from the file rather than from what the household has
+    // enabled, so an explanation outlives the switch - which is the whole point
+    // of leaving the decisions in place when a set is withdrawn.
+    const line = await lineOf('bbbb9999-0000-4000-8000-000000000002');
+
+    expect(line?.categorisedBy).toEqual({ kind: 'set', country: 'fr', name: 'Monoprix' });
+  });
+
+  it('names the household rule when a shipped one only filled the rest', async () => {
+    // The transaction the two halves both touched: a household rule chose the
+    // category and the set supplied the counterparty it had left empty. At most
+    // one of the two columns is ever set, and this is the reading that would
+    // notice if that stopped being true - the answer has to be the rule that
+    // decided, not the last one to have an opinion.
+    const line = await lineOf('bbbb9999-0000-4000-8000-000000000001');
+
+    expect(line?.categorisedBy).toMatchObject({ kind: 'household' });
+  });
+
+  it('says nothing when a person chose it themselves', async () => {
+    // `setTransactionCategory` clears both columns, so an override is not
+    // reported as a rule's doing. A person knows what they did.
+    const line = await lineOf('ffff5555-0000-4000-8000-000000000002');
+
+    expect(line?.category).not.toBeNull();
+    expect(line?.categorisedBy).toBeNull();
+  });
+});

@@ -42,6 +42,7 @@ export {
   type AccountBalance,
   type LedgerEntry,
   type LedgerLine,
+  type CategorisedBy,
   TRANSACTION_STATUSES,
   type ListOptions,
   type TransactionStatus,

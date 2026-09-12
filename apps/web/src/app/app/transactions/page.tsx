@@ -177,26 +177,43 @@ export default async function TransactionsPage({
       ) : (
         <>
           <ul className="grid gap-3">
-            {page.transactions.map((entry) => (
-              <li key={entry.id}>
-                <Card
-                  entry={entry}
-                  categories={categories}
-                  locale={locale}
-                  date={dates.format(new Date(`${entry.bookedOn}T00:00:00`))}
-                  kindLabel={t(`transactionKind.${entry.kind}`)}
-                  tags={tags}
-                  labels={{
-                    reversed: t('transactions.reversed'),
-                    isReversal: t('transactions.isReversal'),
-                    reverse: t('transactions.reverse'),
-                    to: t('transactions.movedTo'),
-                    lines: t('transactions.lines'),
-                  }}
-                  canReverse={canReverse}
-                />
-              </li>
-            ))}
+            {page.transactions.map((entry) => {
+              // Which rule filed it, as a sentence, because the two kinds read
+              // differently: a rule of your own doing what you asked is not the
+              // same news as Altitude having decided on your behalf. Built here
+              // rather than in the card, where `t` is not in scope and the name
+              // is per row so a fixed label could not carry it.
+              const by =
+                entry.lines.find((line) => line.categorisedBy !== null)?.categorisedBy ?? null;
+
+              return (
+                <li key={entry.id}>
+                  <Card
+                    entry={entry}
+                    categories={categories}
+                    locale={locale}
+                    date={dates.format(new Date(`${entry.bookedOn}T00:00:00`))}
+                    kindLabel={t(`transactionKind.${entry.kind}`)}
+                    tags={tags}
+                    filedBy={
+                      by === null
+                        ? null
+                        : by.kind === 'household'
+                          ? t('transactions.filedByYourRule', { name: by.name })
+                          : t('transactions.filedByShippedRule', { name: by.name })
+                    }
+                    labels={{
+                      reversed: t('transactions.reversed'),
+                      isReversal: t('transactions.isReversal'),
+                      reverse: t('transactions.reverse'),
+                      to: t('transactions.movedTo'),
+                      lines: t('transactions.lines'),
+                    }}
+                    canReverse={canReverse}
+                  />
+                </li>
+              );
+            })}
           </ul>
 
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -235,6 +252,7 @@ function Card({
   locale,
   date,
   kindLabel,
+  filedBy,
   labels,
   canReverse,
   categories,
@@ -244,6 +262,14 @@ function Card({
   locale: string;
   date: string;
   kindLabel: string;
+  /**
+   * Which rule filed this, already written out, or null when nobody's did.
+   *
+   * Null covers both "a person chose this" and "nothing chose it":
+   * `setTransactionCategory` clears the provenance when somebody overrules a
+   * rule, so a sentence here never claims a rule decided what a person did.
+   */
+  filedBy: string | null;
   labels: { reversed: string; isReversal: string; reverse: string; to: string; lines: string };
   canReverse: boolean;
   categories: readonly { id: string; name: string }[];
@@ -321,6 +347,13 @@ function Card({
           </span>
         ))}
       </div>
+
+      {/* Why it is filed where it is. Two columns have recorded this since the
+          rules engine landed and nothing showed either of them, so a category
+          somebody did not choose had its answer in the database and nowhere a
+          person could reach. Under the controls rather than beside them: it is
+          an explanation of what they show, not a fourth thing to set. */}
+      {filedBy !== null && <p className="text-muted-foreground mt-1.5 text-[11px]">{filedBy}</p>}
 
       {movement === null ? (
         // More than two sides, or two on the same side. Itemised, because there

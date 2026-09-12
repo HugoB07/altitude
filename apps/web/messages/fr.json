@@ -178,7 +178,9 @@
     "filterTag": "Étiquette",
     "anyTag": "N'importe quelle étiquette",
     "filterCounterparty": "Contrepartie",
-    "anyCounterparty": "N'importe qui"
+    "anyCounterparty": "N'importe qui",
+    "filedByYourRule": "Classé par votre règle « {name} ».",
+    "filedByShippedRule": "Classé par « {name} », une règle fournie avec Altitude. Écrivez la vôtre au-dessus pour en décider autrement."
   },
   "transactionKind": {
     "buy": "achat",
