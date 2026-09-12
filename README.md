@@ -52,6 +52,42 @@ debt. That data does not belong on someone else's server. Altitude is built to r
 entirely on your own machine - database included - with a complete, re-importable
 export from day one. No lock-in, no telemetry, no outbound call you did not configure.
 
+## Running it
+
+There is no release, no published image and no installer yet - those are phase 6, and its
+exit criterion is a third party installing from scratch in under five minutes. Until then
+you run it from source, which takes Node 22 or later and Docker. pnpm arrives through
+corepack; you do not install it yourself.
+
+```bash
+git clone https://github.com/HugoB07/altitude.git
+cd altitude
+corepack enable
+pnpm install
+cp .env.example .env.local     # then fill in AUTH_SECRET, which the file tells you how to generate
+pnpm db:up                     # PostgreSQL 17, on 127.0.0.1:55432
+pnpm --filter @altitude/db exec drizzle-kit migrate
+pnpm dev
+```
+
+Then <http://localhost:3000>: sign up, create a household, and either add a transaction
+by hand or drop a bank statement on the import screen. Nothing leaves your machine, and
+nothing calls out to anything - there is no telemetry and no third-party asset.
+
+No variable that decides where the application connects or what it can decrypt has a
+fallback. A missing one stops it at startup and names itself, rather than quietly running
+on a default that would be wrong in production. Settings with a genuine, non-secret
+default - the currency the first-run wizard offers - say so in `.env.example` and can be
+left out.
+
+The interface follows your browser's `Accept-Language`, so to see the French half set
+French as your preferred language - there is no switcher yet, and
+[ADR-0010](docs/adr/0010-bilingual-from-the-first-screen.md) explains why.
+
+**This is pre-release.** The schema still moves, migrations are the only upgrade path,
+and there is no backup-and-restore tool until phase 6. Point it at a copy of your data
+before you point it at your data.
+
 ## Planned features
 
 - **Multi-asset** - cash, securities, crypto, real estate, loans, private equity, valuables.

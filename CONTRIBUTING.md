@@ -240,9 +240,12 @@ pnpm db:up                                     # PostgreSQL 17 on 127.0.0.1:5543
 pnpm --filter @altitude/db exec drizzle-kit migrate
 ```
 
-No environment variable has a fallback value in the code. A missing one raises
-`MissingConfigurationError` at startup and names itself, rather than quietly running with
-a default that would be wrong in production.
+No variable that decides where the application connects or what it can decrypt has a
+fallback value in the code. A missing one raises `MissingConfigurationError` at startup
+and names itself, rather than quietly running with a default that would be wrong in
+production. A setting with a genuine, non-secret default reads through `optionalEnv`
+instead - there is one, the currency the first-run wizard offers. Which of the two a
+variable is, `packages/shared/test/env.test.ts` enforces by walking the source.
 
 Then the checks CI runs, which should all pass on a clean clone:
 
