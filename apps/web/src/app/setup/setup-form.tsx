@@ -16,15 +16,17 @@ import {
 } from '@/components/ui/select';
 import { CURRENCIES } from '@/lib/currencies';
 
-export function SetupForm() {
+export function SetupForm({ defaultCurrency }: { readonly defaultCurrency: string }) {
   const [state, action, pending] = useActionState(
     async (_prev: ActionResult, formData: FormData) => createHouseholdAction(formData),
     {},
   );
 
   // Controlled for the same reason as the account pickers: Radix cannot read an
-  // item's label while SelectContent is unmounted.
-  const [code, setCode] = useState('EUR');
+  // item's label while SelectContent is unmounted. Started from what the
+  // instance is configured with rather than from a literal - an instance run
+  // from Zurich offered euros and could not be told otherwise (plan §14.1).
+  const [code, setCode] = useState(defaultCurrency);
   const t = useTranslations('setup');
 
   return (

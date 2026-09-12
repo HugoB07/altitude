@@ -25,6 +25,7 @@ import {
   transactionId,
 } from '@altitude/shared';
 import { getAuthDbClient } from './auth';
+import { defaultBaseCurrency } from './config';
 import { AccountsMissingError, toMessage } from './errors';
 import { requireContext, requireSessionUser, scoped } from './context';
 import { ensureTenantIsolation } from './startup';
@@ -80,7 +81,7 @@ export async function createHouseholdAction(formData: FormData): Promise<ActionR
       createHousehold(tx, {
         householdId: newId,
         name,
-        baseCurrency: String(formData.get('currency') ?? 'EUR').trim(),
+        baseCurrency: String(formData.get('currency') ?? defaultBaseCurrency()).trim(),
         ownerUserId: user.userId,
         ownerDisplayName: user.displayName,
         accountNames: {
@@ -179,7 +180,10 @@ export async function quickAddAction(formData: FormData): Promise<ActionResult> 
  */
 export async function createAccountAction(formData: FormData): Promise<ActionResult> {
   await ensureTenantIsolation();
-  const { actor } = await requireContext();
+  // The household's own currency, not the instance's default: an account
+  // created without one belongs to this household, and this household has
+  // already answered the question once.
+  const { actor, baseCurrency } = await requireContext();
 
   const t = await getTranslations('accounts');
   const name = String(formData.get('name') ?? '').trim();
@@ -190,7 +194,7 @@ export async function createAccountAction(formData: FormData): Promise<ActionRes
       createAccount(tx, actor, {
         name,
         kind: String(formData.get('kind') ?? ''),
-        currency: String(formData.get('currency') ?? 'EUR'),
+        currency: String(formData.get('currency') ?? baseCurrency),
         institution: String(formData.get('institution') ?? ''),
       }),
     );

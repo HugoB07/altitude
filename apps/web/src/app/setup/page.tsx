@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
+import { defaultBaseCurrency } from '@/server/config';
 import { getContext, getSessionUser } from '@/server/context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SetupForm } from './setup-form';
@@ -28,7 +29,7 @@ export default async function SetupPage() {
           <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <SetupForm />
+          <SetupForm defaultCurrency={defaultBaseCurrency()} />
         </CardContent>
       </Card>
     </main>
