@@ -277,8 +277,15 @@ code did. ESLint runs with `--max-warnings 0`, so a warning is a failure - an
 unused local is a bug in the making, and `tsconfig.base.json` already takes the
 same position.
 
-`pnpm test:coverage` adds the thresholds. They are deliberately strict on
-`packages/core`: a gap in its coverage is a gap in the ledger guarantee.
+`pnpm test:coverage` is `pnpm test:unit` with the thresholds turned on. They are
+deliberately strict on `packages/core`: a gap in its coverage is a gap in the ledger
+guarantee.
+
+It is defined in terms of `test:unit` rather than repeating its list of paths, because
+CI runs `test:coverage` and `test:db` rather than `pnpm test` and the two have to add up
+to it. Written out twice, they did not: the copy in `test:coverage` was missing
+`apps/web/test`, so nine guards - the client/server boundary among them - passed on a
+clone and were never run by CI.
 
 `pnpm dev` starts the application on <http://localhost:3000>. It follows your browser's
 `Accept-Language`, so to see the French interface set French as your preferred language

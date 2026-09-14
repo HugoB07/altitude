@@ -27,7 +27,7 @@
     "lint:code": "pnpm --filter @altitude/web exec eslint --max-warnings 0",
     "plan": "cd docs/plan && node build-html.mjs && node build-pdf.mjs",
     "test": "vitest run",
-    "test:coverage": "vitest run packages/shared packages/core --exclude \"**/*.db.test.ts\" --coverage",
+    "test:coverage": "pnpm test:unit --coverage",
     "test:db": "vitest run packages/db .db.test.ts",
     "test:e2e": "pnpm --filter @altitude/web test:e2e",
     "test:unit": "vitest run packages/shared packages/core apps/web/test --exclude \"**/*.db.test.ts\"",
