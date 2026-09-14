@@ -50,6 +50,37 @@ describe('decodeText', () => {
     expect(text).not.toContain('�');
   });
 
+  it('decodes every byte CP1252 fills that Latin-1 leaves as a control character', () => {
+    // 0x80-0x9F is the whole of the difference between the two encodings, and
+    // the range this used to ask the platform about. It does not any more:
+    // `TextDecoder('windows-1252')` needs full ICU, and a Node built with
+    // small-icu throws on it - which is not a test being fussy about a machine,
+    // it is every CP1252 export failing to import on that host. Reported from a
+    // second machine, where this file's euro test was the one that failed.
+    //
+    // So the answer is spelled out here rather than fetched from a decoder.
+    // Comparing the two would pass on a machine with ICU and say nothing about
+    // the one that reported it.
+    const { text, encoding } = decodeText(
+      new Uint8Array([
+        0x80, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8e, 0x91, 0x92,
+        0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9e, 0x9f,
+      ]),
+    );
+
+    expect(encoding).toBe('windows-1252');
+    expect(text).toBe('€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ');
+  });
+
+  it('leaves the five places CP1252 defines nothing as the byte they came in as', () => {
+    // Not a gap to fill with U+FFFD: a replacement character is a decoder
+    // saying the file is broken, and these bytes are only unassigned.
+    for (const byte of [0x81, 0x8d, 0x8f, 0x90, 0x9d]) {
+      const { text } = decodeText(new Uint8Array([0xc9, 0x0a, byte]));
+      expect(text.codePointAt(2), byte.toString(16)).toBe(byte);
+    }
+  });
+
   it('keeps the euro sign, which is where CP1252 and Latin-1 disagree', () => {
     // 0x80 is the euro in CP1252 and a control character in ISO-8859-1.
     const { text } = decodeText(new Uint8Array([...utf8('Solde 12,34 '), 0x80]));

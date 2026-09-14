@@ -21,6 +21,48 @@ export interface DecodedText {
 }
 
 /**
+ * The thirty-two code points CP1252 puts where Latin-1 has control characters.
+ *
+ * Written as escapes rather than as the characters themselves, because this
+ * table is about bytes and a file that got re-encoded on its way through a
+ * checkout would change the answer without changing the look of the line.
+ * Index 0 is byte 0x80; the five undefined slots keep their own control
+ * character, which is what every decoder does with them.
+ *
+ * Every other byte maps to the code point of the same value - CP1252 agrees
+ * with Latin-1 everywhere outside this range - so those need no table.
+ */
+// Kept eight to a line, which is how a byte table reads.
+// prettier-ignore
+const CP1252_HIGH = [
+  '\u20AC', '\u0081', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',
+  '\u02C6', '\u2030', '\u0160', '\u2039', '\u0152', '\u008D', '\u017D', '\u008F',
+  '\u0090', '\u2018', '\u2019', '\u201C', '\u201D', '\u2022', '\u2013', '\u2014',
+  '\u02DC', '\u2122', '\u0161', '\u203A', '\u0153', '\u009D', '\u017E', '\u0178',
+] as const;
+
+/**
+ * CP1252, decoded here rather than by the platform.
+ *
+ * `new TextDecoder('windows-1252')` needs ICU, and a Node built with
+ * `small-icu` - which several distributions ship - throws a RangeError on it.
+ * That is not a test being fussy about a machine: it is every CP1252 bank
+ * export failing to import on that host, which is the encoding §8.3 lists
+ * first among the pitfalls to handle on day one.
+ *
+ * Thirty-two entries and a cast is the whole of the alternative, so the
+ * dependency is not worth keeping for it. UTF-8 stays with `TextDecoder`, which
+ * every build supports without ICU.
+ */
+function decodeCp1252(bytes: Uint8Array): string {
+  let text = '';
+  for (const byte of bytes) {
+    text += byte >= 0x80 && byte <= 0x9f ? CP1252_HIGH[byte - 0x80] : String.fromCharCode(byte);
+  }
+  return text;
+}
+
+/**
  * Decodes a file's bytes, choosing between UTF-8 and CP1252.
  *
  * No character-frequency heuristic and no dependency, because UTF-8 does not
@@ -50,7 +92,7 @@ export function decodeText(bytes: Uint8Array): DecodedText {
     return { text, encoding: 'utf-8', hadBom };
   } catch {
     return {
-      text: new TextDecoder('windows-1252').decode(body),
+      text: decodeCp1252(body),
       encoding: 'windows-1252',
       hadBom,
     };
